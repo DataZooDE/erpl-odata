@@ -16,6 +16,8 @@ namespace erpl_web {
 
 namespace {
 
+// Deliberately still "erpl_web": this is the on-disk schema that existing users' ODP subscription and delta-token
+// state lives in. Renaming the extension to erpl_odata must not orphan those queues, so the identifier is frozen.
 constexpr const char* SCHEMA_NAME = "erpl_web";
 constexpr const char* SUBSCRIPTIONS_TABLE = "odp_subscriptions";
 constexpr const char* AUDIT_TABLE = "odp_subscription_audit";

@@ -2,7 +2,7 @@
 # description: Integration tests for Microsoft Graph Entra ID Directory
 # group: [erpl_web]
 
-require erpl_web
+require erpl_odata
 
 require-env ERPL_MS_TENANT_ID
 

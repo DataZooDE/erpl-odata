@@ -90,7 +90,7 @@ TEST_CASE("a bound projecting plan returns every row on each execution",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     REQUIRE_FALSE(
         con.Query("PREPARE counted AS SELECT COUNT(*) FROM odata_read('" + entity_url + "')")
@@ -125,7 +125,7 @@ TEST_CASE("two scans of one call join, cross-join and union independently",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     SECTION("cross join sees every pair") {
         auto result = con.Query("SELECT COUNT(*) FROM " + read + " a, " + read + " b");
@@ -167,7 +167,7 @@ TEST_CASE("an ATTACHed OData table re-executes and self-joins", "[odata_reexec][
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto attach = con.Query("ATTACH '" + server.Url("/attached/") + "' AS svc (TYPE odata)");
     INFO((attach->HasError() ? attach->GetError() : std::string()));
@@ -246,7 +246,7 @@ TEST_CASE("COUNT(*) over an ATTACHed table coexists with a pushed-down filter",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto attach = con.Query("ATTACH '" + server.Url("/filtered/") + "' AS svc (TYPE odata)");
     INFO((attach->HasError() ? attach->GetError() : std::string()));
@@ -287,7 +287,7 @@ TEST_CASE("a body truncated mid-stream fails cleanly and spares the database",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto result = con.Query("SELECT COUNT(*) FROM odata_read('" + entity_url + "')");
     INFO("truncated read reported: "
@@ -330,7 +330,7 @@ TEST_CASE("a truncated $metadata document fails cleanly and spares the database"
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     // The reader does not fail here, and that is deliberate rather than accidental:
     // ODataReadBindData::MetadataColumnNames() catches an unavailable EDM and falls back
@@ -378,7 +378,7 @@ TEST_CASE("a filter on a late schema column names that column in $filter",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     // LastName is the third property; UserName the first. Projecting UserName alone while
     // filtering on LastName makes the output index (0) and the schema index (2) disagree.

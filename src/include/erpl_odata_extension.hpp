@@ -4,7 +4,7 @@
 
 namespace duckdb {
 
-class ErplWebExtension {
+class ErplOdataExtension {
 public:
 	static void Load(ExtensionLoader &loader);
 	static std::string Name();

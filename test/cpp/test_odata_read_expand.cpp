@@ -195,7 +195,7 @@ private:
 void RequireExpandReachesTheService(const std::string &expand)
 {
     NorthwindV4Service service;
-    REQUIRE_FALSE(service.Con().Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(service.Con().Query("LOAD erpl_odata")->HasError());
 
     auto result = service.ReadWithExpand(expand);
     INFO((result->HasError() ? result->GetError() : std::string()));
@@ -322,7 +322,7 @@ TEST_CASE("ODataReadBindData appends expanded navigation properties to the schem
 // still returns rows, so only the recorded request can tell the difference.
 TEST_CASE("odata_read sends the expand named parameter as $expand", "[odata_expand][e2e]") {
     NorthwindV4Service service;
-    REQUIRE_FALSE(service.Con().Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(service.Con().Query("LOAD erpl_odata")->HasError());
 
     auto result = service.ReadWithExpand("Category");
     INFO((result->HasError() ? result->GetError() : std::string()));
@@ -352,7 +352,7 @@ TEST_CASE("odata_read parses inline expanded data into the result", "[odata_expa
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     // Cast to VARCHAR so the assertion is about the expanded VALUES and not about
     // whether the EDM type resolver produced a STRUCT or the LIST(VARCHAR)
@@ -396,7 +396,7 @@ TEST_CASE("odata_read expands identically whether $expand is in the URL or a par
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto by_parameter = con.Query("SELECT CAST(Category AS VARCHAR) FROM odata_read('" +
                                   server.Url("/nw/Products") + "', expand = 'Category')");
@@ -443,7 +443,7 @@ TEST_CASE("a filter on an expanded column does not invalidate the database",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     // Whether this particular filter is pushed, translated or errors is not the point.
     auto result = con.Query("SELECT ProductName FROM odata_read('" + server.Url("/nw/Products") +
@@ -469,7 +469,7 @@ TEST_CASE("odata_read sends $expand alongside $top and $skip", "[odata_expand][e
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto result = con.Query("SELECT * FROM odata_read('" + server.Url("/nw/Products") +
                             "', expand = 'Category,Supplier', top = 10, skip = 20)");
@@ -499,7 +499,7 @@ TEST_CASE("odata_read sends a multi-level $expand unchanged", "[odata_expand][e2
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto result = con.Query("SELECT UserName, CAST(Trips AS VARCHAR) AS trips_text "
                             "FROM odata_read('" +
@@ -549,7 +549,7 @@ TEST_CASE("odata_read sends $expand against an OData v2 service", "[odata_expand
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto result = con.Query("SELECT * FROM odata_read('" + server.Url("/v2/Customers") +
                             "', expand = 'Orders')");
@@ -574,7 +574,7 @@ TEST_CASE("odata_read sends $expand next to the v2 $inlinecount", "[odata_expand
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto result = con.Query("SELECT * FROM odata_read('" + server.Url("/v2/Customers") +
                             "', expand = 'Orders', count = true)");
@@ -625,7 +625,7 @@ TEST_CASE("odata_read sends a comma inside a function call unchanged",
 TEST_CASE("odata_read closes an unbalanced expand option group rather than dropping the clause",
           "[odata_expand][e2e][edge]") {
     NorthwindV4Service service;
-    REQUIRE_FALSE(service.Con().Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(service.Con().Query("LOAD erpl_odata")->HasError());
 
     auto result = service.ReadWithExpand("Category($filter=CategoryID gt 1");
     INFO((result->HasError() ? result->GetError() : std::string()));

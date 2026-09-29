@@ -1,7 +1,7 @@
 PROJ_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
 # Configuration of extension
-EXT_NAME=erpl_web
+EXT_NAME=erpl_odata
 EXT_CONFIG=${PROJ_DIR}extension_config.cmake
 
 VCPKG_TOOLCHAIN_PATH?=${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake
@@ -30,7 +30,7 @@ dev:
 
 # Relink ./build/debug/test/unittest, the SQLLogicTest runner.
 #
-# 'duckdb', 'unittest' and 'erpl_web_tests' are separate ninja targets. Building one does
+# 'duckdb', 'unittest' and 'erpl_odata_tests' are separate ninja targets. Building one does
 # NOT build the others, so a session that builds a single target after a source change
 # leaves the other binaries stale - and a stale unittest runs your SQL tests against code
 # from before the fix, which looks exactly like a real behavioural bug (GitHub #172).
@@ -105,7 +105,7 @@ test_debug_ms: unittest
 test_debug_bc: unittest
 	./build/debug/test/unittest "test/sql/business_central_integration.test"
 
-# Regression test for GitHub #45: when erpl_web is consumed as a dependency (the duckdb
+# Regression test for GitHub #45: when erpl_odata is consumed as a dependency (the duckdb
 # submodule is absent from the fetched source), its dev-only C++ test target must NOT be
 # built — otherwise test/cpp fails with "catch.hpp file not found". Pure CMake script,
 # no toolchain/DuckDB configure required, so it runs identically on every platform.
@@ -115,13 +115,13 @@ test_build_guard:
 
 # Build and run datazoo-oauth2's own Catch2 suite.
 #
-# That target is guarded on the submodule being the TOP-LEVEL cmake project, and erpl-web
+# That target is guarded on the submodule being the TOP-LEVEL cmake project, and erpl-odata
 # add_subdirectory()s it - so the guard is false in every build this repo makes, and the
 # suite was never compiled, let alone run. It is the only coverage of
 # OAuth2CallbackHandler::ValidateState, the CSRF defence of the whole authorization_code
 # flow, and of the PKCE/state token generator and the callback error page's HTML escaping.
 #
-# Configured standalone in its own build directory rather than folded into erpl_web_tests:
+# Configured standalone in its own build directory rather than folded into erpl_odata_tests:
 # standalone is the configuration the guard already supports, so nothing in the submodule
 # has to change. It needs Catch2 3 on the system; the target says so rather than silently
 # doing nothing, which is how this went unnoticed in the first place. See GitHub #245.
@@ -138,5 +138,5 @@ test_oauth2:
 # libduckdb.so. The duplicate symbol (LOOKUP_TABLE in nested_to_varchar_cast.cpp) is
 # benign—both copies are identical—but ASAN fires anyway due to debug linking strategy.
 test_cpp: ${EXTENSION_CONFIG_STEP}
-	ASAN_OPTIONS=detect_odr_violation=0 ./build/debug/extension/erpl_web/test/cpp/erpl_web_tests
+	ASAN_OPTIONS=detect_odr_violation=0 ./build/debug/extension/erpl_odata/test/cpp/erpl_odata_tests
 

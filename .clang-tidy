@@ -3,7 +3,7 @@ Checks: '-\*,clang-diagnostic-\*,bugprone-\*,performance-\*,google-explicit-cons
 
 WarningsAsErrors: '\*'
 
-HeaderFilterRegex: 'src/include/erpl_web/.*'
+HeaderFilterRegex: 'src/include/erpl_odata/.*'
 
 FormatStyle: none
 

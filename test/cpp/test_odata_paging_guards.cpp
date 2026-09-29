@@ -106,7 +106,7 @@ TEST_CASE("odata_read caps the pages fetched in a single scan call", "[odata_e2e
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto result =
         con.Query("SELECT AirlineCode FROM odata_read('" + server.Url("/cap/Airlines") + "') LIMIT 1");
@@ -138,7 +138,7 @@ TEST_CASE("odata_read still returns every row across a chain longer than the pag
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto result = con.Query("SELECT count(*) FROM odata_read('" + server.Url("/cap/Airlines") + "')");
     INFO((result->HasError() ? result->GetError() : std::string()));
@@ -182,7 +182,7 @@ TEST_CASE("odata_read refuses a next link identical to the request that produced
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto result = con.Query("SELECT count(*) FROM odata_read('" + entity_url + "')");
     REQUIRE(result->HasError());

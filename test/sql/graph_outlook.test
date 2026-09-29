@@ -2,7 +2,7 @@
 # description: Test Microsoft Graph Outlook functions
 # group: [erpl_web]
 
-require erpl_web
+require erpl_odata
 
 # Test that graph_calendar_events function exists
 statement ok

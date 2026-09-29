@@ -12,7 +12,7 @@
 #include "yyjson.hpp"
 #include <algorithm>
 #include <unordered_set>
-#include "erpl_web_banner.hpp"
+#include "erpl_odata_banner.hpp"
 
 using namespace duckdb_yyjson;
 
@@ -750,7 +750,7 @@ void GraphSharePointFunctions::Register(ExtensionLoader &loader) {
     ERPL_TRACE_INFO("GRAPH_SHAREPOINT", "Registering Microsoft Graph SharePoint functions");
 
     {
-        TableFunction show_sites("graph_show_sites", {}, DATAZOO_GUARD(ERPL_WEB_BANNER, ShowSitesScan), DATAZOO_GUARD(ERPL_WEB_BANNER, ShowSitesBind));
+        TableFunction show_sites("graph_show_sites", {}, DATAZOO_GUARD(ERPL_ODATA_BANNER, ShowSitesScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, ShowSitesBind));
         show_sites.varargs = LogicalType::VARCHAR;
         show_sites.named_parameters["secret"] = LogicalType::VARCHAR;
         show_sites.init_global = GraphJsonArrayScanState::Init;
@@ -771,7 +771,7 @@ void GraphSharePointFunctions::Register(ExtensionLoader &loader) {
         loader.RegisterFunction(std::move(info));
     }
     {
-        TableFunction show_drives("graph_show_drives", {}, DATAZOO_GUARD(ERPL_WEB_BANNER, ShowDrivesScan), DATAZOO_GUARD(ERPL_WEB_BANNER, ShowDrivesBind));
+        TableFunction show_drives("graph_show_drives", {}, DATAZOO_GUARD(ERPL_ODATA_BANNER, ShowDrivesScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, ShowDrivesBind));
         show_drives.varargs = LogicalType::VARCHAR;
         show_drives.named_parameters["secret"] = LogicalType::VARCHAR;
         show_drives.named_parameters["site"] = LogicalType::VARCHAR;
@@ -793,7 +793,7 @@ void GraphSharePointFunctions::Register(ExtensionLoader &loader) {
         loader.RegisterFunction(std::move(info));
     }
     {
-        TableFunction show_lists("graph_show_lists", {}, DATAZOO_GUARD(ERPL_WEB_BANNER, ShowListsScan), DATAZOO_GUARD(ERPL_WEB_BANNER, ShowListsBind));
+        TableFunction show_lists("graph_show_lists", {}, DATAZOO_GUARD(ERPL_ODATA_BANNER, ShowListsScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, ShowListsBind));
         show_lists.varargs = LogicalType::VARCHAR;
         show_lists.named_parameters["secret"] = LogicalType::VARCHAR;
         show_lists.named_parameters["site"] = LogicalType::VARCHAR;
@@ -819,7 +819,7 @@ void GraphSharePointFunctions::Register(ExtensionLoader &loader) {
     {
         TableFunction describe_list("graph_describe_list",
                                     {LogicalType::VARCHAR, LogicalType::VARCHAR},
-                                    DATAZOO_GUARD(ERPL_WEB_BANNER, DescribeListScan), DATAZOO_GUARD(ERPL_WEB_BANNER, DescribeListBind));
+                                    DATAZOO_GUARD(ERPL_ODATA_BANNER, DescribeListScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, DescribeListBind));
         describe_list.named_parameters["secret"] = LogicalType::VARCHAR;
         describe_list.init_global = GraphJsonArrayScanState::Init;
         CreateTableFunctionInfo info(describe_list);
@@ -842,7 +842,7 @@ void GraphSharePointFunctions::Register(ExtensionLoader &loader) {
     {
         TableFunction list_items("graph_sharepoint_list_read",
                                  {LogicalType::VARCHAR, LogicalType::VARCHAR},
-                                 DATAZOO_GUARD(ERPL_WEB_BANNER, ListItemsScan), DATAZOO_GUARD(ERPL_WEB_BANNER, ListItemsBind));
+                                 DATAZOO_GUARD(ERPL_ODATA_BANNER, ListItemsScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, ListItemsBind));
         list_items.named_parameters["secret"] = LogicalType::VARCHAR;
         list_items.init_global = GraphJsonArrayScanState::Init;
         CreateTableFunctionInfo info(list_items);
@@ -865,7 +865,7 @@ void GraphSharePointFunctions::Register(ExtensionLoader &loader) {
     {
         TableFunction create_item("graph_sharepoint_create_item",
                                   {LogicalType::VARCHAR, LogicalType::VARCHAR, LogicalType::VARCHAR},
-                                  DATAZOO_GUARD(ERPL_WEB_BANNER, CreateItemScan), DATAZOO_GUARD(ERPL_WEB_BANNER, CreateItemBind));
+                                  DATAZOO_GUARD(ERPL_ODATA_BANNER, CreateItemScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, CreateItemBind));
         create_item.named_parameters["secret"] = LogicalType::VARCHAR;
         create_item.init_global = ScanRowCursorState::Init;
         CreateTableFunctionInfo info(create_item);

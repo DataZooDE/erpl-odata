@@ -8,7 +8,7 @@ testext
 test/python/__pycache__/
 .Rhistory
 vcpkg_installed/
-erpl_web_trace.log
+erpl_odata_trace.log
 test/wasm
 .ai
 

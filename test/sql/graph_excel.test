@@ -2,7 +2,7 @@
 # description: Test Microsoft Graph Excel integration functions and secret management
 # group: [erpl_web]
 
-require erpl_web
+require erpl_odata
 
 # =============================================================================
 # Test: Microsoft Graph Secret Creation (client_credentials provider)

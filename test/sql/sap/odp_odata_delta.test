@@ -13,7 +13,7 @@
 # the thing that actually matters and that the weaker test cannot: after a full load,
 # an unchanged source yields exactly zero rows.
 
-require erpl_web
+require erpl_odata
 
 statement ok
 SET autoinstall_known_extensions=1;

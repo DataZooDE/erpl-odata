@@ -5,7 +5,7 @@
 #              verifies the count, then cleans up.
 # group: [erpl_web]
 
-require erpl_web
+require erpl_odata
 
 require-env ERPL_MS_TENANT_ID
 

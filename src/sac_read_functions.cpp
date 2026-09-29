@@ -9,7 +9,7 @@
 #include "odata_content.hpp"
 #include "telemetry.hpp"
 #include <algorithm>
-#include "erpl_web_banner.hpp"
+#include "erpl_odata_banner.hpp"
 
 namespace erpl_web {
 
@@ -72,7 +72,7 @@ duckdb::TableFunctionSet CreateSacReadPlanningDataFunction() {
 
     duckdb::TableFunction function(
         {duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR)},  // model_id
-        DATAZOO_GUARD(ERPL_WEB_BANNER, ODataReadScan),
+        DATAZOO_GUARD(ERPL_ODATA_BANNER, ODataReadScan),
         SacReadPlanningDataBind,
         ODataReadTableInitGlobalState
     );
@@ -184,7 +184,7 @@ duckdb::TableFunctionSet CreateSacReadAnalyticalFunction() {
 
     duckdb::TableFunction function(
         {duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR)},  // model_id
-        DATAZOO_GUARD(ERPL_WEB_BANNER, ODataReadScan),
+        DATAZOO_GUARD(ERPL_ODATA_BANNER, ODataReadScan),
         SacReadAnalyticalBind,
         ODataReadTableInitGlobalState
     );
@@ -252,7 +252,7 @@ duckdb::TableFunctionSet CreateSacReadStoryDataFunction() {
 
     duckdb::TableFunction function(
         {duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR)},  // story_id
-        DATAZOO_GUARD(ERPL_WEB_BANNER, ODataReadScan),
+        DATAZOO_GUARD(ERPL_ODATA_BANNER, ODataReadScan),
         SacReadStoryDataBind,
         ODataReadTableInitGlobalState
     );

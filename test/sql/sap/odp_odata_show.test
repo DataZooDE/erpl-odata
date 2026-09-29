@@ -8,7 +8,7 @@
 # Registration of the ODP functions is covered unconditionally in
 # test/sql/odp_functions_registered.test.
 
-require erpl_web
+require erpl_odata
 
 statement ok
 SET autoinstall_known_extensions=1;

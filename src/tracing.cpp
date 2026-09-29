@@ -16,7 +16,7 @@ void ErplTracer::SetEnabled(bool enabled) {
     if (enabled && !trace_file) {
         // Create trace file
         std::filesystem::path trace_path = trace_directory;
-        trace_path /= "erpl_web_trace.log";
+        trace_path /= "erpl_odata_trace.log";
         
         trace_file = std::make_unique<std::ofstream>(trace_path, std::ios::app);
         if (trace_file->is_open()) {
@@ -55,7 +55,7 @@ void ErplTracer::SetTraceDirectory(const std::string& directory) {
     if (enabled && trace_file) {
         trace_file->close();
         std::filesystem::path trace_path = trace_directory;
-        trace_path /= "erpl_web_trace.log";
+        trace_path /= "erpl_odata_trace.log";
         trace_file->open(trace_path, std::ios::app);
     }
 }

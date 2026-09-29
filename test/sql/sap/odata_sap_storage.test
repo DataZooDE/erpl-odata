@@ -3,7 +3,7 @@
 # group: [erpl_odata]
 
 # Require statement will ensure this test is run with this extension loaded
-require erpl_web
+require erpl_odata
 
 statement ok
 SET autoinstall_known_extensions=1;

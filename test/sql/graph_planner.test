@@ -2,7 +2,7 @@
 # description: Test Microsoft Graph Planner integration functions
 # group: [erpl_web]
 
-require erpl_web
+require erpl_odata
 
 # =============================================================================
 # Test: Function Existence

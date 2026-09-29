@@ -1,14 +1,14 @@
-# Agent Instructions: erpl-web
+# Agent Instructions: erpl-odata
 
 **DuckDB Extension for HTTP/REST, OData, and SAP Ecosystem Integration**
 
-This document guides AI agents in developing the erpl-web extension using quick iteration workflows, tracing-enabled debugging, and C++ best practices.
+This document guides AI agents in developing the erpl-odata extension using quick iteration workflows, tracing-enabled debugging, and C++ best practices.
 
 ---
 
 ## Project Overview
 
-**ERPL Web** is a production-grade DuckDB extension providing HTTP/REST API access, OData v2/v4 query support, and SAP ecosystem integration (Datasphere, Analytics Cloud, ODP) directly from SQL.
+**ERPL-OData** is a production-grade DuckDB extension providing HTTP/REST API access, OData v2/v4 query support, and SAP ecosystem integration (Datasphere, Analytics Cloud, ODP) directly from SQL.
 
 ### Core Components
 
@@ -27,7 +27,7 @@ This document guides AI agents in developing the erpl-web extension using quick 
 **Service Layers with Pooling/Caching:** HTTP connections pooled, OData metadata cached, predicate pushdown to minimize data transfer.
 
 ```
-SQL Query → DuckDB → erpl_web functions → HTTP Client (pooled)
+SQL Query → DuckDB → erpl_odata functions → HTTP Client (pooled)
                                        → OData/SAP Adapters → Response Parsing → DuckDB Rows
 ```
 
@@ -88,10 +88,10 @@ GEN=ninja make debug
 make test_debug
 
 # Run C++ unit tests
-./build/debug/extension/erpl_web/test/cpp/erpl_web_tests
+./build/debug/extension/erpl_odata/test/cpp/erpl_odata_tests
 
 # Single C++ test
-./build/debug/extension/erpl_web/test/cpp/erpl_web_tests TEST_NAME
+./build/debug/extension/erpl_odata/test/cpp/erpl_odata_tests TEST_NAME
 
 # SAP-specific tests (requires SAP environment)
 make test_debug_sap
@@ -136,7 +136,7 @@ GEN=ninja make debug
 
 ```
 src/
-  erpl_web_extension.cpp       # Entry point, function registration
+  erpl_odata_extension.cpp       # Entry point, function registration
   include/                     # Header files (.hpp)
     http_client.hpp
     odata_client.hpp
@@ -188,7 +188,7 @@ Makefile                       # Build orchestration
 ### Dependency Flow
 
 ```
-erpl_web_extension (Entry Point)
+erpl_odata_extension (Entry Point)
     │
     ├── Foundation Layer
     │   ├── HttpClient (libcurl-based, connection pooling)
@@ -295,7 +295,7 @@ See the full Codex consultation workflow in the detailed instructions below.
 | Problem | Solution |
 |---------|----------|
 | Extension won't load | Check `DUCKDB_EXTENSION_ENTRY` macro |
-| Function not found | Verify registration in `erpl_web_extension.cpp` |
+| Function not found | Verify registration in `erpl_odata_extension.cpp` |
 | Test fails unexpectedly | Check SQLLogicTest type indicators (I/T/R/D/B) |
 | Linker errors | Verify CMakeLists.txt dependencies |
 | OAuth2 flow fails | Enable tracing, check callback server |
@@ -308,7 +308,7 @@ See the full Codex consultation workflow in the detailed instructions below.
 ### Adding a New HTTP Function
 
 1. Define in `web_functions.cpp` (bind + execute phases)
-2. Register in `erpl_web_extension.cpp`
+2. Register in `erpl_odata_extension.cpp`
 3. Add tests in `test/sql/web_http.test`
 4. Use `ERPL_TRACE_*` macros for debugging
 
@@ -423,7 +423,7 @@ For features that involve secrets or authentication:
 | Test Type | Location | Runner |
 |-----------|----------|--------|
 | SQL Integration | `test/sql/*.test` | `make test_debug` |
-| C++ Unit | `test/cpp/test_*.cpp` | `./build/debug/extension/erpl_web/test/cpp/erpl_web_tests` |
+| C++ Unit | `test/cpp/test_*.cpp` | `./build/debug/extension/erpl_odata/test/cpp/erpl_odata_tests` |
 | Fixtures | `test/fixtures/` | N/A |
 
 ---

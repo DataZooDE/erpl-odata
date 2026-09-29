@@ -4,7 +4,7 @@
 # Status: Integration test - requires network access to Databricks
 # ============================================================================
 
-require erpl_web
+require erpl_odata
 
 # This test requires the DELTA_SHARE_PROFILE_PATH environment variable to be set
 # to the path of a valid Delta Sharing profile file.
@@ -33,9 +33,9 @@ WHERE function_name = 'delta_share_scan'
 ----
 1
 
-# Test 3: Verify erpl_web extension is registered
+# Test 3: Verify erpl_odata extension is registered
 query I
-SELECT COUNT(*) FROM duckdb_extensions() WHERE extension_name = 'erpl_web'
+SELECT COUNT(*) FROM duckdb_extensions() WHERE extension_name = 'erpl_odata'
 ----
 1
 

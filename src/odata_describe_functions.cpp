@@ -8,7 +8,7 @@
 
 #include <optional>
 #include <set>
-#include "erpl_web_banner.hpp"
+#include "erpl_odata_banner.hpp"
 #include "scan_row_cursor.hpp"
 
 namespace erpl_web {
@@ -520,7 +520,7 @@ static void ODataDescribeScan(
 TableFunctionSet CreateODataDescribeFunction() {
     TableFunctionSet describe_func("odata_describe");
     
-    TableFunction describe_function({LogicalTypeId::VARCHAR}, DATAZOO_GUARD(ERPL_WEB_BANNER, ODataDescribeScan), DATAZOO_GUARD(ERPL_WEB_BANNER, ODataDescribeBind));
+    TableFunction describe_function({LogicalTypeId::VARCHAR}, DATAZOO_GUARD(ERPL_ODATA_BANNER, ODataDescribeScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, ODataDescribeBind));
     describe_function.init_global = ScanRowCursorState::Init;
     describe_function.named_parameters["secret"] = LogicalTypeId::VARCHAR;
     

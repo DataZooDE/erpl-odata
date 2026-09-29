@@ -107,7 +107,7 @@ TEST_CASE("Microsoft Graph Secret Creation via DuckDB", "[graph_excel][secret]")
     duckdb::Connection con(db);
 
     // Load the extension
-    auto result = con.Query("LOAD erpl_web");
+    auto result = con.Query("LOAD erpl_odata");
     REQUIRE_FALSE(result->HasError());
 
     SECTION("Create secret with client_credentials provider") {
@@ -194,7 +194,7 @@ TEST_CASE("Microsoft Graph Excel Functions Exist", "[graph_excel][functions]") {
     duckdb::Connection con(db);
 
     // Load the extension
-    auto result = con.Query("LOAD erpl_web");
+    auto result = con.Query("LOAD erpl_odata");
     REQUIRE_FALSE(result->HasError());
 
     SECTION("graph_show_files function exists") {

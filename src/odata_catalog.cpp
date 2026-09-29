@@ -7,7 +7,7 @@
 #include "duckdb/parser/column_definition.hpp"
 #include "datazoo/oauth2/http_client.hpp"
 #include "odata_attach_functions.hpp"
-#include "erpl_web_banner.hpp"
+#include "erpl_odata_banner.hpp"
 
 namespace erpl_web {
 
@@ -208,7 +208,7 @@ duckdb::TableFunction ODataTableEntry::GetScanFunction(duckdb::ClientContext &co
     bind_data = std::move(odata_bind_data);
     
     // Create and return a TableFunction with OData scan capabilities
-    duckdb::TableFunction table_function("odata_table_scan", {}, DATAZOO_GUARD(ERPL_WEB_BANNER, ODataReadScan), DATAZOO_GUARD(ERPL_WEB_BANNER, ODataReadBind), ODataReadTableInitGlobalState);
+    duckdb::TableFunction table_function("odata_table_scan", {}, DATAZOO_GUARD(ERPL_ODATA_BANNER, ODataReadScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, ODataReadBind), ODataReadTableInitGlobalState);
     table_function.filter_pushdown = true;
     table_function.projection_pushdown = true;
     table_function.table_scan_progress = ODataReadTableProgress;

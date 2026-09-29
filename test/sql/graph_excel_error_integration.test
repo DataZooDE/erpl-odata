@@ -4,7 +4,7 @@
 #              and non-existent file paths.
 # group: [erpl_web]
 
-require erpl_web
+require erpl_odata
 
 require-env ERPL_MS_TENANT_ID
 

@@ -95,7 +95,7 @@ TEST_CASE("a bound odp_odata_read plan re-extracts in full when the service has 
     // state has to live in a real database file.
     odp_test::TempDatabase db("odp_reexec");
     auto &con = db.Conn();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     const auto url = server.Url(path);
     REQUIRE_FALSE(
@@ -129,7 +129,7 @@ TEST_CASE("a bound projecting odp_odata_read plan returns every row on each exec
 
     odp_test::TempDatabase db("odp_reexec_proj");
     auto &con = db.Conn();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     const auto url = server.Url(path);
     auto prep = con.Query(
@@ -177,7 +177,7 @@ TEST_CASE("a bound odp_odata_read plan resumes from the committed delta token",
 
     odp_test::TempDatabase db("odp_reexec_delta");
     auto &con = db.Conn();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     const auto url = server.Url(path);
     REQUIRE_FALSE(
@@ -245,7 +245,7 @@ TEST_CASE("an imported delta token is consumed once, not re-imported every execu
 
     odp_test::TempDatabase db("odp_import_once");
     auto &con = db.Conn();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     const auto url = server.Url(path);
     auto prep = con.Query("PREPARE imp AS SELECT COUNT(*) FROM odp_odata_read('" + url +

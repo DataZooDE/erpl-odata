@@ -1,9 +1,9 @@
 # name: test/sql/erpl_web_sap_odata_show.test
-# description: Test erpl_web extension SAP OData service discovery functionality
+# description: Test erpl_odata extension SAP OData service discovery functionality
 # group: [erpl_web_sap_odata]
 
 # Require statement will ensure this test is run with this extension loaded
-require erpl_web
+require erpl_odata
 
 statement ok
 SET autoinstall_known_extensions=1;

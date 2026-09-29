@@ -2,7 +2,7 @@
 # description: Integration tests for Business Central functions against a live BC environment
 # group: [erpl_web]
 
-require erpl_web
+require erpl_odata
 
 require-env ERPL_BC_TENANT_ID
 

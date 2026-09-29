@@ -50,7 +50,7 @@ TEST_CASE("a timeout shorter than the server's delay fails the request", "[http_
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto result = con.Query("SELECT status FROM http_get('" + server.Url("/slow") +
                             "', timeout := 500)");
@@ -70,7 +70,7 @@ TEST_CASE("a timeout longer than the server's delay succeeds", "[http_timeout]")
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto result = con.Query("SELECT status FROM http_get('" + server.Url("/brief") +
                             "', timeout := 10000)");
@@ -87,7 +87,7 @@ TEST_CASE("url_encode is visible in what reaches the wire", "[http_encoding]") {
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto result = con.Query("SELECT status FROM http_get('" + server.Url("/q") +
                             "?param=a%20b', url_encode := false)");
@@ -120,7 +120,7 @@ TEST_CASE("a response body arrives whole", "[http_encoding]") {
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto result = con.Query("SELECT length(content) FROM http_get('" + server.Url("/bulk") + "')");
     INFO("error: " << (result->HasError() ? result->GetError() : std::string("<none>")));
@@ -141,7 +141,7 @@ TEST_CASE("a truncated response is not reported as a whole one", "[http_encoding
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto result = con.Query("SELECT length(content) FROM http_get('" + server.Url("/cut") + "')");
 
@@ -172,7 +172,7 @@ TEST_CASE("each http_* function sends its own method", "[http_encoding][http_met
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     const std::string url = server.Url("/verb");
 

@@ -16,7 +16,7 @@
 #include "telemetry.hpp"
 #include <algorithm>
 #include <unordered_set>
-#include "erpl_web_banner.hpp"
+#include "erpl_odata_banner.hpp"
 #include "scan_row_cursor.hpp"
 
 namespace erpl_web {
@@ -1879,7 +1879,7 @@ duckdb::TableFunctionSet CreateDatasphereShowAssetsFunction() {
 duckdb::TableFunctionSet CreateDatasphereDescribeSpaceFunction() {
     duckdb::TableFunctionSet function_set("datasphere_describe_space");
     
-    duckdb::TableFunction describe_space({duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR)}, DATAZOO_GUARD(ERPL_WEB_BANNER, DatasphereDescribeSpaceFunction), DATAZOO_GUARD(ERPL_WEB_BANNER, DatasphereDescribeSpaceBind));
+    duckdb::TableFunction describe_space({duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR)}, DATAZOO_GUARD(ERPL_ODATA_BANNER, DatasphereDescribeSpaceFunction), DATAZOO_GUARD(ERPL_ODATA_BANNER, DatasphereDescribeSpaceBind));
     describe_space.init_global = ScanRowCursorState::Init;
     // Registering the parameter is what makes it usable: the binder rejects any named
     // parameter a function does not declare, so `secret := 'x'` failed with "Invalid named
@@ -1894,7 +1894,7 @@ duckdb::TableFunctionSet CreateDatasphereDescribeAssetFunction() {
     duckdb::TableFunctionSet function_set("datasphere_describe_asset");
     
     duckdb::TableFunction describe_asset({duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR), duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR)}, 
-                                        DATAZOO_GUARD(ERPL_WEB_BANNER, DatasphereDescribeAssetFunction), DATAZOO_GUARD(ERPL_WEB_BANNER, DatasphereDescribeAssetBind));
+                                        DATAZOO_GUARD(ERPL_ODATA_BANNER, DatasphereDescribeAssetFunction), DATAZOO_GUARD(ERPL_ODATA_BANNER, DatasphereDescribeAssetBind));
     describe_asset.init_global = ScanRowCursorState::Init;
     // Registering the parameter is what makes it usable: the binder rejects any named
     // parameter a function does not declare, so `secret := 'x'` failed with "Invalid named

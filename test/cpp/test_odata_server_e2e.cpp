@@ -100,7 +100,7 @@ TEST_CASE("odata_read reads an OData v4 entity set end to end", "[odata_e2e][v4]
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto result = con.Query("SELECT AirlineCode, Name FROM odata_read('" +
                             server.Url("/v4/Airlines") + "') ORDER BY AirlineCode");
@@ -130,7 +130,7 @@ TEST_CASE("odata_read reads an OData v2 entity set end to end", "[odata_e2e][v2]
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto result = con.Query("SELECT RegionID, RegionDescription FROM odata_read('" +
                             server.Url("/v2/Regions") + "') ORDER BY RegionID");
@@ -176,7 +176,7 @@ TEST_CASE("odata_read follows every @odata.nextLink page", "[odata_e2e][paging]"
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto result = con.Query("SELECT AirlineCode FROM odata_read('" + entity_url +
                             "') ORDER BY AirlineCode");
@@ -223,7 +223,7 @@ TEST_CASE("odata_read follows every page when all columns are selected",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     // ORDER BY over the star keeps every column live, so the projection cannot be
     // pruned back down to one and no $select is emitted.
@@ -264,7 +264,7 @@ TEST_CASE("a bound SELECT * plan returns every row on re-execution", "[odata_e2e
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     REQUIRE_FALSE(con.Query("PREPARE p AS SELECT * FROM odata_read('" + entity_url + "')")->HasError());
 
@@ -294,7 +294,7 @@ TEST_CASE("two SELECT * scans of one call each see every row", "[odata_e2e][pagi
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     // A cross join of two unprojected scans: 4 x 4. Sharing one cursor between them makes
     // this collapse.
@@ -330,7 +330,7 @@ TEST_CASE("a page fetched under different credentials is not served from cache",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     const std::string scope = server.BaseUrl();
     for (const std::string &user : {std::string("alice"), std::string("bob")}) {
@@ -378,7 +378,7 @@ TEST_CASE("odata_read fails loudly when a next-link page errors", "[odata_e2e][p
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto result = con.Query("SELECT count(*) FROM odata_read('" + entity_url + "')");
     REQUIRE(result->HasError());
@@ -413,7 +413,7 @@ TEST_CASE("odata_read keeps paging through an empty page that has a next link",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto result = con.Query("SELECT count(*) FROM odata_read('" + entity_url + "')");
     INFO((result->HasError() ? result->GetError() : std::string()));
@@ -452,7 +452,7 @@ TEST_CASE("odata_read keeps paging when a v4 page omits the value array entirely
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto result = con.Query("SELECT count(*) FROM odata_read('" + entity_url + "')");
     INFO((result->HasError() ? result->GetError() : std::string()));
@@ -491,7 +491,7 @@ TEST_CASE("odata_read keeps paging when a v2 page omits the results array",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto result = con.Query("SELECT count(*) FROM odata_read('" + entity_url + "')");
     INFO((result->HasError() ? result->GetError() : std::string()));
@@ -517,7 +517,7 @@ TEST_CASE("odata_read surfaces the service's own error code and message",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto result = con.Query("SELECT * FROM odata_read('" + entity_url + "')");
     REQUIRE(result->HasError());
@@ -543,7 +543,7 @@ TEST_CASE("odata_read pushes projection and filter into the request URL",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto result = con.Query("SELECT AirlineCode FROM odata_read('" + server.Url("/pd/Airlines") +
                             "') WHERE AirlineCode = 'AA'");
@@ -584,7 +584,7 @@ TEST_CASE("odata_read pushes the top named parameter into the request URL",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto result = con.Query("SELECT * FROM odata_read('" + server.Url("/top/Airlines") +
                             "', top = 1)");
@@ -623,7 +623,7 @@ TEST_CASE("ODataTestServer serves a SAP ODP delta page with a !deltatoken link",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     // Drive the plain HTTP function so the assertion is about the wire shape and
     // not about ODP subscription bookkeeping.
@@ -650,7 +650,7 @@ TEST_CASE("ODataTestServer records the Prefer header sent by the client",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto result = con.Query(
         "SELECT status FROM http_get('" + server.Url("/odp/Entity") +
@@ -676,7 +676,7 @@ TEST_CASE("odata_read fails when the entity set itself errors", "[odata_e2e][err
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto result = con.Query("SELECT * FROM odata_read('" + server.Url("/bad/Airlines") + "')");
     REQUIRE(result->HasError());
@@ -736,7 +736,7 @@ TEST_CASE("a Decimal with no Precision holds values above 1 end to end",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     SECTION("through ATTACH, as reported") {
         auto attach = con.Query("ATTACH '" + server.Url("/topdesk/") + "' AS topdesk (TYPE odata)");

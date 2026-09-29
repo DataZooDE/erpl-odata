@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Smoke test for erpl_web DuckDB extension.
+"""Smoke test for erpl_odata DuckDB extension.
 
 Downloads the official DuckDB CLI for the specified version and architecture
 from GitHub releases, then verifies the built extension artifact loads and can

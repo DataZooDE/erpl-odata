@@ -1,6 +1,6 @@
 # Test for Delta Sharing client implementation
 
-require erpl_web
+require erpl_odata
 
 # Test 1: Check if delta_share_scan function is registered
 query I
@@ -31,9 +31,9 @@ WHERE function_name LIKE 'delta_share%'
 ----
 4
 
-# Test 5: Verify erpl_web extension is registered
+# Test 5: Verify erpl_odata extension is registered
 query I
-SELECT COUNT(*) FROM duckdb_extensions() WHERE extension_name = 'erpl_web'
+SELECT COUNT(*) FROM duckdb_extensions() WHERE extension_name = 'erpl_odata'
 ----
 1
 

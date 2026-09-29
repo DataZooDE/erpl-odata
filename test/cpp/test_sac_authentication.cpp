@@ -64,7 +64,7 @@ private:
 TEST_CASE("the sac secret type exists and CREATE SECRET parses", "[sac][auth]") {
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     // This is verbatim the shape sac_secret_helper's own error message instructs users to
     // run. Before the type was registered it failed with "Secret type 'sac' not found".
@@ -83,7 +83,7 @@ TEST_CASE("the sac secret type exists and CREATE SECRET parses", "[sac][auth]") 
 TEST_CASE("the access token is actually attached to auth params", "[sac][auth]") {
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
     REQUIRE_FALSE(con.Query("CREATE SECRET sac_tok (TYPE sac, PROVIDER access_token, "
                             "access_token 'the-expected-token', tenant_name 'acme', region 'eu10')")
                       ->HasError());
@@ -102,7 +102,7 @@ TEST_CASE("the access token is actually attached to auth params", "[sac][auth]")
 TEST_CASE("a SAC secret with no token is refused rather than sent anonymously", "[sac][auth]") {
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     // Built without a token. Previously this resolved happily and produced unauthenticated
     // requests; the resulting 401 named nothing about the missing token.
@@ -119,7 +119,7 @@ TEST_CASE("the base_url hatch is gated like every other caller-supplied service 
           "[sac][auth][security]") {
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     // The hatch exists so SAC can be tested against a local server at all. It carries the
     // tenant's bearer token, so it gets the same gate as Datasphere's equivalent: loopback
@@ -141,7 +141,7 @@ TEST_CASE("SAC catalog discovery reports that it is unimplemented instead of ans
           "[sac][auth]") {
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
     REQUIRE_FALSE(con.Query("CREATE SECRET sac (TYPE sac, PROVIDER access_token, "
                             "access_token 't', tenant_name 'acme', region 'eu10')")
                       ->HasError());

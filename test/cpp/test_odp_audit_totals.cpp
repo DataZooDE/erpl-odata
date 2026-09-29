@@ -54,7 +54,7 @@ TEST_CASE("the ODP audit row records the whole extraction, not the last chunk",
 
     odp_test::TempDatabase db("odp_audit_totals");
     auto &con = db.Conn();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     const auto url = server.Url("/sap/opu/odata/sap/Z_TEST_SRV/FactsOf0D_NW_C01");
     auto read = con.Query("SELECT COUNT(*) FROM odp_odata_read('" + url + "')");
@@ -99,7 +99,7 @@ TEST_CASE("a delta token is recovered from DeltaLinksOf when the body has none",
 
     odp_test::TempDatabase db("odp_delta_recovery");
     auto &con = db.Conn();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto read = con.Query("SELECT COUNT(*) FROM odp_odata_read('" + server.Url(service + "/FactsOf0D_NW_C01") + "')");
     INFO((read->HasError() ? read->GetError() : std::string()));

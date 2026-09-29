@@ -170,7 +170,7 @@ EOF
 Create a new test file in `test/sql/delta_share_*.test`:
 
 ```
-require erpl_web
+require erpl_odata
 
 # Require environment variable with custom profile path
 require-env DELTA_SHARE_PROFILE_PATH
@@ -183,7 +183,7 @@ SELECT COUNT(*) FROM duckdb_functions() WHERE function_name = 'delta_share_scan'
 
 # Test 2: Verify extension is loaded
 query I
-SELECT COUNT(*) FROM duckdb_extensions() WHERE extension_name = 'erpl_web'
+SELECT COUNT(*) FROM duckdb_extensions() WHERE extension_name = 'erpl_odata'
 ----
 1
 ```

@@ -6,7 +6,7 @@
 
 #include "odata_attach_functions.hpp"
 #include "telemetry.hpp"
-#include "erpl_web_banner.hpp"
+#include "erpl_odata_banner.hpp"
 
 namespace erpl_web {
 
@@ -178,7 +178,7 @@ TableFunctionSet CreateODataAttachFunction()
 {
     TableFunctionSet function_set("odata_attach");
 
-    TableFunction attach_service_ignore_complex({LogicalType::VARCHAR}, DATAZOO_GUARD(ERPL_WEB_BANNER, ODataAttachScan), DATAZOO_GUARD(ERPL_WEB_BANNER, ODataAttachBind));
+    TableFunction attach_service_ignore_complex({LogicalType::VARCHAR}, DATAZOO_GUARD(ERPL_ODATA_BANNER, ODataAttachScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, ODataAttachBind));
     attach_service_ignore_complex.named_parameters["overwrite"] = LogicalTypeId::BOOLEAN;
     attach_service_ignore_complex.named_parameters["ignore"] = LogicalType::LIST(LogicalTypeId::VARCHAR);
     function_set.AddFunction(attach_service_ignore_complex);

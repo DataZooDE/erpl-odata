@@ -43,7 +43,7 @@ TEST_CASE("OData catalog reports metadata failures instead of hiding tables", "[
     duckdb::DuckDB db(nullptr, &config);
     duckdb::Connection con(db);
 
-    auto load_result = con.Query("LOAD erpl_web;");
+    auto load_result = con.Query("LOAD erpl_odata;");
     if (load_result->HasError()) {
         std::cout << "Note: Extension not loaded, skipping catalog integration test" << std::endl;
         return;

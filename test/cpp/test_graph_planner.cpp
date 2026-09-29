@@ -73,7 +73,7 @@ TEST_CASE("Microsoft Graph Planner Functions Exist", "[graph_planner][functions]
     duckdb::Connection con(db);
 
     // Load the extension
-    auto result = con.Query("LOAD erpl_web");
+    auto result = con.Query("LOAD erpl_odata");
     REQUIRE_FALSE(result->HasError());
 
     SECTION("graph_planner_plans function exists") {

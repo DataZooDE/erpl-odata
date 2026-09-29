@@ -7,7 +7,7 @@
 #include "duckdb/common/exception.hpp"
 #include "duckdb/parser/parsed_data/create_table_function_info.hpp"
 #include "yyjson.hpp"
-#include "erpl_web_banner.hpp"
+#include "erpl_odata_banner.hpp"
 #include "graph_json_scan.hpp"
 
 using namespace duckdb_yyjson;
@@ -385,7 +385,7 @@ void GraphPlannerFunctions::Register(ExtensionLoader &loader) {
 
     {
         TableFunction planner_plans("graph_planner_plans", {LogicalType::VARCHAR},
-                                    DATAZOO_GUARD(ERPL_WEB_BANNER, PlansScan), DATAZOO_GUARD(ERPL_WEB_BANNER, PlansBind));
+                                    DATAZOO_GUARD(ERPL_ODATA_BANNER, PlansScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, PlansBind));
         planner_plans.named_parameters["secret"] = LogicalType::VARCHAR;
         planner_plans.init_global = GraphJsonArrayScanState::Init;
         CreateTableFunctionInfo info(planner_plans);
@@ -400,7 +400,7 @@ void GraphPlannerFunctions::Register(ExtensionLoader &loader) {
     }
     {
         TableFunction planner_buckets("graph_planner_buckets", {LogicalType::VARCHAR},
-                                      DATAZOO_GUARD(ERPL_WEB_BANNER, BucketsScan), DATAZOO_GUARD(ERPL_WEB_BANNER, BucketsBind));
+                                      DATAZOO_GUARD(ERPL_ODATA_BANNER, BucketsScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, BucketsBind));
         planner_buckets.named_parameters["secret"] = LogicalType::VARCHAR;
         planner_buckets.init_global = GraphJsonArrayScanState::Init;
         CreateTableFunctionInfo info(planner_buckets);
@@ -415,7 +415,7 @@ void GraphPlannerFunctions::Register(ExtensionLoader &loader) {
     }
     {
         TableFunction planner_tasks("graph_planner_tasks", {LogicalType::VARCHAR},
-                                    DATAZOO_GUARD(ERPL_WEB_BANNER, TasksScan), DATAZOO_GUARD(ERPL_WEB_BANNER, TasksBind));
+                                    DATAZOO_GUARD(ERPL_ODATA_BANNER, TasksScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, TasksBind));
         planner_tasks.named_parameters["secret"] = LogicalType::VARCHAR;
         planner_tasks.init_global = GraphJsonArrayScanState::Init;
         CreateTableFunctionInfo info(planner_tasks);
@@ -432,7 +432,7 @@ void GraphPlannerFunctions::Register(ExtensionLoader &loader) {
     {
         TableFunction create_task("graph_planner_create_task",
                                    {LogicalType::VARCHAR, LogicalType::VARCHAR},
-                                   DATAZOO_GUARD(ERPL_WEB_BANNER, CreateTaskScan), DATAZOO_GUARD(ERPL_WEB_BANNER, CreateTaskBind));
+                                   DATAZOO_GUARD(ERPL_ODATA_BANNER, CreateTaskScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, CreateTaskBind));
         create_task.init_global = ScanRowCursorState::Init;
         create_task.named_parameters["bucket_id"]        = LogicalType::VARCHAR;
         create_task.named_parameters["due_date"]         = LogicalType::VARCHAR;

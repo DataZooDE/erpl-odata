@@ -8,7 +8,7 @@
 # implementations at services.odata.org: Northwind v2, Northwind v4 (a .svc
 # service root) and TripPin v4 (no .svc segment).
 
-require erpl_web
+require erpl_odata
 
 statement ok
 SET autoinstall_known_extensions=1;

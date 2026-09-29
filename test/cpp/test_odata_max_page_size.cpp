@@ -55,7 +55,7 @@ TEST_CASE("odata_read asks the service for a page size with Prefer", "[odata_max
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto result = con.Query("SELECT COUNT(*) FROM odata_read('" + entity_url +
                             "', max_page_size=5000)");
@@ -87,7 +87,7 @@ TEST_CASE("odata_read sends no page-size preference unless asked", "[odata_maxpa
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     REQUIRE_FALSE(con.Query("SELECT COUNT(*) FROM odata_read('" + entity_url + "')")->HasError());
 
@@ -117,7 +117,7 @@ TEST_CASE("odata_read rejects a page size of zero", "[odata_maxpagesize]") {
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto result =
         con.Query("SELECT COUNT(*) FROM odata_read('" + entity_url + "', max_page_size=0)");
@@ -162,7 +162,7 @@ TEST_CASE("the page-size preference survives a client rebuilt by predicate pushd
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto result = con.Query("SELECT Name FROM odata_read('" + entity_url +
                             "', max_page_size=250) WHERE AirlineCode = 'AA'");
@@ -212,7 +212,7 @@ TEST_CASE("the page-size preference survives re-execution of a bound plan",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     REQUIRE_FALSE(con.Query("PREPARE p AS SELECT * FROM odata_read('" + entity_url +
                             "', max_page_size=750)")
@@ -265,7 +265,7 @@ TEST_CASE("odata_read sends the page-size preference on the very first request",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     // SELECT * with an ORDER BY keeps every column live, so no $select is emitted and the
     // URL is unchanged - the exact shape that skips the refetch.
@@ -297,7 +297,7 @@ TEST_CASE("odata_read rejects a NULL page size with its own message", "[odata_ma
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto result =
         con.Query("SELECT COUNT(*) FROM odata_read('" + entity_url + "', max_page_size=NULL)");

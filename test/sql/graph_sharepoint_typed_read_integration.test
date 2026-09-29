@@ -2,7 +2,7 @@
 # description: Integration tests for typed SharePoint list reading (DOUBLE/TIMESTAMP/VARCHAR columns)
 # group: [erpl_web]
 
-require erpl_web
+require erpl_odata
 
 require-env ERPL_MS_TENANT_ID
 

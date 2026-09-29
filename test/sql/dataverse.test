@@ -2,7 +2,7 @@
 # description: Test Dataverse/CRM integration functions and secret management
 # group: [erpl_web]
 
-require erpl_web
+require erpl_odata
 
 # =============================================================================
 # Test: Dataverse Secret Creation (client_credentials provider)

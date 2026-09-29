@@ -7,7 +7,7 @@
 # cheap to check and must not skip with them: a missing or renamed function
 # would otherwise go unnoticed on every machine that has no ODP service.
 
-require erpl_web
+require erpl_odata
 
 query I
 SELECT COUNT(*) FROM duckdb_functions() WHERE function_name = 'odp_odata_read';

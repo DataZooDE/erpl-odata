@@ -247,7 +247,7 @@ TEST_CASE("OdpHttpRequestFactory - the trace file carries no credentials",
                      ("erpl_odp_trace_" + std::to_string(
                          std::chrono::steady_clock::now().time_since_epoch().count()));
     std::filesystem::create_directories(trace_dir);
-    const auto trace_file = trace_dir / "erpl_web_trace.log";
+    const auto trace_file = trace_dir / "erpl_odata_trace.log";
 
     auto& tracer = ErplTracer::Instance();
     const bool was_enabled = tracer.IsEnabled();

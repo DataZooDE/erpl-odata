@@ -38,7 +38,7 @@
             "name": "Debug WEB CPP Unit Tests",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/debug/extension/erpl_web/test/cpp/erpl_web_tests",
+            "program": "${workspaceFolder}/build/debug/extension/erpl_odata/test/cpp/erpl_odata_tests",
             "args": [ ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

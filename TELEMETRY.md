@@ -1,6 +1,6 @@
-# ERPL Web Telemetry
+# ERPL-OData Telemetry
 
-ERPL Web collects **anonymous, privacy-preserving usage telemetry** so we can see
+ERPL-OData collects **anonymous, privacy-preserving usage telemetry** so we can see
 which capabilities are used, on which platforms, and where they fail — and
 prioritise accordingly. It is **on by default** and **trivial to turn off**.
 
@@ -42,7 +42,7 @@ each function's **bind** step.
 
 ### Envelope (attached to every event)
 
-`product` (`erpl_web`), `product_version`, `product_edition` (`oss`),
+`product` (`erpl_odata`), `product_version`, `product_edition` (`oss`),
 `telemetry_schema` (`2`), `duckdb_version`, `os`, `arch`, `platform`, `is_ci`,
 `is_container`, a per-process `$session_id`, and — once associated — the
 `deployment` group. `distinct_id` is the SHA-256 of a machine id: a **stable,
@@ -52,10 +52,10 @@ pseudonymous** identifier, not tied to any personal data.
 
 | Event | When | Properties (beyond the envelope) |
 |---|---|---|
-| `extension_loaded` | the `erpl_web` extension loads | — |
+| `extension_loaded` | the `erpl_odata` extension loads | — |
 | `function_executed` | a DuckDB function runs — **aggregated** per function per session (not per row) | `function_name`, `call_count`, `duration_ms_p50` |
 
-`function_name` is always one of a fixed, code-controlled set of ERPL Web
+`function_name` is always one of a fixed, code-controlled set of ERPL-OData
 function names, for example: `http_get`, `http_head`, `http_post`, `http_put`,
 `http_patch`, `http_delete`, `odata_read`, `odata_describe`, `odata_attach`,
 `odata_sap_show`, `odp_odata_show`, `odp_odata_read`, `odp_list_subscriptions`,
@@ -82,5 +82,5 @@ million-row scan produces O(1) telemetry rows, not a firehose.
 
 ## Enterprise / account analytics
 
-OSS ERPL Web associates only the `deployment` group (keyed on the pseudonymous
+OSS ERPL-OData associates only the `deployment` group (keyed on the pseudonymous
 `distinct_id`). It has no license key, so no `account` group is associated.

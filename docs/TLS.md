@@ -1,11 +1,11 @@
 # TLS and server certificate verification
 
-ERPL Web verifies the TLS server certificate of **every** HTTPS request it makes:
+ERPL-OData verifies the TLS server certificate of **every** HTTPS request it makes:
 OData services, SAP Datasphere, SAP Analytics Cloud, ODP, Microsoft Graph,
 Business Central, Dataverse, Delta Sharing, and every OAuth2 token endpoint.
 
 This was not always the case. Until the fix for
-[#63](https://github.com/DataZooDE/erpl-web/issues/63) the HTTP client called
+[#63](https://github.com/DataZooDE/erpl-odata/issues/63) the HTTP client called
 `enable_server_certificate_verification(false)` unconditionally, which meant any
 on-path attacker could present an arbitrary certificate and read or modify every
 credential and token the extension sent. Verification is now on by default and
@@ -81,7 +81,7 @@ Setting it back to `''` restores verification immediately.
   `/etc/ssl/ca-bundle.pem`, `/etc/pki/tls/cacert.pem`, `/etc/ssl/cert.pem`) and
   uses the first that exists.
 
-  The probe exists because ERPL Web statically links a vcpkg-built OpenSSL whose
+  The probe exists because ERPL-OData statically links a vcpkg-built OpenSSL whose
   compiled-in `OPENSSLDIR` usually does not exist on the machine running the
   extension; without the probe `SSL_CTX_set_default_verify_paths()` yields an
   empty trust store and *every* handshake fails. If your distribution keeps its
