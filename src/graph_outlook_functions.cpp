@@ -7,7 +7,7 @@
 #include "duckdb/common/exception.hpp"
 #include "duckdb/parser/parsed_data/create_table_function_info.hpp"
 #include "yyjson.hpp"
-#include "erpl_web_banner.hpp"
+#include "erpl_odata_banner.hpp"
 #include "graph_json_scan.hpp"
 
 using namespace duckdb_yyjson;
@@ -562,7 +562,7 @@ void GraphOutlookFunctions::Register(ExtensionLoader &loader) {
     ERPL_TRACE_INFO("GRAPH_OUTLOOK", "Registering Microsoft Graph Outlook functions");
 
     {
-        TableFunction fn("graph_calendars", {}, DATAZOO_GUARD(ERPL_WEB_BANNER, CalendarsScan), DATAZOO_GUARD(ERPL_WEB_BANNER, CalendarsBind));
+        TableFunction fn("graph_calendars", {}, DATAZOO_GUARD(ERPL_ODATA_BANNER, CalendarsScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, CalendarsBind));
         fn.init_global = GraphPagedScanState::Init;
         fn.named_parameters["user"]    = LogicalType::VARCHAR;
         fn.named_parameters["secret"]  = LogicalType::VARCHAR;
@@ -583,7 +583,7 @@ void GraphOutlookFunctions::Register(ExtensionLoader &loader) {
         loader.RegisterFunction(std::move(info));
     }
     {
-        TableFunction fn("graph_calendar_events", {}, DATAZOO_GUARD(ERPL_WEB_BANNER, CalendarEventsScan), DATAZOO_GUARD(ERPL_WEB_BANNER, CalendarEventsBind));
+        TableFunction fn("graph_calendar_events", {}, DATAZOO_GUARD(ERPL_ODATA_BANNER, CalendarEventsScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, CalendarEventsBind));
         fn.init_global = GraphPagedScanState::Init;
         fn.named_parameters["user"]        = LogicalType::VARCHAR;
         fn.named_parameters["calendar_id"] = LogicalType::VARCHAR;
@@ -610,7 +610,7 @@ void GraphOutlookFunctions::Register(ExtensionLoader &loader) {
         loader.RegisterFunction(std::move(info));
     }
     {
-        TableFunction fn("graph_contacts", {}, DATAZOO_GUARD(ERPL_WEB_BANNER, ContactsScan), DATAZOO_GUARD(ERPL_WEB_BANNER, ContactsBind));
+        TableFunction fn("graph_contacts", {}, DATAZOO_GUARD(ERPL_ODATA_BANNER, ContactsScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, ContactsBind));
         fn.init_global = GraphPagedScanState::Init;
         fn.named_parameters["user"]    = LogicalType::VARCHAR;
         fn.named_parameters["secret"]  = LogicalType::VARCHAR;
@@ -631,7 +631,7 @@ void GraphOutlookFunctions::Register(ExtensionLoader &loader) {
         loader.RegisterFunction(std::move(info));
     }
     {
-        TableFunction fn("graph_outlook_mail_folders", {}, DATAZOO_GUARD(ERPL_WEB_BANNER, MailFoldersScan), DATAZOO_GUARD(ERPL_WEB_BANNER, MailFoldersBind));
+        TableFunction fn("graph_outlook_mail_folders", {}, DATAZOO_GUARD(ERPL_ODATA_BANNER, MailFoldersScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, MailFoldersBind));
         fn.init_global = GraphPagedScanState::Init;
         fn.named_parameters["user"]    = LogicalType::VARCHAR;
         fn.named_parameters["secret"]  = LogicalType::VARCHAR;
@@ -652,7 +652,7 @@ void GraphOutlookFunctions::Register(ExtensionLoader &loader) {
         loader.RegisterFunction(std::move(info));
     }
     {
-        TableFunction fn("graph_outlook_emails", {}, DATAZOO_GUARD(ERPL_WEB_BANNER, MessagesScan), DATAZOO_GUARD(ERPL_WEB_BANNER, MessagesBind));
+        TableFunction fn("graph_outlook_emails", {}, DATAZOO_GUARD(ERPL_ODATA_BANNER, MessagesScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, MessagesBind));
         fn.init_global = GraphPagedScanState::Init;
         fn.named_parameters["user"]    = LogicalType::VARCHAR;
         fn.named_parameters["folder"]  = LogicalType::VARCHAR;

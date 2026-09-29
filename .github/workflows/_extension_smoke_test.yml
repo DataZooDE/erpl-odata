@@ -1,5 +1,5 @@
 #
-# Reusable workflow: post-build smoke test for the erpl_web DuckDB extension.
+# Reusable workflow: post-build smoke test for the erpl_odata DuckDB extension.
 #
 # Downloads the official DuckDB CLI binary for the target version from GitHub
 # releases, then loads the built extension artifact and runs a minimal

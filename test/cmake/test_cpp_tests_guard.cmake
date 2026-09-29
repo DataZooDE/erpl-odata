@@ -1,6 +1,6 @@
 # Regression test for GitHub #45 — "Compilation error statically linking erpl-web extension".
 #
-# When erpl_web is consumed as a dependency (duckdb_extension_load / FetchContent), only the
+# When erpl_odata is consumed as a dependency (duckdb_extension_load / FetchContent), only the
 # extension source is fetched; the `duckdb` git submodule is NOT. But test/cpp includes
 # catch.hpp / core_functions_extension.hpp via paths relative to that submodule
 # (../../duckdb/...), so building the C++ test target in a consumer tree fails with
@@ -46,10 +46,10 @@ assert_contains("duckdb/third_party/catch/catch.hpp"
 assert_contains("add_subdirectory(test)"
     "the C++ test subdirectory wiring is missing")
 
-# 2. erpl_web must NOT redeclare DuckDB core's BUILD_UNITTESTS option (it shadows the flag
+# 2. erpl_odata must NOT redeclare DuckDB core's BUILD_UNITTESTS option (it shadows the flag
 #    DuckDB and embedders use to control test building).
 assert_absent("option(BUILD_UNITTESTS"
-    "erpl_web redeclares DuckDB's BUILD_UNITTESTS option instead of honoring it")
+    "erpl_odata redeclares DuckDB's BUILD_UNITTESTS option instead of honoring it")
 
 # 3. The guard is meaningful only because test/cpp really does depend on that submodule path.
 #    Confirm the sources that triggered #45 are present and still include catch.hpp.
@@ -80,4 +80,4 @@ if(EXISTS "${FAKE_CONSUMER}/duckdb/third_party/catch/catch.hpp")
 endif()
 file(REMOVE_RECURSE "${FAKE_CONSUMER}")
 
-message(STATUS "PASS: GitHub #45 guard present and correct — erpl_web C++ unit tests are gated on the in-tree duckdb submodule and do not build for dependency consumers.")
+message(STATUS "PASS: GitHub #45 guard present and correct — erpl_odata C++ unit tests are gated on the in-tree duckdb submodule and do not build for dependency consumers.")

@@ -5,7 +5,7 @@
 #include "graph_output_utils.hpp"
 #include "duckdb/parser/parsed_data/create_table_function_info.hpp"
 #include "yyjson.hpp"
-#include "erpl_web_banner.hpp"
+#include "erpl_odata_banner.hpp"
 #include "graph_json_scan.hpp"
 
 using namespace duckdb;
@@ -360,7 +360,7 @@ void GraphTeamsFunctions::ChannelMessagesScan(
 
 void GraphTeamsFunctions::Register(ExtensionLoader &loader) {
     {
-        TableFunction my_teams_func("graph_my_teams", {}, DATAZOO_GUARD(ERPL_WEB_BANNER, MyTeamsScan), DATAZOO_GUARD(ERPL_WEB_BANNER, MyTeamsBind));
+        TableFunction my_teams_func("graph_my_teams", {}, DATAZOO_GUARD(ERPL_ODATA_BANNER, MyTeamsScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, MyTeamsBind));
         my_teams_func.named_parameters["user"]   = LogicalType::VARCHAR;
         my_teams_func.named_parameters["secret"] = LogicalType::VARCHAR;
         my_teams_func.init_global = GraphPagedScanState::Init;
@@ -379,7 +379,7 @@ void GraphTeamsFunctions::Register(ExtensionLoader &loader) {
         loader.RegisterFunction(std::move(info));
     }
     {
-        TableFunction team_channels_func("graph_teams_channels", {LogicalType::VARCHAR}, DATAZOO_GUARD(ERPL_WEB_BANNER, TeamChannelsScan), DATAZOO_GUARD(ERPL_WEB_BANNER, TeamChannelsBind));
+        TableFunction team_channels_func("graph_teams_channels", {LogicalType::VARCHAR}, DATAZOO_GUARD(ERPL_ODATA_BANNER, TeamChannelsScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, TeamChannelsBind));
         team_channels_func.named_parameters["secret"] = LogicalType::VARCHAR;
         team_channels_func.named_parameters["user"]   = LogicalType::VARCHAR;
         team_channels_func.init_global = GraphPagedScanState::Init;
@@ -398,7 +398,7 @@ void GraphTeamsFunctions::Register(ExtensionLoader &loader) {
         loader.RegisterFunction(std::move(info));
     }
     {
-        TableFunction team_members_func("graph_teams_members", {LogicalType::VARCHAR}, DATAZOO_GUARD(ERPL_WEB_BANNER, TeamMembersScan), DATAZOO_GUARD(ERPL_WEB_BANNER, TeamMembersBind));
+        TableFunction team_members_func("graph_teams_members", {LogicalType::VARCHAR}, DATAZOO_GUARD(ERPL_ODATA_BANNER, TeamMembersScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, TeamMembersBind));
         team_members_func.named_parameters["secret"] = LogicalType::VARCHAR;
         team_members_func.named_parameters["user"]   = LogicalType::VARCHAR;
         team_members_func.init_global = GraphPagedScanState::Init;
@@ -419,7 +419,7 @@ void GraphTeamsFunctions::Register(ExtensionLoader &loader) {
     {
         TableFunction channel_messages_func("graph_channel_messages",
             {LogicalType::VARCHAR, LogicalType::VARCHAR},
-            DATAZOO_GUARD(ERPL_WEB_BANNER, ChannelMessagesScan), DATAZOO_GUARD(ERPL_WEB_BANNER, ChannelMessagesBind));
+            DATAZOO_GUARD(ERPL_ODATA_BANNER, ChannelMessagesScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, ChannelMessagesBind));
         channel_messages_func.named_parameters["secret"] = LogicalType::VARCHAR;
         channel_messages_func.named_parameters["user"]   = LogicalType::VARCHAR;
         channel_messages_func.init_global = GraphPagedScanState::Init;

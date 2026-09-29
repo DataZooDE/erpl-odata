@@ -12,7 +12,7 @@
 #include <memory>
 #include <vector>
 #include <string>
-#include "erpl_web_banner.hpp"
+#include "erpl_odata_banner.hpp"
 
 using duckdb::ClientContext;
 using duckdb::DataChunk;
@@ -333,7 +333,7 @@ DeltaShareShowTablesBind(ClientContext &context, TableFunctionBindInput &input,
 static TableFunctionSet CreateDeltaShareShowSharesFunctionInternal() {
 	TableFunctionSet function_set("delta_share_show_shares");
 
-	duckdb::TableFunction func({LogicalTypeId::VARCHAR}, DATAZOO_GUARD(ERPL_WEB_BANNER, DeltaShareShowSharesScan), DATAZOO_GUARD(ERPL_WEB_BANNER, DeltaShareShowSharesBind));
+	duckdb::TableFunction func({LogicalTypeId::VARCHAR}, DATAZOO_GUARD(ERPL_ODATA_BANNER, DeltaShareShowSharesScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, DeltaShareShowSharesBind));
 	func.init_global = DeltaShareRowCursorState::Init;
 
 	function_set.AddFunction(func);
@@ -344,7 +344,7 @@ static TableFunctionSet CreateDeltaShareShowSchemasFunctionInternal() {
 	TableFunctionSet function_set("delta_share_show_schemas");
 
 	duckdb::TableFunction func({LogicalTypeId::VARCHAR, LogicalTypeId::VARCHAR},
-							   DATAZOO_GUARD(ERPL_WEB_BANNER, DeltaShareShowSchemasScan), DATAZOO_GUARD(ERPL_WEB_BANNER, DeltaShareShowSchemasBind));
+							   DATAZOO_GUARD(ERPL_ODATA_BANNER, DeltaShareShowSchemasScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, DeltaShareShowSchemasBind));
 	func.init_global = DeltaShareRowCursorState::Init;
 
 	function_set.AddFunction(func);
@@ -355,7 +355,7 @@ static TableFunctionSet CreateDeltaShareShowTablesFunctionInternal() {
 	TableFunctionSet function_set("delta_share_show_tables");
 
 	duckdb::TableFunction func({LogicalTypeId::VARCHAR, LogicalTypeId::VARCHAR, LogicalTypeId::VARCHAR},
-							   DATAZOO_GUARD(ERPL_WEB_BANNER, DeltaShareShowTablesScan), DATAZOO_GUARD(ERPL_WEB_BANNER, DeltaShareShowTablesBind));
+							   DATAZOO_GUARD(ERPL_ODATA_BANNER, DeltaShareShowTablesScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, DeltaShareShowTablesBind));
 	func.init_global = DeltaShareRowCursorState::Init;
 
 	function_set.AddFunction(func);

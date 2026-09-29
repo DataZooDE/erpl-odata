@@ -101,7 +101,7 @@ std::string ConversionFailureLog::FormatSummary(const std::vector<ConversionFail
     }
 
     std::ostringstream out;
-    out << "erpl_web warning: " << total << " value" << (total == 1 ? "" : "s") << " in " << failures.size()
+    out << "erpl_odata warning: " << total << " value" << (total == 1 ? "" : "s") << " in " << failures.size()
         << " column" << (failures.size() == 1 ? "" : "s") << " could not be converted and were returned as NULL";
     if (!source.empty()) {
         out << " (" << source << ")";

@@ -1,6 +1,6 @@
 # Test OData Describe Function
 
-require erpl_web
+require erpl_odata
 
 # Test service root description
 query IIII

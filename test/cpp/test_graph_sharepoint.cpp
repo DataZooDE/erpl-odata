@@ -102,7 +102,7 @@ TEST_CASE("Microsoft Graph SharePoint Functions Exist", "[graph_sharepoint][func
     duckdb::Connection con(db);
 
     // Load the extension
-    auto result = con.Query("LOAD erpl_web");
+    auto result = con.Query("LOAD erpl_odata");
     REQUIRE_FALSE(result->HasError());
 
     SECTION("graph_show_sites function exists") {
@@ -137,7 +137,7 @@ TEST_CASE("Microsoft Graph SharePoint uses Graph Secret Type", "[graph_sharepoin
     duckdb::Connection con(db);
 
     // Load the extension
-    auto result = con.Query("LOAD erpl_web");
+    auto result = con.Query("LOAD erpl_odata");
     REQUIRE_FALSE(result->HasError());
 
     SECTION("Graph secret type can be used for SharePoint") {

@@ -2,7 +2,7 @@
 # description: TLS server certificate verification settings (GitHub #63)
 # group: [erpl_web]
 
-require erpl_web
+require erpl_odata
 
 # =============================================================================
 # Both TLS settings are registered

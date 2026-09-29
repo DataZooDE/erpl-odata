@@ -11,7 +11,7 @@
 
 #include "tracing.hpp"
 #include "telemetry.hpp"
-#include "erpl_web_banner.hpp"
+#include "erpl_odata_banner.hpp"
 
 // EDM -> DuckDB type resolution for navigation, entity and complex types.
 // Companion to src/odata_data_extractor.cpp, which consumes it.

@@ -2,7 +2,7 @@
 # description: Test Business Central integration functions and secret management
 # group: [erpl_web]
 
-require erpl_web
+require erpl_odata
 
 # =============================================================================
 # Test: Business Central Secret Creation (client_credentials provider)

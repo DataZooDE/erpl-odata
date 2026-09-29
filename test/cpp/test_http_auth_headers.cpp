@@ -65,7 +65,7 @@ TEST_CASE("the auth parameter is sent as basic credentials", "[http_auth]") {
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto result = con.Query("SELECT status FROM http_get('" + server.Url("/echo") +
                             "', auth := 'param_user:param_pass')");
@@ -83,7 +83,7 @@ TEST_CASE("the auth parameter takes precedence over a registered secret", "[http
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
     REQUIRE_FALSE(con.Query("CREATE SECRET scoped_basic (TYPE http_basic, USERNAME 'secret_user', "
                             "PASSWORD 'secret_pass', SCOPE '" + server.Url("/") + "')")
                       ->HasError());
@@ -106,7 +106,7 @@ TEST_CASE("with no auth parameter the registered secret is sent", "[http_auth]")
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
     REQUIRE_FALSE(con.Query("CREATE SECRET scoped_basic (TYPE http_basic, USERNAME 'secret_user', "
                             "PASSWORD 'secret_pass', SCOPE '" + server.Url("/") + "')")
                       ->HasError());
@@ -124,7 +124,7 @@ TEST_CASE("an explicit BEARER auth_type sends a bearer token", "[http_auth]") {
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto result = con.Query(
         "SELECT status FROM http_get('" + server.Url("/echo") +
@@ -142,7 +142,7 @@ TEST_CASE("an explicit BASIC auth_type sends those credentials", "[http_auth]") 
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto result = con.Query("SELECT status FROM http_get('" + server.Url("/echo") +
                             "', auth := 'explicit_user:explicit_pass', auth_type := 'BASIC')");
@@ -160,7 +160,7 @@ TEST_CASE("a colonless auth value becomes a username with an empty password", "[
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto result = con.Query("SELECT status FROM http_get('" + server.Url("/echo") +
                             "', auth := 'username_only')");

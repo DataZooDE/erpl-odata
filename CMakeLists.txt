@@ -3,11 +3,11 @@ cmake_minimum_required(VERSION 3.5...3.29)
 # NOTE: do NOT redeclare BUILD_UNITTESTS here. DuckDB core owns this flag
 # (duckdb/CMakeLists.txt) and deliberately sets it FALSE for library / extension-config
 # builds. Redeclaring it forced our dev-only C++ test target onto consumers who statically
-# link erpl_web (GitHub #45), where the duckdb submodule the tests include from is absent.
+# link erpl_odata (GitHub #45), where the duckdb submodule the tests include from is absent.
 # We honor DuckDB's value at the bottom of this file instead.
 
 # Set extension name here
-set(TARGET_NAME erpl_web)
+set(TARGET_NAME erpl_odata)
 
 find_package(OpenSSL REQUIRED)
 find_package(tinyxml2 CONFIG REQUIRED)
@@ -83,7 +83,7 @@ target_link_libraries(posthog_telemetry PRIVATE OpenSSL::SSL OpenSSL::Crypto)
 # datazoo-oauth2 -- the shared OAuth2 stack. Extracted FROM this repo, and now
 # consumed back from it (REQ-A-01/A-02; design in duckdb-gdrive's docs/hld.md
 # section 5.4). The copies that used to live in src/ are deleted; this is the
-# single implementation both erpl-web and duckdb-gdrive build against.
+# single implementation both erpl-odata and duckdb-gdrive build against.
 #
 # Pinned by commit, not tracked by branch: each consumer pins its own, so
 # neither is forced to upgrade on the other's schedule (R-9).
@@ -121,7 +121,7 @@ set(EXTENSION_SOURCES
     src/odata_transaction_manager.cpp
     src/secret_functions.cpp
     src/web_functions.cpp
-    src/erpl_web_extension.cpp
+    src/erpl_odata_extension.cpp
     src/datasphere_client.cpp
     src/datasphere_catalog.cpp
     src/datasphere_read.cpp
@@ -219,7 +219,7 @@ endif()
 # C++ unit tests are a developer-only artifact. They are only buildable from our own
 # source tree, where DuckDB is checked out as the `duckdb` git submodule: test/cpp
 # includes catch.hpp / core_functions_extension.hpp via paths relative to that submodule
-# (../../duckdb/...). When erpl_web is consumed as a dependency (e.g. via
+# (../../duckdb/...). When erpl_odata is consumed as a dependency (e.g. via
 # duckdb_extension_load / FetchContent), only the extension source is fetched — the
 # duckdb submodule is absent — so those headers cannot be found and the test target
 # fails to compile (GitHub #45). BUILD_UNITTESTS does NOT distinguish the two cases: it
@@ -229,8 +229,8 @@ endif()
 if(BUILD_UNITTESTS AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/duckdb/third_party/catch/catch.hpp")
     add_subdirectory(test)
 else()
-    message(STATUS "erpl_web: skipping C++ unit tests (BUILD_UNITTESTS off, or duckdb test "
-                   "sources not present in-tree — e.g. erpl_web is consumed as a dependency; GitHub #45)")
+    message(STATUS "erpl_odata: skipping C++ unit tests (BUILD_UNITTESTS off, or duckdb test "
+                   "sources not present in-tree — e.g. erpl_odata is consumed as a dependency; GitHub #45)")
 endif()
 
 install(

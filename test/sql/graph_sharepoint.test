@@ -2,7 +2,7 @@
 # description: Test Microsoft Graph SharePoint integration functions
 # group: [erpl_web]
 
-require erpl_web
+require erpl_odata
 
 # =============================================================================
 # Test: Function Existence (SharePoint functions use the microsoft_graph secret)

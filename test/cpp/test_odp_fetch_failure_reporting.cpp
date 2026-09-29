@@ -46,7 +46,7 @@ TEST_CASE("a refused ODP extraction reports the service's reason and spares the 
 
     odp_test::TempDatabase db("odp_fetch_failure");
     auto &con = db.Conn();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     const auto url = server.Url("/sap/opu/odata/sap/Z_TEST_SRV/FactsOf0D_NW_C01");
     auto read = con.Query("SELECT COUNT(*) FROM odp_odata_read('" + url + "')");

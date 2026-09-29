@@ -11,7 +11,7 @@
 
 #include "tracing.hpp"
 #include "telemetry.hpp"
-#include "erpl_web_banner.hpp"
+#include "erpl_odata_banner.hpp"
 
 // ODataReadBindData construction and the schema it settles during bind:
 // factories for the entity-set / service-root / probe-result entry points, the

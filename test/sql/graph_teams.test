@@ -2,7 +2,7 @@
 # description: Test Microsoft Graph Teams functions
 # group: [erpl_web]
 
-require erpl_web
+require erpl_odata
 
 # Test that graph_my_teams function exists
 statement ok

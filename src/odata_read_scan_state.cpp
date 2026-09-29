@@ -11,7 +11,7 @@
 
 #include "tracing.hpp"
 #include "telemetry.hpp"
-#include "erpl_web_banner.hpp"
+#include "erpl_odata_banner.hpp"
 
 // Mutable scan state for one execution of an OData scan: the row buffer and
 // progress tracker it owns, the page-fetch/row-emit loop, CloneForScan, the

@@ -62,7 +62,7 @@ TEST_CASE("odp_odata_read projects the column the query asked for", "[odp_projec
     // ODP state is refused an in-memory catalog on purpose (GitHub #92).
     odp_test::TempDatabase db("odp_projection");
     auto &con = db.Conn();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
     const auto url = server.Url(ODP_PATH);
 
     // Every assertion here is on VALUES, not on nullness. The defect does not produce

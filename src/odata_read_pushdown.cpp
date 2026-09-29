@@ -11,7 +11,7 @@
 
 #include "tracing.hpp"
 #include "telemetry.hpp"
-#include "erpl_web_banner.hpp"
+#include "erpl_odata_banner.hpp"
 
 // Projection and filter pushdown wiring for an OData scan: column activation
 // and the activated -> original column mapping, DuckDB filter translation, the

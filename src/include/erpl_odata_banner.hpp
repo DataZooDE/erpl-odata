@@ -4,5 +4,5 @@
 
 // Shared identity for the load banner and the issue-link error footer.
 // External linkage: DATAZOO_GUARD takes the address as a non-type template
-// argument. Defined in erpl_web_extension.cpp.
-extern const datazoo::BannerInfo ERPL_WEB_BANNER;
+// argument. Defined in erpl_odata_extension.cpp.
+extern const datazoo::BannerInfo ERPL_ODATA_BANNER;

@@ -47,7 +47,7 @@ USAGE
     test/perf/odata_page_memory.py ./build/debug/duckdb \\
         --total-rows 500000 --payload 200 --pages 200 2000 20000 100000 500000
 
-    ERPL_LOAD=build/release/extension/erpl_web/erpl_web.duckdb_extension \\
+    ERPL_LOAD=build/release/extension/erpl_odata/erpl_odata.duckdb_extension \\
     test/perf/odata_page_memory.py ./build/release/duckdb --pages 200 20000
 
 NOTE ON THE DEBUG BINARY
@@ -151,7 +151,7 @@ def run_one(binary, port, rows_per_page, total_rows, payload, query):
 def main():
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("binary", help="path to a duckdb binary carrying erpl_web")
+    parser.add_argument("binary", help="path to a duckdb binary carrying erpl_odata")
     parser.add_argument("--total-rows", type=int, default=500000)
     parser.add_argument("--payload", type=int, default=200,
                         help="filler characters per row; 200 gives ~270 wire bytes/row, "

@@ -13,7 +13,7 @@
 
 #include "tracing.hpp"
 #include "telemetry.hpp"
-#include "erpl_web_banner.hpp"
+#include "erpl_odata_banner.hpp"
 
 // The odata_read() table function itself: its DuckDB registration, the bind
 // entry point and the bind-time named-parameter / expand-clause helpers.
@@ -325,7 +325,7 @@ ODataReadBind(ClientContext &context, TableFunctionBindInput &input,
 TableFunctionSet CreateODataReadFunction() {
     TableFunctionSet function_set("odata_read");
     
-    TableFunction read_entity_set({LogicalTypeId::VARCHAR}, DATAZOO_GUARD(ERPL_WEB_BANNER, ODataReadScan), DATAZOO_GUARD(ERPL_WEB_BANNER, ODataReadBind), ODataReadTableInitGlobalState);
+    TableFunction read_entity_set({LogicalTypeId::VARCHAR}, DATAZOO_GUARD(ERPL_ODATA_BANNER, ODataReadScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, ODataReadBind), ODataReadTableInitGlobalState);
     read_entity_set.filter_pushdown = true;
     read_entity_set.projection_pushdown = true;
     read_entity_set.table_scan_progress = ODataReadTableProgress;

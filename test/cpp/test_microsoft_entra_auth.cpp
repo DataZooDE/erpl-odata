@@ -113,7 +113,7 @@ TEST_CASE("Test Microsoft Entra Secret Creation in DuckDB", "[microsoft_entra][i
     duckdb::Connection con(db);
 
     // Load the extension
-    auto result = con.Query("LOAD erpl_web;");
+    auto result = con.Query("LOAD erpl_odata;");
     if (result->HasError()) {
         std::cout << "Note: Extension not loaded, skipping integration test" << std::endl;
         return;
@@ -158,7 +158,7 @@ TEST_CASE("Test Microsoft Entra Config Provider", "[microsoft_entra][integration
     duckdb::Connection con(db);
 
     // Load the extension
-    auto result = con.Query("LOAD erpl_web;");
+    auto result = con.Query("LOAD erpl_odata;");
     if (result->HasError()) {
         std::cout << "Note: Extension not loaded, skipping integration test" << std::endl;
         return;
@@ -203,7 +203,7 @@ TEST_CASE("Test Microsoft Entra Scope Configuration", "[microsoft_entra][basic]"
     duckdb::DuckDB db(nullptr, &config);
     duckdb::Connection con(db);
 
-    auto result = con.Query("LOAD erpl_web;");
+    auto result = con.Query("LOAD erpl_odata;");
     if (result->HasError()) {
         std::cout << "Note: Extension not loaded, skipping scope test" << std::endl;
         return;
@@ -264,7 +264,7 @@ TEST_CASE("Test HasValidCachedToken with KeyValueSecret", "[microsoft_entra][int
     duckdb::DuckDB db(nullptr, &config);
     duckdb::Connection con(db);
 
-    auto result = con.Query("LOAD erpl_web;");
+    auto result = con.Query("LOAD erpl_odata;");
     if (result->HasError()) {
         std::cout << "Note: Extension not loaded, skipping cached token test" << std::endl;
         return;
@@ -299,7 +299,7 @@ TEST_CASE("Test Token Manager with Empty Token", "[microsoft_entra][integration]
     duckdb::DuckDB db(nullptr, &config);
     duckdb::Connection con(db);
 
-    auto result = con.Query("LOAD erpl_web;");
+    auto result = con.Query("LOAD erpl_odata;");
     if (result->HasError()) {
         std::cout << "Note: Extension not loaded, skipping empty token test" << std::endl;
         return;
@@ -335,7 +335,7 @@ TEST_CASE("Test GetMicrosoftEntraKeyValueSecret retrieval", "[microsoft_entra][i
     duckdb::DuckDB db(nullptr, &config);
     duckdb::Connection con(db);
 
-    auto result = con.Query("LOAD erpl_web;");
+    auto result = con.Query("LOAD erpl_odata;");
     if (result->HasError()) {
         std::cout << "Note: Extension not loaded, skipping secret retrieval test" << std::endl;
         return;
@@ -378,7 +378,7 @@ TEST_CASE("Test Microsoft Entra Secret Replacement", "[microsoft_entra][integrat
     duckdb::DuckDB db(nullptr, &config);
     duckdb::Connection con(db);
 
-    auto result = con.Query("LOAD erpl_web;");
+    auto result = con.Query("LOAD erpl_odata;");
     if (result->HasError()) {
         std::cout << "Note: Extension not loaded, skipping replacement test" << std::endl;
         return;
@@ -432,7 +432,7 @@ TEST_CASE("Test Multiple Tenants with Different Secrets", "[microsoft_entra][int
     duckdb::DuckDB db(nullptr, &config);
     duckdb::Connection con(db);
 
-    auto result = con.Query("LOAD erpl_web;");
+    auto result = con.Query("LOAD erpl_odata;");
     if (result->HasError()) {
         std::cout << "Note: Extension not loaded, skipping multi-tenant test" << std::endl;
         return;

@@ -6,7 +6,7 @@
 # provisioned ODP service there is nothing to read, and failing on that is noise rather
 # than signal.
 
-require erpl_web
+require erpl_odata
 
 statement ok
 SET autoinstall_known_extensions=1;

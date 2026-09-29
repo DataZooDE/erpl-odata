@@ -941,7 +941,7 @@ std::string ODataPredicatePushdownHelper::TranslateConstantComparison(const duck
             ERPL_TRACE_ERROR("PREDICATE_PUSHDOWN", "Unsupported comparison type for column: " + column_name);
             throw duckdb::NotImplementedException(
                 "OData pushdown cannot express the comparison used on column '" + column_name +
-                "'. Please open an issue at https://github.com/DataZooDE/erpl-web/issues");
+                "'. Please open an issue at https://github.com/DataZooDE/erpl-odata/issues");
     }
     
     result << comparison_operator;

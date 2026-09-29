@@ -91,7 +91,7 @@ TEST_CASE("a Datasphere describe against an unreachable tenant errors rather tha
           "[datasphere][describe_failure]") {
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     REQUIRE_FALSE(con.Query("CREATE SECRET datasphere (TYPE datasphere, PROVIDER config, "
                             "config_file '" + database.WriteUnreachableTenantConfig() + "')")
@@ -126,7 +126,7 @@ TEST_CASE("the describe failure never reports itself as a row value",
     // future change could reintroduce the row while still erroring on some other path.
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
     REQUIRE_FALSE(con.Query("CREATE SECRET datasphere (TYPE datasphere, PROVIDER config, "
                             "config_file '" + database.WriteUnreachableTenantConfig() + "')")
                       ->HasError());

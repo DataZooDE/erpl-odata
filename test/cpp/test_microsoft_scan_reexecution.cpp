@@ -107,7 +107,7 @@ TEST_CASE("a bound crm_read plan returns every row on each execution", "[ms_reex
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto secret = con.Query(
         "CREATE SECRET crm (TYPE dataverse, PROVIDER config, "
@@ -154,7 +154,7 @@ TEST_CASE("a bound bc_read plan returns every row on each execution", "[ms_reexe
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto secret = con.Query(
         "CREATE SECRET bc (TYPE business_central, PROVIDER config, "
@@ -382,7 +382,7 @@ TEST_CASE("a bound bc_show_companies plan returns every row on each execution",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto secret = con.Query(
         "CREATE SECRET bccat (TYPE business_central, PROVIDER config, "
@@ -416,7 +416,7 @@ TEST_CASE("a bound bc_describe plan returns every row on each execution",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto secret = con.Query(
         "CREATE SECRET bcdesc (TYPE business_central, PROVIDER config, "
@@ -460,7 +460,7 @@ TEST_CASE("the remaining catalog functions return every row on each execution",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto secret = con.Query(
         "CREATE SECRET bcrest (TYPE business_central, PROVIDER config, "
@@ -518,7 +518,7 @@ TEST_CASE("wiring conversion reporting into the bc_read scan does not break the 
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto secret = con.Query(
         "CREATE SECRET bcconv (TYPE business_central, PROVIDER config, "
@@ -566,7 +566,7 @@ TEST_CASE("a bound crm_show_entities plan returns every row on each execution",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto secret = con.Query(
         "CREATE SECRET crmcat (TYPE dataverse, PROVIDER config, "

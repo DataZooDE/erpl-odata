@@ -95,7 +95,7 @@ TEST_CASE("every Datasphere catalog function accepts and uses the named secret",
           "[datasphere][secret_selection]") {
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     // Only the caller's secret exists. There is deliberately NO secret named "datasphere",
     // which is what makes this discriminating: if resolution still looked up the hardcoded
@@ -150,7 +150,7 @@ TEST_CASE("omitting the secret still resolves the conventional 'datasphere' one"
     // fact under test.
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto result = con.Query("SELECT * FROM datasphere_describe_asset('SP', 'ASSET')");
     REQUIRE(result->HasError());

@@ -88,7 +88,7 @@ TEST_CASE("odata_describe reports the type the reader binds", "[odata_describe][
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
     const auto url = server.Url("/desc/Assets");
 
     SECTION("decimal facets decide the described type") {

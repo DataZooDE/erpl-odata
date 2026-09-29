@@ -1,9 +1,9 @@
 # name: test/sql/erpl_web_http.test
-# description: Test erpl_web extension HTTP client functionality
+# description: Test erpl_odata extension HTTP client functionality
 # group: [erpl_web_http]
 
 # Require statement will ensure this test is run with this extension loaded
-require erpl_web
+require erpl_odata
 
 statement ok
 SET autoinstall_known_extensions=1;

@@ -1,9 +1,9 @@
 # name: test/sql/erpl_web_datasphere.test
-# description: Test erpl_web extension Datasphere functionality
+# description: Test erpl_odata extension Datasphere functionality
 # group: [erpl_web_datasphere]
 
 # Require statement will ensure this test is run with this extension loaded
-require erpl_web
+require erpl_odata
 
 statement ok
 SET autoinstall_known_extensions=1;

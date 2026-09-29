@@ -4,7 +4,7 @@
 
 namespace erpl_web {
 
-// Registration functions (called from erpl_web_extension.cpp)
+// Registration functions (called from erpl_odata_extension.cpp)
 duckdb::TableFunctionSet CreateDeltaShareShowSharesFunction();
 duckdb::TableFunctionSet CreateDeltaShareShowSchemasFunction();
 duckdb::TableFunctionSet CreateDeltaShareShowTablesFunction();

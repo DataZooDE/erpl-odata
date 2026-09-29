@@ -4,9 +4,11 @@
 [![DuckDB](https://img.shields.io/badge/DuckDB-1.5.4+-green.svg)](https://duckdb.org)
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
 
-# ERPL Web — DuckDB HTTP + OData + Delta Sharing + SAP + Microsoft 365 Extension
+> **Formerly `erpl_web`.** This extension was renamed to `erpl_odata`; all functions, secrets and settings are unchanged. Loading the old `erpl_web` extension now prints a pointer to this name. Update your scripts to `INSTALL erpl_odata FROM community; LOAD erpl_odata;`.
 
-ERPL Web is a production-grade DuckDB extension that lets you call HTTP/REST APIs, query OData v2/v4 services, read Delta Sharing tables, work with SAP Datasphere and SAP Analytics Cloud, and query Microsoft 365 services (Graph API, Entra ID, Business Central, Dataverse) directly from SQL. It brings secure OAuth2, DuckDB Secrets integration, predicate pushdown, robust tracing, and smart caching into a single, easy-to-use package.
+# ERPL-OData — DuckDB HTTP + OData + Delta Sharing + SAP + Microsoft 365 Extension
+
+ERPL-OData is a production-grade DuckDB extension that lets you call HTTP/REST APIs, query OData v2/v4 services, read Delta Sharing tables, work with SAP Datasphere and SAP Analytics Cloud, and query Microsoft 365 services (Graph API, Entra ID, Business Central, Dataverse) directly from SQL. It brings secure OAuth2, DuckDB Secrets integration, predicate pushdown, robust tracing, and smart caching into a single, easy-to-use package.
 
 - SEO topics: DuckDB HTTP client, DuckDB REST, DuckDB OData v2/v4, DuckDB Delta Sharing, DuckDB Delta Lake, Databricks Delta, DuckDB SAP Datasphere, DuckDB SAP Analytics Cloud, DuckDB Microsoft 365, DuckDB Microsoft Graph API, DuckDB Entra ID, DuckDB Business Central, OAuth2 for DuckDB, OData ATTACH, Delta Sharing ATTACH, query APIs from SQL.
 
@@ -31,16 +33,16 @@ ERPL Web is a production-grade DuckDB extension that lets you call HTTP/REST API
 You can either install it from the DuckDB community repository
 
 ```sql
-INSTALL erpl_web FROM community;
-LOAD erpl_web;
+INSTALL erpl_odata FROM community;
+LOAD erpl_odata;
 ```
 
 or using our source
 
 ```sql
 -- Install (DuckDB requires -unsigned when installing from a custom URL)
-INSTALL 'erpl_web' FROM 'http://get.erpl.io';
-LOAD 'erpl_web';
+INSTALL 'erpl_odata' FROM 'http://get.erpl.io';
+LOAD 'erpl_odata';
 ```
 
 or build from source (developers):
@@ -343,7 +345,7 @@ SELECT * FROM http_post('https://httpbin.org/anything','a=1&b=2','application/x-
 
 ### TLS Certificate Verification
 
-Every HTTPS request made by ERPL Web verifies the server certificate. If you connect
+Every HTTPS request made by ERPL-OData verifies the server certificate. If you connect
 to an on-premise system with a private or self-signed certificate, trust its CA
 rather than turning verification off:
 
@@ -456,7 +458,7 @@ SELECT * FROM odp_odata_list_subscriptions();
 
 ## 🟦 SAP Datasphere (DWAAS Core + Catalog)
 
-ERPL Web includes first-class support for SAP Datasphere using a secured OAuth2 secret. The extension integrates both the DWAAS core APIs and the Catalog OData service to provide discovery and rich metadata.
+ERPL-OData includes first-class support for SAP Datasphere using a secured OAuth2 secret. The extension integrates both the DWAAS core APIs and the Catalog OData service to provide discovery and rich metadata.
 
 ### Functions overview
 
@@ -558,7 +560,7 @@ make test
 If you need to run the C++ unit tests binary directly, use your build folder path. For example:
 
 ```bash
-./build/debug/extension/erpl_web/test/cpp/erpl_web_tests
+./build/debug/extension/erpl_odata/test/cpp/erpl_odata_tests
 ```
 
 ---
@@ -691,7 +693,7 @@ SELECT * FROM sac.Stories WHERE Owner = 'john.doe@company.com';
 
 ## 🔷 Microsoft 365 & Dynamics 365
 
-ERPL Web provides native SQL access to Microsoft 365 services via the Microsoft Graph API, as well as Microsoft Dynamics 365 Business Central and Dataverse (CRM). Authentication uses standard OAuth2 client credentials.
+ERPL-OData provides native SQL access to Microsoft 365 services via the Microsoft Graph API, as well as Microsoft Dynamics 365 Business Central and Dataverse (CRM). Authentication uses standard OAuth2 client credentials.
 
 ### Authentication
 
@@ -1184,13 +1186,13 @@ This project is licensed under the Business Source License (BSL) 1.1. See [LICEN
 
 ---
 
-Build API-powered analytics with DuckDB + ERPL Web. Query the web like it’s a table. 🚀
+Build API-powered analytics with DuckDB + ERPL-OData. Query the web like it’s a table. 🚀
 
 ## Feedback
 
-If `erpl_web` misbehaves — an OData service it will not read, a Datasphere or Business
+If `erpl_odata` misbehaves — an OData service it will not read, a Datasphere or Business
 Central call that fails oddly — please
-[open an issue](https://github.com/DataZooDE/erpl-web/issues). Services differ by tenant,
+[open an issue](https://github.com/DataZooDE/erpl-odata/issues). Services differ by tenant,
 version and auth setup in ways we cannot reproduce here, so a report with your setup is
 the fastest path to a fix. Every error the extension raises ends with that link.
 

@@ -11,7 +11,7 @@
 #include "duckdb/common/types/date.hpp"
 #include "duckdb/parser/parsed_data/create_table_function_info.hpp"
 #include "yyjson.hpp"
-#include "erpl_web_banner.hpp"
+#include "erpl_odata_banner.hpp"
 #include "odata_url_helpers.hpp"
 
 using namespace duckdb_yyjson;
@@ -1023,7 +1023,7 @@ void GraphExcelFunctions::Register(ExtensionLoader &loader) {
     ERPL_TRACE_INFO("GRAPH_EXCEL", "Registering Microsoft Graph Excel functions");
 
     {
-        TableFunction list_files("graph_show_files", {}, DATAZOO_GUARD(ERPL_WEB_BANNER, ListFilesScan), DATAZOO_GUARD(ERPL_WEB_BANNER, ListFilesBind));
+        TableFunction list_files("graph_show_files", {}, DATAZOO_GUARD(ERPL_ODATA_BANNER, ListFilesScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, ListFilesBind));
         list_files.varargs = LogicalType::VARCHAR;
         list_files.named_parameters["secret"] = LogicalType::VARCHAR;
         list_files.named_parameters["drive"] = LogicalType::VARCHAR;
@@ -1048,7 +1048,7 @@ void GraphExcelFunctions::Register(ExtensionLoader &loader) {
     }
     {
         TableFunction excel_tables("graph_excel_tables", {LogicalType::VARCHAR},
-                                   DATAZOO_GUARD(ERPL_WEB_BANNER, ExcelTablesScan), DATAZOO_GUARD(ERPL_WEB_BANNER, ExcelTablesBind));
+                                   DATAZOO_GUARD(ERPL_ODATA_BANNER, ExcelTablesScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, ExcelTablesBind));
         excel_tables.named_parameters["secret"] = LogicalType::VARCHAR;
         excel_tables.named_parameters["drive"] = LogicalType::VARCHAR;
         excel_tables.named_parameters["site"] = LogicalType::VARCHAR;
@@ -1072,7 +1072,7 @@ void GraphExcelFunctions::Register(ExtensionLoader &loader) {
     }
     {
         TableFunction excel_worksheets("graph_excel_worksheets", {LogicalType::VARCHAR},
-                                       DATAZOO_GUARD(ERPL_WEB_BANNER, ExcelWorksheetsScan), DATAZOO_GUARD(ERPL_WEB_BANNER, ExcelWorksheetsBind));
+                                       DATAZOO_GUARD(ERPL_ODATA_BANNER, ExcelWorksheetsScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, ExcelWorksheetsBind));
         excel_worksheets.named_parameters["secret"] = LogicalType::VARCHAR;
         excel_worksheets.named_parameters["drive"] = LogicalType::VARCHAR;
         excel_worksheets.named_parameters["site"] = LogicalType::VARCHAR;
@@ -1097,7 +1097,7 @@ void GraphExcelFunctions::Register(ExtensionLoader &loader) {
     {
         TableFunction excel_range("graph_excel_range",
                                   {LogicalType::VARCHAR, LogicalType::VARCHAR},
-                                  DATAZOO_GUARD(ERPL_WEB_BANNER, ExcelRangeScan), DATAZOO_GUARD(ERPL_WEB_BANNER, ExcelRangeBind));
+                                  DATAZOO_GUARD(ERPL_ODATA_BANNER, ExcelRangeScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, ExcelRangeBind));
         excel_range.varargs = LogicalType::VARCHAR;
         excel_range.named_parameters["secret"] = LogicalType::VARCHAR;
         excel_range.named_parameters["drive"] = LogicalType::VARCHAR;
@@ -1128,7 +1128,7 @@ void GraphExcelFunctions::Register(ExtensionLoader &loader) {
     {
         TableFunction excel_table_data("graph_excel_read",
                                        {LogicalType::VARCHAR, LogicalType::VARCHAR},
-                                       DATAZOO_GUARD(ERPL_WEB_BANNER, ExcelTableDataScan), DATAZOO_GUARD(ERPL_WEB_BANNER, ExcelTableDataBind));
+                                       DATAZOO_GUARD(ERPL_ODATA_BANNER, ExcelTableDataScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, ExcelTableDataBind));
         excel_table_data.named_parameters["secret"] = LogicalType::VARCHAR;
         excel_table_data.named_parameters["drive"] = LogicalType::VARCHAR;
         excel_table_data.named_parameters["site"] = LogicalType::VARCHAR;

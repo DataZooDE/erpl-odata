@@ -307,7 +307,7 @@ TEST_CASE("Test HttpAuthParams Authentication Precedence", "[http_auth]") {
     SECTION("Test authentication precedence logic") {
         // This test verifies that the AuthParamsFromInput function correctly
         // prioritizes function parameters over secrets
-        // The actual implementation is in erpl_web_functions.cpp
+        // The actual implementation is in erpl_odata_functions.cpp
         
         // Create a mock auth params object
         auto auth_params = std::make_shared<HttpAuthParams>();

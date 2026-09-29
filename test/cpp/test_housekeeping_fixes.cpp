@@ -39,7 +39,7 @@ TEST_CASE("a missing secret field is bad input, not an internal error", "[housek
     // "INTERNAL Error: Failed to fetch key 'tenant_name' from secret".
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     REQUIRE_FALSE(con.Query("CREATE SECRET ds_incomplete (TYPE datasphere, PROVIDER oauth2, "
                             "client_id 'c', client_secret 's')")
@@ -65,7 +65,7 @@ TEST_CASE("a BEARER auth_type actually sends a bearer token", "[housekeeping][se
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto result = con.Query("SELECT status FROM http_get('" + server.Url("/echo") +
                             "', auth := 'tok', auth_type := 'BEARER')");
@@ -85,7 +85,7 @@ TEST_CASE("an unsupported auth_type is refused rather than silently substituted"
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     auto result = con.Query("SELECT status FROM http_get('" + server.Url("/echo") +
                             "', auth := 'user:pass', auth_type := 'DIGEST')");

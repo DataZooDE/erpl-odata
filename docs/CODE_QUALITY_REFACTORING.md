@@ -94,7 +94,7 @@ file now has a narrower reason to change.
    drift.
 10. Rebuild before testing runtime behavior: `GEN=ninja make debug`. If the full
     build fails in an unrelated auxiliary target, verify the touched targets
-    directly with `cmake --build build/debug --target duckdb erpl_web_tests`.
+    directly with `cmake --build build/debug --target duckdb erpl_odata_tests`.
 11. Run focused tests first, then broader tests when the environment allows it.
 12. Record residual debt instead of mixing a large file split into the first
     behavior-preserving cleanup.

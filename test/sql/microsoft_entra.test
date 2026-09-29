@@ -2,7 +2,7 @@
 # description: Test Microsoft Entra ID authentication secret management
 # group: [microsoft_entra]
 
-require erpl_web
+require erpl_odata
 
 # Test 1: Create a Microsoft Entra secret with client_credentials provider
 statement ok

@@ -11,7 +11,7 @@
 
 #include "tracing.hpp"
 #include "telemetry.hpp"
-#include "erpl_web_banner.hpp"
+#include "erpl_odata_banner.hpp"
 
 // Mapping of transport/runtime failures onto user-facing DuckDB exceptions.
 // Shared by the OData, ODP and Datasphere read paths.

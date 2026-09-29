@@ -16,7 +16,7 @@ This keeps institutional knowledge in the repo and prevents rediscovering the sa
 
 ## Project Overview
 
-**ERPL Web** is a production-grade DuckDB extension that provides HTTP/REST API access, OData v2/v4 query support, and SAP ecosystem integration (Datasphere, Analytics Cloud, ODP) directly from SQL. The codebase is primarily C++ with SQLLogicTest-based tests.
+**ERPL-OData** is a production-grade DuckDB extension that provides HTTP/REST API access, OData v2/v4 query support, and SAP ecosystem integration (Datasphere, Analytics Cloud, ODP) directly from SQL. The codebase is primarily C++ with SQLLogicTest-based tests.
 
 **Key capabilities:**
 - HTTP functions (GET, HEAD, POST, PUT, PATCH, DELETE) with OAuth2 and DuckDB Secrets integration
@@ -91,7 +91,7 @@ make release    # Full reconfigure + release build
   extractor and not of ODP — see the ODP provisioning section below.
 - `make test_oauth2` - Build and run **datazoo-oauth2's own Catch2 suite**, which no build of
   this repo used to run. Its cmake target is guarded on the submodule being the *top-level*
-  project (`NOT DATAZOO_OAUTH2_HAS_PARENT`), and erpl-web `add_subdirectory()`s it - so the
+  project (`NOT DATAZOO_OAUTH2_HAS_PARENT`), and erpl-odata `add_subdirectory()`s it - so the
   guard was always false, the suite was never compiled, and the only coverage of
   `OAuth2CallbackHandler::ValidateState` (the CSRF defence of the authorization_code flow),
   the PKCE/state token generator and the callback error page's HTML escaping ran nowhere.
@@ -101,9 +101,9 @@ make release    # Full reconfigure + release build
   skip is what hid this for so long. Wired into CI as the `oauth2-unit-tests` job, which is
   deliberately NOT gated on the extension build so a broken CSRF check is reported in a
   minute rather than behind a ~25-minute Windows leg. See GitHub #245.
-- `make test_build_guard` - Regression test for GitHub #45 (pure CMake, no build needed). Verifies the dev-only C++ test target stays gated on the in-tree `duckdb` submodule so consumers who statically link erpl_web (via `duckdb_extension_load`/FetchContent, where the submodule is absent) don't try to compile `test/cpp` and hit `catch.hpp file not found`. Run after touching the `add_subdirectory(test)` guard in `CMakeLists.txt`.
+- `make test_build_guard` - Regression test for GitHub #45 (pure CMake, no build needed). Verifies the dev-only C++ test target stays gated on the in-tree `duckdb` submodule so consumers who statically link erpl_odata (via `duckdb_extension_load`/FetchContent, where the submodule is absent) don't try to compile `test/cpp` and hit `catch.hpp file not found`. Run after touching the `add_subdirectory(test)` guard in `CMakeLists.txt`.
 - `make unittest` - Relink **only** `./build/debug/test/unittest`, the SQLLogicTest runner.
-  `duckdb`, `unittest` and `erpl_web_tests` are **separate ninja targets**: building one
+  `duckdb`, `unittest` and `erpl_odata_tests` are **separate ninja targets**: building one
   does not build the others. A session that builds a single target after a source change
   (common when a full `make dev` is failing for an unrelated reason) leaves the other
   binaries stale — and a stale `unittest` runs your SQL tests against code from *before*
@@ -116,8 +116,8 @@ make release    # Full reconfigure + release build
   Run `make unittest` first — see above.
 
 **Running individual C++ tests:**
-- `ASAN_OPTIONS=detect_odr_violation=0 ./build/debug/extension/erpl_web/test/cpp/erpl_web_tests -l` - List all tests
-- `ASAN_OPTIONS=detect_odr_violation=0 ./build/debug/extension/erpl_web/test/cpp/erpl_web_tests TEST_NAME` - Run single test
+- `ASAN_OPTIONS=detect_odr_violation=0 ./build/debug/extension/erpl_odata/test/cpp/erpl_odata_tests -l` - List all tests
+- `ASAN_OPTIONS=detect_odr_violation=0 ./build/debug/extension/erpl_odata/test/cpp/erpl_odata_tests TEST_NAME` - Run single test
 
 **Why `ASAN_OPTIONS=detect_odr_violation=0` is required for C++ tests:**
 The debug build statically links DuckDB into the test binary AND loads `libduckdb.so`, causing
@@ -160,7 +160,7 @@ a comment, and `test_credential_trace_redaction.cpp` then repeated it). A commen
 test file is not where the next author looks — hence this entry.
 
 **SQL tests location:** `test/sql/` (various `.test` files organized by module)
-**C++ unit tests location:** `build/debug/extension/erpl_web/test/cpp/`
+**C++ unit tests location:** `build/debug/extension/erpl_odata/test/cpp/`
 
 ## Quick Iteration Development Workflow
 
@@ -175,7 +175,7 @@ After building with `make debug`, execute SQL commands instantly:
 ./build/debug/duckdb -s "SELECT * FROM http_get('https://httpbin.org/ip')"
 
 # Multiple commands (just example, in debug build, extension is statically linked)
-./build/debug/duckdb -s "LOAD 'build/debug/extension/erpl_web/erpl_web.duckdb_extension'; SELECT 1"
+./build/debug/duckdb -s "LOAD 'build/debug/extension/erpl_odata/erpl_odata.duckdb_extension'; SELECT 1"
 
 # Interactive shell (for exploring)
 ./build/debug/duckdb
@@ -296,20 +296,20 @@ The project structure consists of:
 
 - **Release builds** (`make release`): Extension is **dynamically loaded** (NOT statically linked)
   - Binary: `./build/release/duckdb` (DuckDB shell)
-  - Extension: `./build/release/extension/erpl_web/erpl_web.duckdb_extension` (loadable module)
+  - Extension: `./build/release/extension/erpl_odata/erpl_odata.duckdb_extension` (loadable module)
   - Configured via `DONT_LINK` flag in `extension_config.cmake`
   - Pros: Smaller binary, distributable extension artifact, standard for production
-  - Cons: Requires extension loading at runtime: `LOAD 'path/to/erpl_web.duckdb_extension'`
+  - Cons: Requires extension loading at runtime: `LOAD 'path/to/erpl_odata.duckdb_extension'`
 
 **See extension_config.cmake:**
 ```cmake
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
-    duckdb_extension_load(erpl_web
+    duckdb_extension_load(erpl_odata
         SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}
         LOAD_TESTS
         DONT_LINK)              # <-- Release: loadable extension
 else()
-    duckdb_extension_load(erpl_web
+    duckdb_extension_load(erpl_odata
         SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}
         LOAD_TESTS)             # <-- Debug: statically linked
 endif()
@@ -520,7 +520,7 @@ ProcessData();
 ### Code Reuse Strategy
 
 Before writing new code:
-1. **Search existing ERPL Web code** for similar functionality
+1. **Search existing ERPL-OData code** for similar functionality
 2. **Check DuckDB core utilities** (in `duckdb/src/`) for reusable patterns
 3. **Browse other DuckDB extensions** (PostgreSQL Scanner, Parquet, JSON) for proven approaches
 4. **Minimize code footprint** by extracting and sharing utilities
@@ -544,7 +544,7 @@ The project uses `clang-tidy` for static analysis. Key checks enabled:
 
 **How to run locally:**
 ```bash
-cd /Users/jr/Projects/datazoo/erpl-web
+cd /Users/jr/Projects/datazoo/erpl-odata
 clang-tidy -p build/debug src/**/*.cpp
 ```
 
@@ -688,7 +688,7 @@ The build matrix is defined in `extension-ci-tools/config/distribution_matrix.js
 
 **Why Windows is critical for distribution:**
 - Large user base requires native Windows binaries
-- Users expect seamless `INSTALL erpl_web FROM community` experience
+- Users expect seamless `INSTALL erpl_odata FROM community` experience
 - No cross-compilation from Linux/macOS (Windows requires native builds)
 - MSVC compatibility ensures wide Windows version support (Windows 10+)
 
@@ -708,7 +708,7 @@ Checkout repo → Setup Docker → Build in container → Test → Upload artifa
 ```
 - Uses ccache for compilation speed
 - VCPKG dependencies cached in S3
-- Produces `erpl_web-v1.5.4-extension-linux_amd64.duckdb_extension`
+- Produces `erpl_odata-v1.5.4-extension-linux_amd64.duckdb_extension`
 
 #### **3. macOS Build** (Conditional on Linux success)
 ```
@@ -716,7 +716,7 @@ Setup Homebrew → Install ninja/ccache → Configure VCPKG → Build → Test �
 ```
 - Builds both x86_64 and ARM64 variants
 - Uses native runners (no emulation)
-- Produces `erpl_web-v1.5.4-extension-osx_{amd64,arm64}.duckdb_extension`
+- Produces `erpl_odata-v1.5.4-extension-osx_{amd64,arm64}.duckdb_extension`
 
 #### **4. Windows Build** (Conditional on Linux success)
 ```
@@ -724,7 +724,7 @@ Setup MSVC → Configure VCPKG → Build with Ninja/MSBuild → Test → Upload
 ```
 - Static linking to avoid DLL dependencies
 - VS2019 compatibility mode for broader Windows support
-- Produces `erpl_web-v1.5.4-extension-windows_amd64.duckdb_extension`
+- Produces `erpl_odata-v1.5.4-extension-windows_amd64.duckdb_extension`
 
 #### **5. Deployment** (S3 Upload)
 ```
@@ -984,13 +984,13 @@ This extension follows **DuckDB community extension best practices**:
 ### Distribution Models
 1. **Community Extensions Repository** (recommended)
    - Submit to https://github.com/duckdb/community-extensions
-   - Enables installation via `INSTALL erpl_web FROM community`
+   - Enables installation via `INSTALL erpl_odata FROM community`
    - Automatic CI/CD for all platforms
    - Recommended for long-term maintenance
 
 2. **GitHub Releases**
    - Attach `.duckdb_extension` binaries to releases
-   - Manual `INSTALL erpl_web FROM 'file://path'`
+   - Manual `INSTALL erpl_odata FROM 'file://path'`
    - Suitable for early-stage/experimental extensions
 
 3. **Custom Distribution**
@@ -1003,7 +1003,7 @@ This extension follows **DuckDB community extension best practices**:
 Release builds create distributable artifacts:
 ```bash
 make release
-# Produces: ./build/release/extension/erpl_web/erpl_web.duckdb_extension
+# Produces: ./build/release/extension/erpl_odata/erpl_odata.duckdb_extension
 ```
 
 **Distribution packages include:**
@@ -1024,7 +1024,7 @@ This project currently targets **DuckDB v1.4.5 and v1.5.4** (check `.github/work
 ## Codebase Architecture
 
 ### Extension Entry Point
-- **src/erpl_web_extension.cpp** - Main extension initialization via `DUCKDB_EXTENSION_ENTRY`
+- **src/erpl_odata_extension.cpp** - Main extension initialization via `DUCKDB_EXTENSION_ENTRY`
 - Registers all SQL functions, secret types, and pragma settings
 - Initializes telemetry (PostHog) and tracing systems
 - Configures DuckDB-specific settings callbacks
@@ -1120,7 +1120,7 @@ HTTP responses are parsed into `ODataContent` objects that provide both raw cont
 ### Adding a New HTTP Function
 1. Define function signature in a new file (e.g., `new_function.cpp`)
 2. Implement bind and execute phases using DuckDB's `BindInfo` and `ExecutionContext`
-3. Register in `erpl_web_extension.cpp` via `CreateScalarFunction()` or similar
+3. Register in `erpl_odata_extension.cpp` via `CreateScalarFunction()` or similar
 4. Add SQL tests in `test/sql/web_core.test` or appropriate subdirectory
 5. Ensure proper tracing via `ERPL_TRACE_*` macros
 6. Follow C++ standards above (const correctness, smart pointers, naming conventions)
@@ -1145,13 +1145,13 @@ HTTP responses are parsed into `ODataContent` objects that provide both raw cont
 ## Testing Considerations
 
 - SQL tests use SQLLogicTest format; see `test/README.md`
-- C++ unit tests are located in `build/debug/extension/erpl_web/test/cpp/`
+- C++ unit tests are located in `build/debug/extension/erpl_odata/test/cpp/`
 - Remote/API-dependent tests should mock responses or use test fixtures
 - OAuth2 flows require local callback server; tests should verify this works in isolation
 - SAP tests can use environment variables (e.g., `ERPL_SAP_BASE_URL`, `ERPL_SAP_PASSWORD`)
 
 ## Current Modified Files (from git status)
-- `src/erpl_web_extension.cpp` - May have recent extension initialization changes
+- `src/erpl_odata_extension.cpp` - May have recent extension initialization changes
 - `src/include/sac_catalog.hpp` - SAC catalog interface updates
 - `src/sac_catalog.cpp` - SAC catalog implementation
 
@@ -1216,7 +1216,7 @@ cat > .ai/codex_context/$(date +%Y%m%d_%H%M%S)_connection_pooling.md << 'EOF'
 # Codex Consultation: HTTP Connection Pooling Strategy
 
 ## Context
-Working on ERPL Web DuckDB extension implementing connection pooling for HttpClient
+Working on ERPL-OData DuckDB extension implementing connection pooling for HttpClient
 to improve performance when making multiple requests to the same host.
 
 ## Current Implementation

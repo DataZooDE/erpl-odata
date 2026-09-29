@@ -5,7 +5,7 @@
 #       Delegated-only tests (those using /me/) additionally require a live
 #       delegated access token via ERPL_MS_DELEGATED_ACCESS_TOKEN.
 
-require erpl_web
+require erpl_odata
 
 require-env ERPL_MS_TENANT_ID
 

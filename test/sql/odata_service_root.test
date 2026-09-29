@@ -3,7 +3,7 @@
 # group: [erpl_web]
 
 # Require statement will ensure this test is run with this extension loaded
-require erpl_web
+require erpl_odata
 
 # Test V4 service root (TripPin)
 query III

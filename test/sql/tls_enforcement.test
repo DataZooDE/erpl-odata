@@ -10,7 +10,7 @@
 # These cases need outbound network access to badssl.com, so they are opt-in rather than
 # part of the default run.
 
-require erpl_web
+require erpl_odata
 
 require-env ERPL_TEST_TLS_ENFORCEMENT
 

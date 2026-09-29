@@ -1,9 +1,9 @@
 # name: test/sql/erpl_web_odata_v2.test
-# description: Test erpl_web extension OData v2 functionality (Northwind)
+# description: Test erpl_odata extension OData v2 functionality (Northwind)
 # group: [erpl_web_odata]
 
 # Require statement will ensure this test is run with this extension loaded
-require erpl_web
+require erpl_odata
 
 statement ok
 SET autoinstall_known_extensions=1;

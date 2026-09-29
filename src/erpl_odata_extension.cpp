@@ -9,7 +9,7 @@
 #include "duckdb/main/extension_callback_manager.hpp"
 #endif
 
-#include "erpl_web_extension.hpp"
+#include "erpl_odata_extension.hpp"
 #include "datazoo/oauth2/http_client.hpp"
 #include "web_functions.hpp"
 #include "secret_functions.hpp"
@@ -52,7 +52,7 @@
 
 // Needed for OPENSSL_init_ssl / OPENSSL_INIT_NO_ATEXIT
 #include <openssl/ssl.h>
-#include "erpl_web_banner.hpp"
+#include "erpl_odata_banner.hpp"
 
 #if defined(__linux__) || defined(__APPLE__)
 #include <dlfcn.h>
@@ -91,8 +91,8 @@
 
 // Deliberately outside namespace duckdb: the banner library is DuckDB-agnostic
 // and the guard macro refers to this object from every guarded source file.
-const datazoo::BannerInfo ERPL_WEB_BANNER {
-    "erpl_web", "2026.07.24", "https://github.com/DataZooDE/erpl-web"};
+const datazoo::BannerInfo ERPL_ODATA_BANNER {
+    "erpl_odata", "2026.07.24", "https://github.com/DataZooDE/erpl-odata"};
 
 namespace duckdb {
 
@@ -336,17 +336,17 @@ static void RegisterConfiguration(DatabaseInstance &instance)
                                   LogicalTypeId::VARCHAR, Value(""), OnUnsafeAllowCustomServiceUrls);
 
     // Tracing configuration options
-    config.AddExtensionOption("erpl_trace_enabled", "Enable ERPL Web extension tracing functionality", 
+    config.AddExtensionOption("erpl_trace_enabled", "Enable ERPL-OData extension tracing functionality", 
                                   LogicalTypeId::BOOLEAN, Value(false), OnTraceEnabled);
-    config.AddExtensionOption("erpl_trace_level", "Set ERPL Web extension trace level (TRACE, DEBUG, INFO, WARN, ERROR)", 
+    config.AddExtensionOption("erpl_trace_level", "Set ERPL-OData extension trace level (TRACE, DEBUG, INFO, WARN, ERROR)", 
                                   LogicalTypeId::VARCHAR, Value("INFO"), OnTraceLevel);
-    config.AddExtensionOption("erpl_trace_output", "Set ERPL Web extension trace output (console, file, both)", 
+    config.AddExtensionOption("erpl_trace_output", "Set ERPL-OData extension trace output (console, file, both)", 
                                   LogicalTypeId::VARCHAR, Value("console"), OnTraceOutput);
-    config.AddExtensionOption("erpl_trace_file_path", "Set ERPL Web extension trace file path", 
+    config.AddExtensionOption("erpl_trace_file_path", "Set ERPL-OData extension trace file path", 
                                   LogicalTypeId::VARCHAR, Value(""), OnTraceFilePath);
-    config.AddExtensionOption("erpl_trace_max_file_size", "Set ERPL Web extension trace file max size in bytes", 
+    config.AddExtensionOption("erpl_trace_max_file_size", "Set ERPL-OData extension trace file max size in bytes", 
                                   LogicalTypeId::BIGINT, Value(10485760), OnTraceMaxFileSize);
-    config.AddExtensionOption("erpl_trace_rotation", "Enable ERPL Web extension trace file rotation", 
+    config.AddExtensionOption("erpl_trace_rotation", "Enable ERPL-OData extension trace file rotation", 
                                   LogicalTypeId::BOOLEAN, Value(true), OnTraceRotation);
 }
 
@@ -656,7 +656,7 @@ static void RegisterOdpFunctions(ExtensionLoader &loader)
             "the remote system rather than only locally.";
         d.examples = {"PRAGMA odp_odata_remove_subscription('SUB_ID', true);"};
         d.parameter_names = {"subscription_id", "remove_remote"};
-        d.categories = {"erpl_web", "odp"};
+        d.categories = {"erpl_odata", "odp"};
         info.descriptions.push_back(std::move(d));
         auto &db = loader.GetDatabaseInstance();
         auto &system_catalog = Catalog::GetSystemCatalog(db);
@@ -990,7 +990,7 @@ static void RegisterDocumentedPragma(ExtensionLoader &loader, PragmaFunction pra
     d.description = std::move(description);
     d.examples = std::move(examples);
     d.parameter_names = std::move(parameter_names);
-    d.categories = {"erpl_web", "tracing"};
+    d.categories = {"erpl_odata", "tracing"};
     info.descriptions.push_back(std::move(d));
 
     auto &db = loader.GetDatabaseInstance();
@@ -1003,7 +1003,7 @@ static void RegisterTracingPragmas(ExtensionLoader &loader)
 {
     RegisterDocumentedPragma(loader,
         PragmaFunction::PragmaCall("erpl_trace_enable", EnableTracingPragmaFunction, {LogicalType::BOOLEAN}),
-        "Turns request tracing on or off for the erpl_web extension. Traces record the HTTP "
+        "Turns request tracing on or off for the erpl_odata extension. Traces record the HTTP "
         "exchanges the extension makes, which is what you need to see when a remote service "
         "answers differently than expected.",
         {"PRAGMA erpl_trace_enable(true);"}, {"enabled"});
@@ -1026,7 +1026,7 @@ static void RegisterTracingPragmas(ExtensionLoader &loader)
 
 static void LoadInternal(ExtensionLoader &loader) {
     // Pin this DSO so DuckDB's dlclose between connection cycles cannot unmap it.
-    // erpl_web registers extension options with Value("INFO") etc. whose
+    // erpl_odata registers extension options with Value("INFO") etc. whose
     // StringValueInfo vtable pointers live in this .so's code pages.  DuckDB
     // caches these Values in a thread-local CachedGlobalSettings; if the library
     // were unloaded between connections, destroying that stale cache on the next
@@ -1065,9 +1065,9 @@ static void LoadInternal(ExtensionLoader &loader) {
 
     // Initialize telemetry with API key before capturing extension load
     PostHogTelemetry::Instance().SetAPIKey("phc_t3wwRLtpyEmLHYaZCSszG0MqVr74J6wnCrj9D41zk2t");
-    PostHogTelemetry::Instance().SetProduct("erpl_web", "2026.06.17", "oss");
+    PostHogTelemetry::Instance().SetProduct("erpl_odata", "2026.06.17", "oss");
     PostHogTelemetry::Instance().AssociateGroup("deployment", PostHogTelemetry::GetDistinctId());
-    PostHogTelemetry::Instance().CaptureExtensionLoad("erpl_web", "2026.06.17");
+    PostHogTelemetry::Instance().CaptureExtensionLoad("erpl_odata", "2026.06.17");
 
     RegisterConfiguration(instance);
     RegisterWebFunctions(loader);
@@ -1089,18 +1089,18 @@ static void LoadInternal(ExtensionLoader &loader) {
     datazoo::RegisterBannerOption(loader);
     // Last, so a load that fails earlier never advertises itself. Silent unless
     // stderr is a terminal and the ~/.duckdb stamp is over a day old.
-    datazoo::ShowBanner(ERPL_WEB_BANNER);
+    datazoo::ShowBanner(ERPL_ODATA_BANNER);
 }
     
-void ErplWebExtension::Load(ExtensionLoader &loader) {
+void ErplOdataExtension::Load(ExtensionLoader &loader) {
     LoadInternal(loader);
 }
 
-std::string ErplWebExtension::Name() {
-    return "erpl_web";
+std::string ErplOdataExtension::Name() {
+    return "erpl_odata";
 }
 
-std::string ErplWebExtension::Version() {
+std::string ErplOdataExtension::Version() {
     return "be623fc";
 }
 
@@ -1108,8 +1108,8 @@ std::string ErplWebExtension::Version() {
 
 extern "C" {
 
-DUCKDB_CPP_EXTENSION_ENTRY(erpl_web, loader) {
-    duckdb::ErplWebExtension::Load(loader);
+DUCKDB_CPP_EXTENSION_ENTRY(erpl_odata, loader) {
+    duckdb::ErplOdataExtension::Load(loader);
 }
 
 }

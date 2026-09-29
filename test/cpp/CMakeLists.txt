@@ -19,7 +19,7 @@ include_directories(./include
 # using the generated loader; including our file would cause duplicate symbol errors.
 set(TEST_SOURCES "")
 if(EXISTS "${CMAKE_SOURCE_DIR}/src/include/duckdb/main/extension_callback_manager.hpp")
-    list(APPEND TEST_SOURCES erpl_web_extension_loader.cpp)
+    list(APPEND TEST_SOURCES erpl_odata_extension_loader.cpp)
 endif()
 
 # Test sources are globbed rather than listed by hand. A hand-maintained list silently
@@ -39,10 +39,10 @@ endif()
 
 list(APPEND TEST_SOURCES ${ERPL_WEB_TEST_FILES})
 
-add_executable(erpl_web_tests ${TEST_SOURCES})
+add_executable(erpl_odata_tests ${TEST_SOURCES})
 if(EXISTS "${CMAKE_SOURCE_DIR}/src/include/duckdb/main/extension_callback_manager.hpp")
     # DuckDB v1.5+: link extension libraries explicitly (custom loader calls their Load fns)
-    target_link_libraries(erpl_web_tests
+    target_link_libraries(erpl_odata_tests
                           ${EXTENSION_NAME}
                           test_helpers
                           core_functions_extension
@@ -52,7 +52,7 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/src/include/duckdb/main/extension_callback_manage
                           tinyxml2::tinyxml2)
 else()
     # DuckDB v1.4.x: generated loader handles extensions; no explicit extension libs needed
-    target_link_libraries(erpl_web_tests
+    target_link_libraries(erpl_odata_tests
                           ${EXTENSION_NAME}
                           test_helpers
                           OpenSSL::SSL OpenSSL::Crypto
@@ -62,8 +62,8 @@ endif()
 # Register with CTest and inject sanitizer env overrides
 include(CTest)
 if (BUILD_TESTING)
-    add_test(NAME erpl_web_tests COMMAND erpl_web_tests)
-    set_property(TEST erpl_web_tests PROPERTY ENVIRONMENT
+    add_test(NAME erpl_odata_tests COMMAND erpl_odata_tests)
+    set_property(TEST erpl_odata_tests PROPERTY ENVIRONMENT
         "ASAN_OPTIONS=detect_odr_violation=0:detect_leaks=0:halt_on_error=0:abort_on_error=0;UBSAN_OPTIONS=halt_on_error=0:print_stacktrace=0;ERPL_DISABLE_TELEMETRY=1")
 endif()
 
@@ -73,10 +73,10 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 if (WIN32)
-    target_link_libraries(erpl_web_tests iphlpapi)
+    target_link_libraries(erpl_odata_tests iphlpapi)
 endif()
 
 if(MINGW)
     find_package(ZLIB)
-    target_link_libraries(erpl_web_tests ZLIB::ZLIB -lcrypt32)
+    target_link_libraries(erpl_odata_tests ZLIB::ZLIB -lcrypt32)
 endif()

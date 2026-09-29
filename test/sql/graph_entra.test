@@ -2,7 +2,7 @@
 # description: Test Microsoft Graph Entra ID Directory functions
 # group: [erpl_web]
 
-require erpl_web
+require erpl_odata
 
 # Test that graph_users function exists
 statement ok

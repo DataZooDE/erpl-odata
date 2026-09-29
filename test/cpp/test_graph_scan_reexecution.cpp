@@ -80,11 +80,11 @@ private:
 //
 // init_global is necessary, not sufficient: a function could declare one and still read a
 // cursor out of bind data. It is asserted because its absence is decisive.
-TEST_CASE("every registered erpl_web table function declares per-execution state",
+TEST_CASE("every registered erpl_odata table function declares per-execution state",
           "[graph][reexec]") {
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_web")->HasError());
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
 
     // One-shot writers: the write happens in the scan, so latching on the bind data is
     // what stops a second EXECUTE from repeating it against the user's data. Deliberate,
@@ -150,7 +150,7 @@ TEST_CASE("every registered erpl_web table function declares per-execution state
     for (const auto &name : missing) {
         report += name + " ";
     }
-    INFO("scanned " << seen.size() << " erpl_web table functions");
+    INFO("scanned " << seen.size() << " erpl_odata table functions");
     INFO("table functions with no init_global: " << report);
     REQUIRE(missing.empty());
 }
