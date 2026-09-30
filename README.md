@@ -4,7 +4,7 @@
 [![DuckDB](https://img.shields.io/badge/DuckDB-1.5.4+-green.svg)](https://duckdb.org)
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
 
-> **Formerly `erpl_web`.** This extension was renamed to `erpl_odata`; all functions, secrets and settings are unchanged. Loading the old `erpl_web` extension now prints a pointer to this name. Update your scripts to `INSTALL erpl_odata FROM community; LOAD erpl_odata;`.
+> **Formerly `erpl_web`.** This extension was renamed to `erpl_odata`; all functions, secrets and settings are unchanged. On the community repository the old `erpl_web` name is an alias that installs and loads `erpl_odata`, so existing scripts keep working; from `http://get.erpl.io`, `LOAD erpl_web` fails with a message pointing here. Update your scripts to `INSTALL erpl_odata FROM community; LOAD erpl_odata;`.
 
 # ERPL-OData — DuckDB HTTP + OData + Delta Sharing + SAP + Microsoft 365 Extension
 
