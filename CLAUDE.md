@@ -603,7 +603,7 @@ This extension uses **extension-ci-tools** reusable workflows for automated mult
 
 **Primary workflow:** `.github/workflows/MainDistributionPipeline.yml`
 - Calls `duckdb/extension-ci-tools/.github/workflows/_extension_distribution.yml@main`
-- Builds for DuckDB v1.4.5 and v1.5.4 (configured via `duckdb_version` parameter)
+- Builds for DuckDB v1.4.5 and v1.5.6 (configured via `duckdb_version` parameter)
 - Generates platform-specific binaries as GitHub Actions artifacts
 - Deploys to S3 for distribution
 
@@ -626,7 +626,7 @@ The build matrix is defined in `extension-ci-tools/config/distribution_matrix.js
 - `windows_amd64` - Excluded **on the v1.4.5 legs only**. That leg's pinned vcpkg commit
   acquires `msys2-runtime 3.5.4-2` to build openssl, and MSYS2 has dropped that build from
   every mirror (all six 404), so the leg fails before compiling anything and re-running
-  cannot help. v1.5.5 still builds and ships `windows_amd64`. Restore it by bumping the
+  cannot help. v1.5.6 still builds and ships `windows_amd64`. Restore it by bumping the
   v1.4.5 `vcpkg_commit`. See GitHub #174.
 - `wasm_mvp`, `wasm_eh`, `wasm_threads` - WebAssembly variants excluded
 - `linux_arm64`, `linux_amd64_musl` - **NOT excluded.** They are built on every leg. The
@@ -708,7 +708,7 @@ Checkout repo → Setup Docker → Build in container → Test → Upload artifa
 ```
 - Uses ccache for compilation speed
 - VCPKG dependencies cached in S3
-- Produces `erpl_odata-v1.5.4-extension-linux_amd64.duckdb_extension`
+- Produces `erpl_odata-v1.5.6-extension-linux_amd64.duckdb_extension`
 
 #### **3. macOS Build** (Conditional on Linux success)
 ```
@@ -716,7 +716,7 @@ Setup Homebrew → Install ninja/ccache → Configure VCPKG → Build → Test �
 ```
 - Builds both x86_64 and ARM64 variants
 - Uses native runners (no emulation)
-- Produces `erpl_odata-v1.5.4-extension-osx_{amd64,arm64}.duckdb_extension`
+- Produces `erpl_odata-v1.5.6-extension-osx_{amd64,arm64}.duckdb_extension`
 
 #### **4. Windows Build** (Conditional on Linux success)
 ```
@@ -724,7 +724,7 @@ Setup MSVC → Configure VCPKG → Build with Ninja/MSBuild → Test → Upload
 ```
 - Static linking to avoid DLL dependencies
 - VS2019 compatibility mode for broader Windows support
-- Produces `erpl_odata-v1.5.4-extension-windows_amd64.duckdb_extension`
+- Produces `erpl_odata-v1.5.6-extension-windows_amd64.duckdb_extension`
 
 #### **5. Deployment** (S3 Upload)
 ```
@@ -1019,7 +1019,7 @@ The extension-ci-tools repository provides centralized CI/CD:
 - **Automatic updates** when DuckDB changes build system
 - **Phased deprecation:** Old versions removed systematically
 
-This project currently targets **DuckDB v1.4.5 and v1.5.4** (check `.github/workflows/` and `extension-ci-tools` branch).
+This project currently targets **DuckDB v1.4.5 and v1.5.6** (check `.github/workflows/` and `extension-ci-tools` branch).
 
 ## Codebase Architecture
 

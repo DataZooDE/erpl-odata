@@ -1,7 +1,7 @@
 <a name="top"></a>
 
 [![License: BSL 1.1](https://img.shields.io/badge/License-BSL%201.1-blue.svg)](LICENSE)
-[![DuckDB](https://img.shields.io/badge/DuckDB-1.5.4+-green.svg)](https://duckdb.org)
+[![DuckDB](https://img.shields.io/badge/DuckDB-1.5.6+-green.svg)](https://duckdb.org)
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
 
 > **Formerly `erpl_web`.** This extension was renamed to `erpl_odata`; all functions, secrets and settings are unchanged. On the community repository the old `erpl_web` name is an alias that installs and loads `erpl_odata`, so existing scripts keep working; from `http://get.erpl.io`, `LOAD erpl_web` fails with a message pointing here. Update your scripts to `INSTALL erpl_odata FROM community; LOAD erpl_odata;`.
