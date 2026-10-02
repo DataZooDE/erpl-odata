@@ -47,31 +47,31 @@ jobs:
         run: make test_oauth2
 
   duckdb-v155-build:
-    name: Build extension binaries (v1.5.5)
+    name: Build extension binaries (v1.5.6)
     uses: duckdb/extension-ci-tools/.github/workflows/_extension_distribution.yml@v1.5-variegata
     with:
-      duckdb_version: v1.5.5
+      duckdb_version: v1.5.6
       extension_name: erpl_odata
       ci_tools_version: v1.5-variegata
       vcpkg_commit: 84bab45d415d22042bd0b9081aea57f362da3f35
       exclude_archs: 'windows_amd64_rtools;windows_amd64_mingw;wasm_mvp;wasm_eh;wasm_threads;'
 
   duckdb-v155-smoke-test:
-    name: Smoke test (v1.5.5)
+    name: Smoke test (v1.5.6)
     needs: duckdb-v155-build
     uses: ./.github/workflows/_extension_smoke_test.yml
     with:
-      duckdb_version: v1.5.5
+      duckdb_version: v1.5.6
       extension_name: erpl_odata
       exclude_archs: 'windows_amd64_rtools;windows_amd64_mingw;wasm_mvp;wasm_eh;wasm_threads;'
 
   duckdb-v155-deploy:
-    name: Deploy extension binaries (v1.5.5)
+    name: Deploy extension binaries (v1.5.6)
     needs: [duckdb-v155-build, duckdb-v155-smoke-test]
     uses: ./.github/workflows/_extension_deploy.yml
     secrets: inherit
     with:
-      duckdb_version: v1.5.5
+      duckdb_version: v1.5.6
       extension_name: erpl_odata
       exclude_archs: 'windows_amd64_rtools;windows_amd64_mingw;wasm_mvp;wasm_eh;wasm_threads;'
       deploy_latest: ${{ startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' }}
@@ -85,7 +85,7 @@ jobs:
   # check after someone re-verified by hand that the redness was infrastructural; that is
   # precisely the state in which a real Windows regression gets waved through.
   #
-  # v1.5.5 still builds and ships windows_amd64, so current Windows users are unaffected;
+  # v1.5.6 still builds and ships windows_amd64, so current Windows users are unaffected;
   # what is given up is an LTS Windows binary. Restore this arch by bumping vcpkg_commit
   # below to one referencing a published msys2-runtime. See GitHub #174.
   duckdb-v145-build:
