@@ -7,6 +7,8 @@
 #include "duckdb/main/database_manager.hpp"
 
 #include <algorithm>
+#include <chrono>
+#include <thread>
 #include <ctime>
 #include <iomanip>
 #include <regex>
@@ -62,6 +64,10 @@ std::tm ToLocalTm(std::time_t value) {
 #endif
     return out;
 }
+
+// How long a session that lost the subscription INSERT race waits for the winner to commit.
+constexpr idx_t RACE_LOOKUP_ATTEMPTS = 40;
+constexpr std::chrono::milliseconds RACE_LOOKUP_INTERVAL{25};
 
 bool IsUsableStateCatalog(duckdb::AttachedDatabase& database) {
     if (database.IsSystem() || database.IsTemporary()) {
@@ -320,18 +326,23 @@ std::string OdpSubscriptionRepository::CreateSubscription(const std::string& ser
     } catch (const std::exception& insert_error) {
         // The SELECT above and this INSERT are separate statements, so a second session reading the
         // same (service_url, entity_set_name, secret_name) for the first time passes the same check and
-        // loses on the UNIQUE constraint. If the triple exists now, that session won: adopt its row
-        // instead of failing the read. Anything else is a real failure (GitHub #251).
-        auto raced = Execute(
-            "SELECT " + std::string(SUBSCRIPTION_COLUMNS) + " FROM " + QualifiedTable(SUBSCRIPTIONS_TABLE) +
-            " WHERE service_url = ? AND entity_set_name = ? AND secret_name = ?",
-            {duckdb::Value(service_url), duckdb::Value(entity_set_name), duckdb::Value(effective_secret)});
-        if (raced->RowCount() == 0) {
-            throw;
+        // loses on the UNIQUE/PRIMARY KEY constraint. The winner's row is not visible until its
+        // transaction commits, so look for it for a short, bounded time; if it shows up that session won
+        // and its row is adopted instead of failing the read. If it never does, the INSERT failed for
+        // some other reason and that is what is reported (GitHub #251).
+        for (idx_t attempt = 0; attempt < RACE_LOOKUP_ATTEMPTS; attempt++) {
+            auto raced = Execute(
+                "SELECT " + std::string(SUBSCRIPTION_COLUMNS) + " FROM " + QualifiedTable(SUBSCRIPTIONS_TABLE) +
+                " WHERE service_url = ? AND entity_set_name = ? AND secret_name = ?",
+                {duckdb::Value(service_url), duckdb::Value(entity_set_name), duckdb::Value(effective_secret)});
+            if (raced->RowCount() > 0) {
+                ERPL_TRACE_INFO("ODP_REPOSITORY", "Lost a race creating the subscription, adopting the winner: " +
+                                                      std::string(insert_error.what()));
+                return RowToSubscription(*raced, 0).subscription_id;
+            }
+            std::this_thread::sleep_for(RACE_LOOKUP_INTERVAL);
         }
-        ERPL_TRACE_INFO("ODP_REPOSITORY", "Lost a race creating the subscription, adopting the winner: " +
-                                              std::string(insert_error.what()));
-        return RowToSubscription(*raced, 0).subscription_id;
+        throw;
     }
 
     ERPL_TRACE_INFO("ODP_REPOSITORY", "Subscription created successfully: " + subscription.subscription_id);
