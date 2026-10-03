@@ -5,6 +5,7 @@
 #include "duckdb/function/function_set.hpp"
 #include "duckdb/function/pragma_function.hpp"
 #include "odp_subscription_repository.hpp"
+#include "scan_row_cursor.hpp"
 
 namespace erpl_web {
 
@@ -13,19 +14,22 @@ namespace erpl_web {
 // ============================================================================
 
 /**
- * @brief Bind data for odp_odata_list_subscriptions table function
+ * @brief Bind data for odp_odata_list_subscriptions: nothing to remember, the list is per execution
  */
 class OdpListSubscriptionsBindData : public duckdb::TableFunctionData {
-public:
-    explicit OdpListSubscriptionsBindData(duckdb::ClientContext& context);
-    
-    void LoadSubscriptions();
-    
-    duckdb::ClientContext& context_;
-    std::vector<OdpSubscription> subscriptions;
-    bool data_loaded;
-    idx_t next_index;
 };
+
+/**
+ * @brief Per-execution state: the subscriptions as they are when the scan starts, plus the cursor
+ *
+ * They live here and not on the bind data because a bound plan is re-executed (GitHub #253, #75).
+ */
+struct OdpListSubscriptionsGlobalState : public ScanRowCursorState {
+    std::vector<OdpSubscription> subscriptions;
+};
+
+duckdb::unique_ptr<duckdb::GlobalTableFunctionState> OdpListSubscriptionsInit(duckdb::ClientContext &context,
+                                                                             duckdb::TableFunctionInitInput &input);
 
 /**
  * @brief Bind function for odp_odata_list_subscriptions table function
@@ -62,20 +66,23 @@ void OdpListSubscriptionsScan(duckdb::ClientContext &context, duckdb::TableFunct
 // ============================================================================
 
 /**
- * @brief Pragma function for removing ODP subscriptions
- * 
- * Removes one or more ODP subscriptions, with options for handling local data.
- * 
+ * @brief Pragma function for forgetting ODP subscriptions locally
+ *
+ * This only touches the local subscription record. It does NOT terminate the subscription in the
+ * SAP system's ODQ; do that in ODQMON (see docs/ODP.md).
+ *
  * Usage:
  * - PRAGMA odp_odata_remove_subscription('subscription_id')
- * - PRAGMA odp_odata_remove_subscription(['id1', 'id2'], keep_local_data=true)
- * 
+ * - PRAGMA odp_odata_remove_subscription(['id1', 'id2'], true)
+ *
  * Parameters:
- * - subscription_id: Single ID (VARCHAR) or list of IDs (LIST)
+ * - subscription_id: Single ID (VARCHAR) or list of IDs (LIST). Every id must exist, otherwise
+ *   InvalidInputException is thrown and nothing is removed. Repeated ids are removed once. The ids
+ *   are checked up front, but the removals themselves are separate writes, not one transaction.
  * - keep_local_data: Optional BOOLEAN (default: false)
- *   - false: Remove both remote subscription and local data
- *   - true: Only terminate remote subscription, keep local data
- * 
+ *   - false: delete the local subscription record
+ *   - true: keep the local record and mark it 'terminated'
+ *
  * @param context DuckDB client context
  * @param parameters Function parameters (subscription_id(s), keep_local_data)
  */
@@ -110,8 +117,8 @@ duckdb::TableFunctionSet CreateOdpListSubscriptionsFunction();
  * Registers the pragma function for removing ODP subscriptions.
  * Supports both single subscription removal and batch operations.
  * 
- * @return PragmaFunction for registration with DuckDB
+ * @return PragmaFunctionSet (one- and two-argument forms) for registration with DuckDB
  */
-duckdb::PragmaFunction CreateOdpRemoveSubscriptionFunction();
+duckdb::PragmaFunctionSet CreateOdpRemoveSubscriptionFunction();
 
 } // namespace erpl_web

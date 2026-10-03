@@ -19,7 +19,7 @@ ERPL-OData is a production-grade DuckDB extension that lets you call HTTP/REST A
 - Delta Sharing: Query Databricks, SAP, and other Delta Sharing protocol-compliant services via Parquet files
 - SAP Datasphere: List spaces/assets, describe assets, and read relational/analytical data
 - SAP Analytics Cloud: Query models, stories, discover dimensions/measures with automatic schema
-- Microsoft 365: Query Entra ID users/groups, SharePoint lists/Excel, Teams, Outlook, Planner via Graph API; attach SharePoint lists as a read-only catalog with `ATTACH ... TYPE sharepoint_lists`
+- Microsoft 365: Query Entra ID users/groups, SharePoint lists/Excel, Teams, Outlook, Planner via Graph API; attach SharePoint lists as a catalog (readable, and writable with `INSERT`/`UPDATE`/`DELETE`) with `ATTACH ... TYPE sharepoint_lists`
 - Microsoft Dynamics 365: Read Business Central ERP and Dataverse/CRM data from SQL
 - OAuth2 + Secrets: Secure flows with refresh, client credentials, and secret providers
 - Tracing: Deep, configurable tracing for debugging and performance tuning
@@ -192,7 +192,7 @@ CREATE SECRET ms (
 -- 2. Query Entra ID users
 SELECT display_name, mail, department FROM graph_users();
 
--- 3. Attach a SharePoint site as a read-only catalog of list tables
+-- 3. Attach a SharePoint site as a catalog of list tables
 ATTACH 'Finance' AS finance_sp (TYPE sharepoint_lists, SECRET 'ms');
 
 -- 4. Query the attached tables directly
@@ -917,7 +917,7 @@ Functions: `graph_sharepoint_create_item(site, list, fields_json, [secret])`, `g
 
 ### SharePoint Attach
 
-Attach SharePoint lists from a site as a read-only DuckDB catalog. Tables are lazy — list data is fetched when a table is queried.
+Attach SharePoint lists from a site as a DuckDB catalog (reads, plus `INSERT`, `UPDATE` and `DELETE` on list items). Tables are lazy — list data is fetched when a table is queried.
 
 Required permissions: `Sites.Read.All`.
 

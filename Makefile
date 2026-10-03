@@ -35,7 +35,7 @@ dev:
 		cmake $(GENERATOR) $(BUILD_FLAGS) $(EXT_DEBUG_FLAGS) $(VCPKG_MANIFEST_FLAGS) \
 			-DCMAKE_BUILD_TYPE=Debug -S $(DUCKDB_SRCDIR) -B build/debug; \
 	fi
-	cmake --build build/debug --config Debug --target shell unittest erpl_odata_tests
+	cmake --build build/debug --config Debug --parallel --target shell unittest erpl_odata_tests
 
 # Relink ./build/debug/test/unittest, the SQLLogicTest runner.
 #
@@ -46,7 +46,7 @@ dev:
 # Every target that invokes the runner depends on this one.
 .PHONY: unittest
 unittest:
-	cmake --build build/debug --config Debug --target unittest
+	cmake --build build/debug --config Debug --parallel --target unittest
 
 release_win: ${EXTENSION_CONFIG_STEP}
 	cmake $(GENERATOR) $(BUILD_FLAGS) $(EXT_RELEASE_FLAGS) $(VCPKG_MANIFEST_FLAGS) -DCMAKE_BUILD_TYPE=Release -S $(DUCKDB_SRCDIR) -B build/release
@@ -165,6 +165,6 @@ test_oauth2:
 # libduckdb.so. The duplicate symbol (LOOKUP_TABLE in nested_to_varchar_cast.cpp) is
 # benign—both copies are identical—but ASAN fires anyway due to debug linking strategy.
 test_cpp: ${EXTENSION_CONFIG_STEP}
-	cmake --build build/debug --config Debug --target erpl_odata_tests
+	cmake --build build/debug --config Debug --parallel --target erpl_odata_tests
 	ASAN_OPTIONS=detect_odr_violation=0 ./build/debug/extension/erpl_odata/test/cpp/erpl_odata_tests
 
