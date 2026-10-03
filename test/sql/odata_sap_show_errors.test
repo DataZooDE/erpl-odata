@@ -1,0 +1,21 @@
+# name: test/sql/odata_sap_show_errors.test
+# description: Ordinary catalog failures in odata_sap_show / odp_odata_show are user errors, not INTERNAL (GitHub #261)
+# group: [erpl_odata_sap_show]
+
+require erpl_odata
+
+# The runner skips any error message containing 'HTTP' by default, which would also hide a
+# wrong error class here because the connection failure text contains 'HTTP GET'.
+set ignore_error_messages
+
+# Port 1 refuses connections, so no network or SAP system is needed. The failure is an ordinary
+# IO error; DuckDB reserves "INTERNAL Error" for bugs in the extension.
+statement error
+SELECT * FROM odata_sap_show('http://127.0.0.1:1/');
+----
+IO Error: SAP OData service discovery failed
+
+statement error
+SELECT * FROM odp_odata_show('http://127.0.0.1:1/');
+----
+IO Error: ODP OData service discovery failed
