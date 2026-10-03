@@ -127,7 +127,7 @@ static duckdb::unique_ptr<duckdb::FunctionData> SapODataShowBind(duckdb::ClientC
     auto base_url = input.inputs[0].GetValue<std::string>();
 
     // Get HTTP client and auth params from DuckDB secrets
-    auto auth_params = HttpAuthParams::FromDuckDbSecrets(context, base_url);
+    auto auth_params = ResolveHttpAuthFromSecrets(context, base_url);
     ERPL_TRACE_DEBUG("SAP_ODATA_SHOW", "Auth params type: " + std::to_string(static_cast<int>(auth_params->AuthType())));
     ERPL_TRACE_DEBUG("SAP_ODATA_SHOW", "Auth params: " + auth_params->ToString());
     
@@ -230,7 +230,7 @@ static duckdb::unique_ptr<duckdb::FunctionData> OdpODataShowBind(duckdb::ClientC
     auto base_url = input.inputs[0].GetValue<std::string>();
 
     // Get HTTP client and auth params from DuckDB secrets
-    auto auth_params = HttpAuthParams::FromDuckDbSecrets(context, base_url);
+    auto auth_params = ResolveHttpAuthFromSecrets(context, base_url);
     ERPL_TRACE_DEBUG("ODP_ODATA_SHOW", "Auth params type: " + std::to_string(static_cast<int>(auth_params->AuthType())));
     ERPL_TRACE_DEBUG("ODP_ODATA_SHOW", "Auth params: " + auth_params->ToString());
     

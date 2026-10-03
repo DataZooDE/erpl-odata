@@ -143,7 +143,12 @@ unsigned int OdpODataReadBindData::FetchNextResult(duckdb::DataChunk &output) {
                 ERPL_TRACE_INFO("ODP_BIND_DATA", "Performing delta fetch");
                 success = HandleDeltaFetch();
             } else {
-                throw duckdb::InternalException("Invalid subscription state for data fetch");
+                // A state this reader cannot fetch from, not a broken invariant: InternalException would invalidate
+                // the whole database instance (GitHub #251).
+                throw duckdb::IOException("ODP subscription '%s' is in phase %s and cannot be read; run the "
+                                          "query again to start a new extraction",
+                                          state_manager_->GetSubscriptionId(),
+                                          OdpSubscriptionStateManager::PhaseToString(state_manager_->GetCurrentPhase()));
             }
             
             if (!success) {
@@ -369,7 +374,7 @@ void OdpODataReadBindData::SetupAuthentication() {
             return;
         }
 
-        auth_params_ = HttpAuthParams::FromDuckDbSecrets(context_, entity_set_url_);
+        auth_params_ = ResolveHttpAuthFromSecrets(context_, entity_set_url_);
         if (!auth_params_) {
             ERPL_TRACE_WARN("ODP_BIND_DATA", "No authentication parameters found for URL: " + entity_set_url_);
         } else {

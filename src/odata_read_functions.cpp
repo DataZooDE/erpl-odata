@@ -1,3 +1,4 @@
+#include "duckdb_argument_helper.hpp"
 #include <optional>
 #include <limits>
 #include "duckdb/function/table_function.hpp"
@@ -34,7 +35,7 @@ AuthParamsFromInput(duckdb::ClientContext &context,
                     TableFunctionBindInput &input) {
     auto args = input.inputs;
     auto url = args[0].ToString();
-    return HttpAuthParams::FromDuckDbSecrets(context, url);
+    return ResolveHttpAuthFromSecrets(context, url);
 }
 
 // ============================================================================

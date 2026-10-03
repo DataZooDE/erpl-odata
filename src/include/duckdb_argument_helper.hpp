@@ -1,6 +1,7 @@
 #pragma once
 
 #include "duckdb/main/secret/secret.hpp"
+#include "datazoo/oauth2/http_client.hpp"
 
 #include <map>
 #include <string>
@@ -80,5 +81,16 @@ std::map<std::string, std::string> ExtractInputParameters(const duckdb::Value &p
 // missing key in a secret the user wrote is ordinary bad input. See GitHub #243.
 std::string RequireSecretValue(const duckdb::KeyValueSecret &secret, const std::string &key,
                                const std::string &secret_name);
+
+// Resolves the http_basic / http_bearer secret whose scope matches `url`, like
+// HttpAuthParams::FromDuckDbSecrets, but reports a secret missing a required key as ordinary bad
+// input.
+//
+// The submodule's FromDuckDbSecrets reads username, password and token with
+// TryGetValue(key, error_on_missing = true), which throws InternalException and invalidates the
+// whole database instance. CREATE SECRET (TYPE http_basic, username 'u') is accepted, so a plain
+// ATTACH against a URL that secret scopes to took the instance down. Every caller in this
+// extension goes through this function instead. See GitHub #251 (the URL-matched sibling of #243).
+std::shared_ptr<HttpAuthParams> ResolveHttpAuthFromSecrets(duckdb::ClientContext &context, const std::string &url);
 
 } // namespace erpl_web

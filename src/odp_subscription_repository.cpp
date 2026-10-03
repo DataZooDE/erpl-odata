@@ -67,6 +67,11 @@ bool IsUsableStateCatalog(duckdb::AttachedDatabase& database) {
     if (database.IsSystem() || database.IsTemporary()) {
         return false;
     }
+    // A read-only catalog cannot hold ODP state: CREATE SCHEMA fails there, and every later query in the
+    // session used to fail with "database has been invalidated" (GitHub #251).
+    if (database.IsReadOnly()) {
+        return false;
+    }
     auto& catalog = database.GetCatalog();
     return catalog.IsDuckCatalog() && !catalog.InMemory();
 }
@@ -135,6 +140,7 @@ void OdpSubscriptionRepository::ResolveStateCatalog() {
     // transaction is used when it exists, and one is started only for standalone callers
     // such as unit tests.
     std::string default_name;
+    duckdb::vector<std::string> read_only_catalogs;
     const auto resolve = [&]() {
     auto& database_manager = duckdb::DatabaseManager::Get(context);
 
@@ -158,6 +164,15 @@ void OdpSubscriptionRepository::ResolveStateCatalog() {
             state_catalog = candidates.front();
         }
     }
+
+    // Remembered only to explain a failure: a persistent catalog that was skipped because it is read-only.
+    for (auto& database : database_manager.GetDatabases(context)) {
+        if (database && database->IsReadOnly() && !database->IsSystem() && !database->IsTemporary() &&
+            database->GetCatalog().IsDuckCatalog() && !database->GetCatalog().InMemory()) {
+            read_only_catalogs.push_back(database->GetName());
+        }
+    }
+    std::sort(read_only_catalogs.begin(), read_only_catalogs.end());
     };
 
     if (context.transaction.HasActiveTransaction()) {
@@ -173,7 +188,11 @@ void OdpSubscriptionRepository::ResolveStateCatalog() {
             "catalog). Delta tokens stored there are discarded when the session ends, so every "
             "read would silently become a full extraction. Start DuckDB with a database file "
             "(for example `duckdb odp_state.db`), or ATTACH one before reading ODP sources "
-            "(for example ATTACH 'odp_state.db' AS odp_state).");
+            "(for example ATTACH 'odp_state.db' AS odp_state)." +
+            (read_only_catalogs.empty()
+                 ? std::string()
+                 : " Read-only catalogs cannot hold state and were ignored: " +
+                       duckdb::StringUtil::Join(read_only_catalogs, ", ") + "."));
     }
 
     qualified_schema = QuoteIdentifier(state_catalog) + "." + QuoteIdentifier(SCHEMA_NAME);
@@ -285,18 +304,35 @@ std::string OdpSubscriptionRepository::CreateSubscription(const std::string& ser
     }
 
     OdpSubscription subscription(service_url, entity_set_name, secret_name);
-    Execute("INSERT INTO " + QualifiedTable(SUBSCRIPTIONS_TABLE) + " (" + SUBSCRIPTION_COLUMNS + ") "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            {duckdb::Value(subscription.subscription_id),
-             duckdb::Value(subscription.service_url),
-             duckdb::Value(subscription.entity_set_name),
-             duckdb::Value(subscription.secret_name),
-             duckdb::Value(subscription.delta_token),
-             TimePointToValue(subscription.created_at),
-             TimePointToValue(subscription.last_updated),
-             duckdb::Value(subscription.subscription_status),
-             duckdb::Value::BOOLEAN(subscription.preference_applied),
-             duckdb::Value::INTEGER(SCHEMA_VERSION)});
+    try {
+        Execute("INSERT INTO " + QualifiedTable(SUBSCRIPTIONS_TABLE) + " (" + SUBSCRIPTION_COLUMNS + ") "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                {duckdb::Value(subscription.subscription_id),
+                 duckdb::Value(subscription.service_url),
+                 duckdb::Value(subscription.entity_set_name),
+                 duckdb::Value(subscription.secret_name),
+                 duckdb::Value(subscription.delta_token),
+                 TimePointToValue(subscription.created_at),
+                 TimePointToValue(subscription.last_updated),
+                 duckdb::Value(subscription.subscription_status),
+                 duckdb::Value::BOOLEAN(subscription.preference_applied),
+                 duckdb::Value::INTEGER(SCHEMA_VERSION)});
+    } catch (const std::exception& insert_error) {
+        // The SELECT above and this INSERT are separate statements, so a second session reading the
+        // same (service_url, entity_set_name, secret_name) for the first time passes the same check and
+        // loses on the UNIQUE constraint. If the triple exists now, that session won: adopt its row
+        // instead of failing the read. Anything else is a real failure (GitHub #251).
+        auto raced = Execute(
+            "SELECT " + std::string(SUBSCRIPTION_COLUMNS) + " FROM " + QualifiedTable(SUBSCRIPTIONS_TABLE) +
+            " WHERE service_url = ? AND entity_set_name = ? AND secret_name = ?",
+            {duckdb::Value(service_url), duckdb::Value(entity_set_name), duckdb::Value(effective_secret)});
+        if (raced->RowCount() == 0) {
+            throw;
+        }
+        ERPL_TRACE_INFO("ODP_REPOSITORY", "Lost a race creating the subscription, adopting the winner: " +
+                                              std::string(insert_error.what()));
+        return RowToSubscription(*raced, 0).subscription_id;
+    }
 
     ERPL_TRACE_INFO("ODP_REPOSITORY", "Subscription created successfully: " + subscription.subscription_id);
     return subscription.subscription_id;
@@ -784,23 +820,26 @@ duckdb::unique_ptr<duckdb::MaterializedQueryResult> OdpSubscriptionRepository::E
     // the latter resolves through the client's transaction context, which is not
     // active when the repository is driven from bind or from a scan callback.
     duckdb::Connection connection(*context.db);
+    // IOException, not InternalException: these statements fail for reasons outside the extension's
+    // control (a read-only or full state catalog, a constraint hit by a concurrent session), and
+    // InternalException invalidates the whole database instance (GitHub #251).
     auto prepared = connection.Prepare(sql);
     if (!prepared || prepared->HasError()) {
-        throw duckdb::InternalException("Failed to prepare ODP state statement: " +
+        throw duckdb::IOException("Failed to prepare ODP state statement: " +
                                         (prepared ? prepared->GetError() : std::string("no statement returned")));
     }
 
     auto result = prepared->Execute(params, false);
     if (!result) {
-        throw duckdb::InternalException("Failed to execute ODP state statement: no result returned");
+        throw duckdb::IOException("Failed to execute ODP state statement: no result returned");
     }
     if (result->HasError()) {
-        throw duckdb::InternalException("Failed to execute ODP state statement: " + result->GetError());
+        throw duckdb::IOException("Failed to execute ODP state statement: " + result->GetError());
     }
 
     auto* materialized = dynamic_cast<duckdb::MaterializedQueryResult*>(result.get());
     if (!materialized) {
-        throw duckdb::InternalException("Failed to execute ODP state statement: non-materialized result returned");
+        throw duckdb::IOException("Failed to execute ODP state statement: non-materialized result returned");
     }
     result.release();
     return duckdb::unique_ptr<duckdb::MaterializedQueryResult>(materialized);

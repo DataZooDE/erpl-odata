@@ -275,7 +275,7 @@ static std::shared_ptr<HttpAuthParams> AuthParamsFromInput(duckdb::ClientContext
     
     // Fall back to registered secrets
     ERPL_TRACE_DEBUG("HTTP_AUTH", "No auth parameter provided, using registered secrets");
-    return HttpAuthParams::FromDuckDbSecrets(context, url);
+    return ResolveHttpAuthFromSecrets(context, url);
 }
 
 
