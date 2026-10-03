@@ -46,6 +46,7 @@ jobs:
   # test would make excluding `windows_amd64_rtools` also drop `windows_amd64`.
   select-archs:
     name: Select architectures
+    timeout-minutes: 15
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.filter.outputs.matrix }}
@@ -82,6 +83,7 @@ jobs:
       fail-fast: false
       matrix:
         include: ${{ fromJSON(needs.select-archs.outputs.matrix) }}
+    timeout-minutes: 15
     runs-on: ${{ matrix.runner }}
 
     steps:

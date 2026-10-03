@@ -5,6 +5,8 @@
 name: Main Extension Distribution Pipeline
 on:
   push:
+    branches: [main]
+    tags: ['**']
     paths-ignore:
       - '**/README.md'
   pull_request:
@@ -32,6 +34,7 @@ jobs:
   # check should not wait ~25 minutes behind a Windows build to be reported.
   oauth2-unit-tests:
     name: datazoo-oauth2 unit tests
+    timeout-minutes: 15
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
