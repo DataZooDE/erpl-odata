@@ -513,8 +513,7 @@ void SharePointSchemaEntry::LoadTables() {
 
 		yyjson_doc *lists_doc = yyjson_read(lists_json.c_str(), lists_json.length(), 0);
 		if (!lists_doc) {
-			ERPL_TRACE_WARN("SHAREPOINT_CATALOG", "Failed to parse lists JSON for site: " + site_id);
-			return;
+			throw duckdb::IOException("Microsoft Graph returned an unparseable list collection for site '" + site_id + "'");
 		}
 
 		yyjson_val *lists_root = yyjson_doc_get_root(lists_doc);
@@ -522,7 +521,7 @@ void SharePointSchemaEntry::LoadTables() {
 
 		if (!lists_arr || !yyjson_is_arr(lists_arr)) {
 			yyjson_doc_free(lists_doc);
-			return;
+			throw duckdb::IOException("Microsoft Graph list collection for site '" + site_id + "' has no 'value' array");
 		}
 
 		table_entries.clear();
@@ -613,8 +612,10 @@ void SharePointSchemaEntry::LoadTables() {
 		yyjson_doc_free(lists_doc);
 
 	} catch (const std::exception &e) {
+		// Propagate and leave tables_loaded unset: an expired token or a 403 must not read as a site
+		// with no lists, nor be cached as one (GitHub #253).
 		ERPL_TRACE_ERROR("SHAREPOINT_CATALOG", "Failed to load tables for site " + site_id + ": " + std::string(e.what()));
-		table_entries.clear();
+		throw;
 	}
 }
 

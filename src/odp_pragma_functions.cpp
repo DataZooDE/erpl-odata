@@ -38,29 +38,24 @@ duckdb::unique_ptr<duckdb::FunctionData> OdpListSubscriptionsBind(duckdb::Client
         "delta_token", "created_at", "last_updated", "subscription_status", "preference_applied"
     };
     
-    // Create bind data that holds the repository
-    auto bind_data = duckdb::make_uniq<OdpListSubscriptionsBindData>(context);
+    // The subscription list is read per execution (see OdpListSubscriptionsInit), not here:
+    // it changes whenever a subscription is created or removed, and a bound plan is re-executed.
+    auto bind_data = duckdb::make_uniq<OdpListSubscriptionsBindData>();
     
     ERPL_TRACE_INFO("ODP_LIST_SUBSCRIPTIONS_BIND", "Bound function with 9 columns");
     return std::move(bind_data);
 }
 
 void OdpListSubscriptionsScan(duckdb::ClientContext &context, duckdb::TableFunctionInput &data, duckdb::DataChunk &output) {
-    auto &bind_data = data.bind_data->CastNoConst<OdpListSubscriptionsBindData>();
-    auto &state = data.global_state->Cast<ScanRowCursorState>();
+    auto &state = data.global_state->Cast<OdpListSubscriptionsGlobalState>();
 
     ERPL_TRACE_DEBUG("ODP_LIST_SUBSCRIPTIONS_SCAN", "Starting subscription list scan");
     
     try {
-        // Load subscriptions if not already loaded
-        if (!bind_data.data_loaded) {
-            bind_data.LoadSubscriptions();
-        }
-        
         // Return subscriptions in batches
         const idx_t target = STANDARD_VECTOR_SIZE;
         idx_t start_idx = state.current_index;
-        idx_t end_idx = std::min(start_idx + target, static_cast<idx_t>(bind_data.subscriptions.size()));
+        idx_t end_idx = std::min(start_idx + target, static_cast<idx_t>(state.subscriptions.size()));
         idx_t count = end_idx - start_idx;
         
         if (count == 0) {
@@ -75,7 +70,7 @@ void OdpListSubscriptionsScan(duckdb::ClientContext &context, duckdb::TableFunct
         // Fill output chunk
         for (idx_t i = 0; i < count; i++) {
             idx_t row_idx = start_idx + i;
-            const auto& subscription = bind_data.subscriptions[row_idx];
+            const auto& subscription = state.subscriptions[row_idx];
             
             output.SetValue(0, i, duckdb::Value(subscription.subscription_id));
             output.SetValue(1, i, duckdb::Value(subscription.service_url));
@@ -142,59 +137,48 @@ void OdpRemoveSubscriptionPragma(duckdb::ClientContext &context, const duckdb::F
     
     try {
         OdpSubscriptionRepository repository(context);
-        
+
+        // Resolve every id before touching any of them: a typo must be reported, and must not leave
+        // a list half-removed.
+        std::vector<OdpSubscription> subscriptions;
         for (const auto& subscription_id : subscription_ids) {
-            ERPL_TRACE_INFO("ODP_REMOVE_SUBSCRIPTION", "Processing subscription: " + subscription_id);
-            
-            // Get subscription details before removal
             auto subscription = repository.GetSubscription(subscription_id);
             if (!subscription.has_value()) {
-                ERPL_TRACE_WARN("ODP_REMOVE_SUBSCRIPTION", "Subscription not found: " + subscription_id);
-                continue;
+                throw duckdb::InvalidInputException("Unknown ODP subscription id '%s'; nothing was removed. "
+                                                    "List ids with odp_odata_list_subscriptions().",
+                                                    subscription_id);
             }
-            
-            if (!keep_local_data) {
-                // Remove both remote and local data
-                bool removed = repository.RemoveSubscription(subscription_id);
-                if (removed) {
-                    ERPL_TRACE_INFO("ODP_REMOVE_SUBSCRIPTION", "Successfully removed subscription: " + subscription_id);
-                    
-                    // Log audit entry for removal
-                    OdpAuditEntry audit_entry;
-                    audit_entry.subscription_id = subscription_id;
-                    audit_entry.operation_type = "subscription_removed";
-                    audit_entry.request_timestamp = std::chrono::system_clock::now();
-                    audit_entry.http_status_code = 200;
-                    audit_entry.delta_token_before = subscription->delta_token;
-                    
-                    repository.CreateAuditEntry(audit_entry);
-                } else {
-                    ERPL_TRACE_ERROR("ODP_REMOVE_SUBSCRIPTION", "Failed to remove subscription: " + subscription_id);
-                }
-            } else {
-                // Only terminate remote subscription, keep local data
-                // For now, just update status to 'terminated'
-                bool updated = repository.UpdateSubscriptionStatus(subscription_id, "terminated");
-                if (updated) {
-                    ERPL_TRACE_INFO("ODP_REMOVE_SUBSCRIPTION", "Terminated remote subscription: " + subscription_id);
-                    
-                    // Log audit entry for termination
-                    OdpAuditEntry audit_entry;
-                    audit_entry.subscription_id = subscription_id;
-                    audit_entry.operation_type = "subscription_terminated";
-                    audit_entry.request_timestamp = std::chrono::system_clock::now();
-                    audit_entry.http_status_code = 200;
-                    audit_entry.delta_token_before = subscription->delta_token;
-                    
-                    repository.CreateAuditEntry(audit_entry);
-                } else {
-                    ERPL_TRACE_ERROR("ODP_REMOVE_SUBSCRIPTION", "Failed to terminate subscription: " + subscription_id);
-                }
-            }
+            subscriptions.push_back(std::move(subscription.value()));
         }
-        
+
+        for (const auto& subscription : subscriptions) {
+            const auto& subscription_id = subscription.subscription_id;
+
+            // Only the local record is touched; nothing is sent to SAP, so the audit entry carries
+            // no HTTP status (an earlier version recorded a fabricated 200).
+            OdpAuditEntry audit_entry;
+            audit_entry.subscription_id = subscription_id;
+            audit_entry.request_timestamp = std::chrono::system_clock::now();
+            audit_entry.delta_token_before = subscription.delta_token;
+
+            if (keep_local_data) {
+                if (!repository.UpdateSubscriptionStatus(subscription_id, "terminated")) {
+                    throw duckdb::IOException("Could not mark ODP subscription '%s' as terminated", subscription_id);
+                }
+                audit_entry.operation_type = "subscription_terminated";
+            } else {
+                if (!repository.RemoveSubscription(subscription_id)) {
+                    throw duckdb::IOException("Could not remove ODP subscription '%s'", subscription_id);
+                }
+                audit_entry.operation_type = "subscription_removed";
+            }
+
+            repository.CreateAuditEntry(audit_entry);
+            ERPL_TRACE_INFO("ODP_REMOVE_SUBSCRIPTION", audit_entry.operation_type + ": " + subscription_id);
+        }
+
         ERPL_TRACE_INFO("ODP_REMOVE_SUBSCRIPTION", "Completed processing all subscriptions");
-        
+
     } catch (const std::exception& e) {
         ERPL_TRACE_ERROR("ODP_REMOVE_SUBSCRIPTION", "Error: " + std::string(e.what()));
         throw;
@@ -205,26 +189,22 @@ void OdpRemoveSubscriptionPragma(duckdb::ClientContext &context, const duckdb::F
 // Bind Data Implementation
 // ============================================================================
 
-OdpListSubscriptionsBindData::OdpListSubscriptionsBindData(duckdb::ClientContext& context) 
-    : context_(context), data_loaded(false), next_index(0) {
-    ERPL_TRACE_DEBUG("ODP_LIST_SUBSCRIPTIONS_BIND_DATA", "Created bind data");
-}
+duckdb::unique_ptr<duckdb::GlobalTableFunctionState> OdpListSubscriptionsInit(duckdb::ClientContext &context,
+                                                                             duckdb::TableFunctionInitInput &) {
+    ERPL_TRACE_DEBUG("ODP_LIST_SUBSCRIPTIONS_INIT", "Loading subscriptions from repository");
 
-void OdpListSubscriptionsBindData::LoadSubscriptions() {
-    ERPL_TRACE_DEBUG("ODP_LIST_SUBSCRIPTIONS_BIND_DATA", "Loading subscriptions from repository");
-    
+    auto state = duckdb::make_uniq<OdpListSubscriptionsGlobalState>();
     try {
-        OdpSubscriptionRepository repository(context_);
-        subscriptions = repository.ListAllSubscriptions();
-        data_loaded = true;
-        
-        ERPL_TRACE_INFO("ODP_LIST_SUBSCRIPTIONS_BIND_DATA", duckdb::StringUtil::Format(
-            "Loaded %zu subscriptions", subscriptions.size()));
-            
+        OdpSubscriptionRepository repository(context);
+        state->subscriptions = repository.ListAllSubscriptions();
     } catch (const std::exception& e) {
-        ERPL_TRACE_ERROR("ODP_LIST_SUBSCRIPTIONS_BIND_DATA", "Failed to load subscriptions: " + std::string(e.what()));
+        ERPL_TRACE_ERROR("ODP_LIST_SUBSCRIPTIONS_INIT", "Failed to load subscriptions: " + std::string(e.what()));
         throw;
     }
+
+    ERPL_TRACE_INFO("ODP_LIST_SUBSCRIPTIONS_INIT", duckdb::StringUtil::Format(
+        "Loaded %zu subscriptions", state->subscriptions.size()));
+    return std::move(state);
 }
 
 // ============================================================================
@@ -243,7 +223,7 @@ duckdb::TableFunctionSet CreateOdpListSubscriptionsFunction() {
         OdpListSubscriptionsBind
     );
     
-    list_function.init_global = ScanRowCursorState::Init;
+    list_function.init_global = OdpListSubscriptionsInit;
 
     function_set.AddFunction(list_function);
     
@@ -251,15 +231,20 @@ duckdb::TableFunctionSet CreateOdpListSubscriptionsFunction() {
     return function_set;
 }
 
-duckdb::PragmaFunction CreateOdpRemoveSubscriptionFunction() {
+duckdb::PragmaFunctionSet CreateOdpRemoveSubscriptionFunction() {
     ERPL_TRACE_DEBUG("ODP_PRAGMA_REGISTRATION", "=== REGISTERING ODP_REMOVE_SUBSCRIPTION PRAGMA ===");
-    
-    duckdb::PragmaFunction pragma_function = duckdb::PragmaFunction::PragmaCall(
-        "odp_odata_remove_subscription", OdpRemoveSubscriptionPragma, {duckdb::LogicalType::ANY, duckdb::LogicalType::BOOLEAN}
-    );
-    
+
+    // Both arities: the documented one-argument form used to fail to bind because only
+    // (ANY, BOOLEAN) was registered, which made the flag mandatory.
+    duckdb::PragmaFunctionSet function_set("odp_odata_remove_subscription");
+    function_set.AddFunction(duckdb::PragmaFunction::PragmaCall(
+        "odp_odata_remove_subscription", OdpRemoveSubscriptionPragma, {duckdb::LogicalType::ANY}));
+    function_set.AddFunction(duckdb::PragmaFunction::PragmaCall(
+        "odp_odata_remove_subscription", OdpRemoveSubscriptionPragma,
+        {duckdb::LogicalType::ANY, duckdb::LogicalType::BOOLEAN}));
+
     ERPL_TRACE_INFO("ODP_PRAGMA_REGISTRATION", "ODP_REMOVE_SUBSCRIPTION pragma registered successfully");
-    return pragma_function;
+    return function_set;
 }
 
 } // namespace erpl_web

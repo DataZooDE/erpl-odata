@@ -307,15 +307,14 @@ void ExcelSchemaEntry::LoadTables() {
 
 		yyjson_doc *doc = yyjson_read(tables_json.c_str(), tables_json.length(), 0);
 		if (!doc) {
-			ERPL_TRACE_WARN("EXCEL_CATALOG", "Failed to parse tables JSON for: " + file_path);
-			return;
+			throw duckdb::IOException("Microsoft Graph returned an unparseable table list for workbook '" + file_path + "'");
 		}
 
 		yyjson_val *root = yyjson_doc_get_root(doc);
 		yyjson_val *arr  = yyjson_obj_get(root, "value");
 		if (!arr || !yyjson_is_arr(arr)) {
 			yyjson_doc_free(doc);
-			return;
+			throw duckdb::IOException("Microsoft Graph table list for workbook '" + file_path + "' has no 'value' array");
 		}
 
 		table_entries_.clear();
@@ -360,8 +359,10 @@ void ExcelSchemaEntry::LoadTables() {
 		yyjson_doc_free(doc);
 
 	} catch (const std::exception &e) {
+		// Propagate and leave tables_loaded_ unset: an expired token or a 403 must not read as a
+		// workbook with no tables, nor be cached as one (GitHub #253).
 		ERPL_TRACE_ERROR("EXCEL_CATALOG", "Failed to load tables for " + file_path + ": " + std::string(e.what()));
-		table_entries_.clear();
+		throw;
 	}
 }
 

@@ -21,11 +21,13 @@ SELECT COUNT(*) FROM duckdb_extensions() WHERE extension_name = 'erpl_odata';
 ----
 1
 
-# Verify all required functions are registered
+# Verify all required functions are registered.
+# 28 counts odp_odata_remove_subscription twice: it has a one-argument and a two-argument overload
+# (the documented one-argument form used to fail to bind, GitHub #253).
 query I
 SELECT COUNT(*) FROM duckdb_functions() WHERE function_name LIKE '%datasphere%' OR function_name LIKE '%odata%' OR function_name LIKE '%http%';
 ----
-27
+28
 
 # ============================================================================
 # SECTION 2: Core Extension Settings
