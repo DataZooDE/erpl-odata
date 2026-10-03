@@ -660,7 +660,7 @@ SELECT * FROM sac.Stories WHERE Owner = 'john.doe@company.com';
 
 ### SAC Functions Reference
 
-**Discovery Functions (⚠️ Stub Implementations - Return Empty Results):**
+**Discovery Functions (⚠️ Not implemented yet - they raise a "not implemented yet" error, see #243):**
 - `sac_show_models()`
   - Named parameters: `secret` VARCHAR
   - Returns: id, name, description, type, owner, created_at, last_modified_at
@@ -669,11 +669,11 @@ SELECT * FROM sac.Stories WHERE Owner = 'john.doe@company.com';
   - Named parameters: `secret` VARCHAR
   - Returns: id, name, description, owner, created_at, last_modified_at, status
 
-- `sac_get_model_info(model_id)`
+- `sac_describe_model(model_id)`
   - Named parameters: `secret` VARCHAR
   - Returns: id, name, description, type, dimensions (comma-separated), created_at
 
-- `sac_get_story_info(story_id)`
+- `sac_describe_story(story_id)`
   - Named parameters: `secret` VARCHAR
   - Returns: id, name, description, owner, status, created_at, last_modified_at
 

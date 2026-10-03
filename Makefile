@@ -17,6 +17,8 @@ endif
 # Skips cmake reconfiguration (and the vcpkg compiler-hash check that comes with it)
 # when the build directory is already configured. Ninja detects CMakeLists.txt changes
 # on its own and re-runs cmake automatically when needed.
+# (Keyed on CMakeCache.txt, not build.ninja: the default Makefiles generator never writes build.ninja,
+# which made every plain 'make dev' reconfigure.)
 # Use 'make debug' to force a full reconfigure (e.g. after adding a new dependency).
 # Requires the extension tests to be enabled (the default): it builds unittest and erpl_odata_tests.
 #
@@ -27,7 +29,7 @@ endif
 # the shell is relinked, leaving ./build/debug/duckdb stale and silently running old code.
 .PHONY: dev
 dev:
-	@if [ ! -f build/debug/build.ninja ]; then \
+	@if [ ! -f build/debug/CMakeCache.txt ]; then \
 		echo "Build directory not configured yet — running full cmake configure..."; \
 		mkdir -p build/debug && \
 		cmake $(GENERATOR) $(BUILD_FLAGS) $(EXT_DEBUG_FLAGS) $(VCPKG_MANIFEST_FLAGS) \
@@ -104,8 +106,6 @@ test_debug_ms: unittest
 	./build/debug/test/unittest "test/sql/graph_excel_error_integration.test"
 	./build/debug/test/unittest "test/sql/graph_sharepoint_error_integration.test"
 	./build/debug/test/unittest "test/sql/graph_sharepoint_typed_read_integration.test"
-	./build/debug/test/unittest "test/sql/graph_excel_workbook_attach_integration.test"
-	./build/debug/test/unittest "test/sql/graph_excel_workbook_attach_name_integration.test"
 
 # The Microsoft integration tests that CREATE, UPDATE or DELETE data in the tenant. They are
 # kept out of test_debug_ms so a read-only run never mutates anything; they additionally need
@@ -116,6 +116,8 @@ test_debug_ms_write: unittest
 	./build/debug/test/unittest "test/sql/graph_sharepoint_write_integration.test"
 	./build/debug/test/unittest "test/sql/graph_sharepoint_scalar_write_integration.test"
 	./build/debug/test/unittest "test/sql/graph_sharepoint_attach_rw_integration.test"
+	./build/debug/test/unittest "test/sql/graph_excel_workbook_attach_integration.test"
+	./build/debug/test/unittest "test/sql/graph_excel_workbook_attach_name_integration.test"
 
 # Run Business Central integration tests against a live BC environment.
 # Requires environment variables sourced from an Azure App Registration registered in BC.

@@ -46,7 +46,7 @@ make test_debug
 detection (`Detecting compiler hash for triplet x64-linux...`) even when nothing has changed.
 This adds 30–60 seconds to every build regardless of what was edited.
 
-`make dev` checks whether `build/debug/build.ninja` already exists and only runs cmake
+`make dev` checks whether `build/debug/CMakeCache.txt` already exists and only runs cmake
 configure on the first build or after `make clean`. Ninja's own dependency scanner detects
 `CMakeLists.txt` changes and re-runs cmake configure automatically when needed, so you never
 miss a reconfiguration that matters.
@@ -1060,7 +1060,6 @@ This project currently targets **DuckDB v1.4.5 and v1.5.6** (check `.github/work
 - **odata_url_helpers.hpp** - URL manipulation and OData query building
 
 #### 3. **ODP/SAP Integration** (`odp_*` modules)
-- **odp_client_integration.cpp** - Integration layer with SAP ODP (Operational Data Provisioning)
 - **odp_subscription_repository/state_manager.cpp** - Manages ODP subscriptions and state
 - **odp_odata_read_functions.cpp** - OData reading specifically for ODP sources
 - **odp_http_request_factory.cpp** - Custom HTTP request handling for ODP endpoints
@@ -1073,8 +1072,6 @@ This project currently targets **DuckDB v1.4.5 and v1.5.6** (check `.github/work
 - **datasphere_catalog.cpp/hpp** - Space/asset discovery and metadata
 - **datasphere_read.cpp/hpp** - Data reading for relational and analytical assets
 - **datasphere_secret.cpp/hpp** - Datasphere-specific secret handling
-- **datasphere_types.hpp** - Type definitions for Datasphere responses
-- **datasphere_local_server.hpp** - Local callback server for OAuth2 authorization_code flow
 
 #### 5. **SAP Analytics Cloud** (`sac_*` modules)
 - **sac_client.cpp/hpp** - HTTP client for SAC APIs
