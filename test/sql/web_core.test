@@ -61,11 +61,11 @@ SELECT COUNT(*) FROM duckdb_functions() WHERE function_name LIKE '%http%';
 ----
 10
 
-# Count OData functions
+# Count OData functions (odp_odata_remove_subscription counts twice: two overloads, GitHub #253)
 query I
 SELECT COUNT(*) FROM duckdb_functions() WHERE function_name LIKE '%odata%';
 ----
-8
+9
 
 # Count Datasphere functions
 query I
