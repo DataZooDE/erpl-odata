@@ -78,16 +78,36 @@ void OdpSubscriptionStateManager::TransitionToTerminated() {
 }
 
 void OdpSubscriptionStateManager::TransitionToError(const std::string& error_msg) {
-    ERPL_TRACE_ERROR("ODP_STATE_MANAGER", "Transitioning to ERROR_STATE: " + error_msg);
-    
-    current_phase_ = SubscriptionPhase::ERROR_STATE;
-    UpdateSubscriptionStatus("error");
-    
-    // Create audit entry for error
-    if (current_audit_id_ > 0) {
-        UpdateAuditEntry(current_audit_id_, std::nullopt, 0, 0, "", error_msg);
+    // Best-effort: this runs from catch blocks, so it must never fail louder than the error it is
+    // reporting. A throw here REPLACES the real cause - and as an InternalException it also
+    // invalidated the database instance - when, for instance, another connection removed the
+    // subscription while a scan was running (GitHub #251).
+    if (current_phase_ == SubscriptionPhase::ERROR_STATE) {
+        // The read path reports one failure twice (the handler, then the catch around the fetch).
+        ERPL_TRACE_DEBUG("ODP_STATE_MANAGER", "Already in ERROR_STATE, ignoring: " + error_msg);
+        return;
     }
-    
+    ERPL_TRACE_ERROR("ODP_STATE_MANAGER", "Transitioning to ERROR_STATE: " + error_msg);
+
+    current_phase_ = SubscriptionPhase::ERROR_STATE;
+
+    // Independent attempts: the status update fails when another connection removed the subscription,
+    // and that must not stop the audit row from recording the real cause.
+    try {
+        UpdateSubscriptionStatus("error");
+    } catch (const std::exception& e) {
+        ERPL_TRACE_WARN("ODP_STATE_MANAGER", "Could not persist ERROR_STATE for subscription " +
+                                                 current_subscription_.subscription_id + ": " + e.what());
+    }
+    try {
+        if (current_audit_id_ > 0) {
+            UpdateAuditEntry(current_audit_id_, std::nullopt, 0, 0, "", error_msg);
+        }
+    } catch (const std::exception& e) {
+        ERPL_TRACE_WARN("ODP_STATE_MANAGER", "Could not record the error in audit entry " +
+                                                 std::to_string(current_audit_id_) + ": " + e.what());
+    }
+
     LogCurrentState();
 }
 
@@ -115,7 +135,8 @@ void OdpSubscriptionStateManager::UpdateSubscriptionStatus(const std::string& st
     try {
         bool success = repository_->UpdateSubscriptionStatus(current_subscription_.subscription_id, status);
         if (!success) {
-            throw duckdb::InternalException("Failed to update subscription status in database");
+            throw duckdb::IOException("Failed to update subscription status in database: subscription '%s' no longer exists",
+                                      current_subscription_.subscription_id);
         }
     } catch (const std::exception& e) {
         ERPL_TRACE_ERROR("ODP_STATE_MANAGER", "Error updating subscription status: " + std::string(e.what()));
@@ -274,7 +295,7 @@ void OdpSubscriptionStateManager::CreateNewSubscription() {
         
         auto subscription = repository_->GetSubscription(subscription_id);
         if (!subscription.has_value()) {
-            throw duckdb::InternalException("Failed to retrieve newly created subscription");
+            throw duckdb::IOException("Failed to retrieve newly created ODP subscription '%s'", subscription_id);
         }
         
         current_subscription_ = subscription.value();

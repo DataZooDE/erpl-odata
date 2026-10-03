@@ -1,3 +1,4 @@
+#include "duckdb_argument_helper.hpp"
 #include "duckdb/common/types/string_type.hpp"
 #include "duckdb/function/scalar/string_functions.hpp"
 #include "duckdb/function/scalar/string_common.hpp"
@@ -97,7 +98,7 @@ static std::shared_ptr<HttpAuthParams> AuthParamsFromInput(duckdb::ClientContext
 {
     auto args = input.inputs;
     auto url = args[0].ToString();
-    return HttpAuthParams::FromDuckDbSecrets(context, url);
+    return ResolveHttpAuthFromSecrets(context, url);
 }
 
 static std::vector<std::string> ParseIgnoreParameter(duckdb::Value &ignore)

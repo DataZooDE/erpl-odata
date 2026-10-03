@@ -1,3 +1,4 @@
+#include "duckdb_argument_helper.hpp"
 #include "odata_storage.hpp"
 #include "odata_catalog.hpp"
 
@@ -30,7 +31,7 @@ static duckdb::unique_ptr<duckdb::Catalog> ODataAttach(duckdb::optional_ptr<duck
 		}
 	}
 
-    auto auth_params = HttpAuthParams::FromDuckDbSecrets(context, info.path);
+    auto auth_params = ResolveHttpAuthFromSecrets(context, info.path);
     return duckdb::make_uniq<ODataCatalog>(db, info.path, auth_params, ignore_pattern);
 }
 

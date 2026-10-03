@@ -1,5 +1,7 @@
 #include "duckdb_argument_helper.hpp"
 #include "tracing.hpp"
+#include "duckdb/main/secret/secret_manager.hpp"
+#include "duckdb/catalog/catalog_transaction.hpp"
 
 using namespace duckdb;
 
@@ -423,6 +425,30 @@ std::string RequireSecretValue(const duckdb::KeyValueSecret &secret, const std::
             "statement that defines this secret.", secret_name.c_str(), key.c_str());
     }
     return value->second.ToString();
+}
+
+std::shared_ptr<HttpAuthParams> ResolveHttpAuthFromSecrets(duckdb::ClientContext &context, const std::string &url) {
+    auto auth_params = std::make_shared<HttpAuthParams>();
+
+    auto transaction = duckdb::CatalogTransaction::GetSystemCatalogTransaction(context);
+    auto &secret_manager = duckdb::SecretManager::Get(context);
+
+    auto basic_match = secret_manager.LookupSecret(transaction, url, "http_basic");
+    if (basic_match.HasMatch()) {
+        const auto &secret = dynamic_cast<const duckdb::KeyValueSecret &>(basic_match.GetSecret());
+        const auto secret_name = secret.GetName();
+        auth_params->basic_credentials = std::make_tuple(RequireSecretValue(secret, "username", secret_name),
+                                                         RequireSecretValue(secret, "password", secret_name));
+        return auth_params;
+    }
+
+    auto bearer_match = secret_manager.LookupSecret(transaction, url, "http_bearer");
+    if (bearer_match.HasMatch()) {
+        const auto &secret = dynamic_cast<const duckdb::KeyValueSecret &>(bearer_match.GetSecret());
+        auth_params->bearer_token = RequireSecretValue(secret, "token", secret.GetName());
+    }
+
+    return auth_params;
 }
 
 } // namespace erpl_web

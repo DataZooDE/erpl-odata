@@ -1,3 +1,4 @@
+#include "duckdb_argument_helper.hpp"
 #include "odata_read_functions.hpp"
 #include "datazoo/oauth2/http_client.hpp"
 #include "odata_client.hpp"
@@ -18,7 +19,7 @@ AuthParamsFromDescribeInput(duckdb::ClientContext &context,
                             TableFunctionBindInput &input) {
   auto args = input.inputs;
   auto url = args[0].ToString();
-  return HttpAuthParams::FromDuckDbSecrets(context, url);
+  return ResolveHttpAuthFromSecrets(context, url);
 }
 
 // ============================================================================
