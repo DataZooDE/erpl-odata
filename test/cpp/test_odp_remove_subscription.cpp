@@ -79,3 +79,19 @@ TEST_CASE("keep_local_data marks the subscription terminated instead of deleting
     CHECK(Count(con, "SELECT count(*) FROM odp_odata_list_subscriptions() WHERE subscription_id = '" + id +
                          "' AND subscription_status = 'terminated'") == 1);
 }
+
+TEST_CASE("a repeated subscription id is removed once", "[odp_remove_subscription]") {
+    odp_test::TempDatabase database;
+    duckdb::Connection &con = database.Conn();
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    OdpSubscriptionRepository repository(database.Context());
+    const auto id = CreateSubscription(repository, "Facts");
+
+    auto result = con.Query("PRAGMA odp_odata_remove_subscription(['" + id + "', '" + id + "'])");
+    INFO((result->HasError() ? result->GetError() : std::string()));
+    REQUIRE_FALSE(result->HasError());
+
+    CHECK(Count(con, "SELECT count(*) FROM odp_odata_list_subscriptions()") == 0);
+    CHECK(Count(con, "SELECT count(*) FROM erpl_web.odp_subscription_audit WHERE subscription_id = '" + id +
+                         "' AND operation_type = 'subscription_removed'") == 1);
+}

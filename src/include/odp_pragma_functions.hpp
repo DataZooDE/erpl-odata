@@ -77,7 +77,8 @@ void OdpListSubscriptionsScan(duckdb::ClientContext &context, duckdb::TableFunct
  *
  * Parameters:
  * - subscription_id: Single ID (VARCHAR) or list of IDs (LIST). Every id must exist, otherwise
- *   InvalidInputException is thrown and nothing is removed.
+ *   InvalidInputException is thrown and nothing is removed. Repeated ids are removed once. The ids
+ *   are checked up front, but the removals themselves are separate writes, not one transaction.
  * - keep_local_data: Optional BOOLEAN (default: false)
  *   - false: delete the local subscription record
  *   - true: keep the local record and mark it 'terminated'

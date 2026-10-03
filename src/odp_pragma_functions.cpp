@@ -1,4 +1,5 @@
 #include "odp_pragma_functions.hpp"
+#include <unordered_set>
 #include "odp_subscription_repository.hpp"
 #include "tracing.hpp"
 #include "duckdb_argument_helper.hpp"
@@ -141,7 +142,12 @@ void OdpRemoveSubscriptionPragma(duckdb::ClientContext &context, const duckdb::F
         // Resolve every id before touching any of them: a typo must be reported, and must not leave
         // a list half-removed.
         std::vector<OdpSubscription> subscriptions;
+        std::unordered_set<std::string> seen_ids;
         for (const auto& subscription_id : subscription_ids) {
+            // The same id twice is one removal, not a second one that would find it already gone.
+            if (!seen_ids.insert(subscription_id).second) {
+                continue;
+            }
             auto subscription = repository.GetSubscription(subscription_id);
             if (!subscription.has_value()) {
                 throw duckdb::InvalidInputException("Unknown ODP subscription id '%s'; nothing was removed. "

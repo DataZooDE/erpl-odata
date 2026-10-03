@@ -306,6 +306,8 @@ void ExcelSchemaEntry::LoadTables() {
 		const std::string tables_json = client.ListTablesByPath(file_path, drive_id);
 
 		yyjson_doc *doc = yyjson_read(tables_json.c_str(), tables_json.length(), 0);
+		// Owns the document across the throws below; a failed column request must not leak it.
+		std::unique_ptr<yyjson_doc, void (*)(yyjson_doc *)> doc_guard(doc, yyjson_doc_free);
 		if (!doc) {
 			throw duckdb::IOException("Microsoft Graph returned an unparseable table list for workbook '" + file_path + "'");
 		}
@@ -313,7 +315,6 @@ void ExcelSchemaEntry::LoadTables() {
 		yyjson_val *root = yyjson_doc_get_root(doc);
 		yyjson_val *arr  = yyjson_obj_get(root, "value");
 		if (!arr || !yyjson_is_arr(arr)) {
-			yyjson_doc_free(doc);
 			throw duckdb::IOException("Microsoft Graph table list for workbook '" + file_path + "' has no 'value' array");
 		}
 
@@ -328,13 +329,9 @@ void ExcelSchemaEntry::LoadTables() {
 			const std::string table_name = yyjson_get_str(name_val);
 
 			// Fetch column names for this table
-			std::vector<std::string> col_names;
-			try {
-				col_names = client.GetTableColumnsByPath(file_path, table_name, drive_id);
-			} catch (const std::exception &e) {
-				ERPL_TRACE_WARN("EXCEL_CATALOG", "Failed to fetch columns for table " + table_name + ": " + std::string(e.what()));
-				continue;
-			}
+			// A failed request aborts the whole load. Skipping the table would cache a catalog that is
+			// silently missing it even after the service recovers (GitHub #253).
+			std::vector<std::string> col_names = client.GetTableColumnsByPath(file_path, table_name, drive_id);
 
 			duckdb::CreateTableInfo table_info;
 			table_info.table  = table_name;
@@ -356,7 +353,6 @@ void ExcelSchemaEntry::LoadTables() {
 			table_entries_[table_name] = std::move(entry);
 		}
 
-		yyjson_doc_free(doc);
 
 	} catch (const std::exception &e) {
 		// Propagate and leave tables_loaded_ unset: an expired token or a 403 must not read as a

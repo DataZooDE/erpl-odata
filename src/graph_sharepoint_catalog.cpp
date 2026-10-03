@@ -512,6 +512,8 @@ void SharePointSchemaEntry::LoadTables() {
 		const std::string lists_json = sp_client.ListLists(site_id);
 
 		yyjson_doc *lists_doc = yyjson_read(lists_json.c_str(), lists_json.length(), 0);
+		// Owns the documents across the throws below; a failed column request must not leak them.
+		std::unique_ptr<yyjson_doc, void (*)(yyjson_doc *)> lists_guard(lists_doc, yyjson_doc_free);
 		if (!lists_doc) {
 			throw duckdb::IOException("Microsoft Graph returned an unparseable list collection for site '" + site_id + "'");
 		}
@@ -520,7 +522,6 @@ void SharePointSchemaEntry::LoadTables() {
 		yyjson_val *lists_arr = yyjson_obj_get(lists_root, "value");
 
 		if (!lists_arr || !yyjson_is_arr(lists_arr)) {
-			yyjson_doc_free(lists_doc);
 			throw duckdb::IOException("Microsoft Graph list collection for site '" + site_id + "' has no 'value' array");
 		}
 
@@ -547,16 +548,15 @@ void SharePointSchemaEntry::LoadTables() {
 			}
 
 			// Fetch columns for this list to build the schema
-			std::string cols_json;
-			try {
-				cols_json = sp_client.GetListColumns(site_id, list_id);
-			} catch (const std::exception &e) {
-				ERPL_TRACE_WARN("SHAREPOINT_CATALOG", "Failed to fetch columns for list " + list_id + ": " + std::string(e.what()));
-				continue;
-			}
+			// A failed or unparseable column response aborts the whole load. Skipping the list would
+			// cache a catalog silently missing it even after the service recovers (GitHub #253).
+			const std::string cols_json = sp_client.GetListColumns(site_id, list_id);
 
 			yyjson_doc *cols_doc = yyjson_read(cols_json.c_str(), cols_json.length(), 0);
-			if (!cols_doc) { continue; }
+			if (!cols_doc) {
+				throw duckdb::IOException("Microsoft Graph returned unparseable columns for list '" + list_id + "'");
+			}
+			std::unique_ptr<yyjson_doc, void (*)(yyjson_doc *)> cols_guard(cols_doc, yyjson_doc_free);
 
 			yyjson_val *cols_root = yyjson_doc_get_root(cols_doc);
 			yyjson_val *cols_arr = yyjson_obj_get(cols_root, "value");
@@ -600,7 +600,6 @@ void SharePointSchemaEntry::LoadTables() {
 				}
 			}
 
-			yyjson_doc_free(cols_doc);
 
 			auto table_entry = duckdb::make_uniq<SharePointTableEntry>(
 			    catalog, *this, table_info,
@@ -609,7 +608,6 @@ void SharePointSchemaEntry::LoadTables() {
 			table_entries[table_key] = std::move(table_entry);
 		}
 
-		yyjson_doc_free(lists_doc);
 
 	} catch (const std::exception &e) {
 		// Propagate and leave tables_loaded unset: an expired token or a 403 must not read as a site
