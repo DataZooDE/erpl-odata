@@ -152,18 +152,20 @@ static duckdb::unique_ptr<duckdb::FunctionData> SapODataShowBind(duckdb::ClientC
 
 // A failed catalog request is an ordinary, user-actionable error (HTTP status, connection
 // failure), not a defect in the extension, so it must not surface as INTERNAL (GitHub #261).
-// Typed DuckDB exceptions keep their class; anything else is a transport failure.
+// Typed DuckDB exceptions (including a genuine INTERNAL one) keep their class and out-of-memory
+// propagates untouched; anything else is a transport failure. Call from inside a catch block.
 [[noreturn]] static void ThrowDiscoveryError(const std::string& prefix, const std::exception& error) {
-    const auto* duckdb_error = dynamic_cast<const duckdb::Exception*>(&error);
-    if (duckdb_error == nullptr) {
-        throw duckdb::IOException(prefix + error.what());
-    }
+	if (dynamic_cast<const std::bad_alloc*>(&error) != nullptr) {
+		throw;
+	}
 
-    const duckdb::ErrorData error_data(*duckdb_error);
-    if (error_data.Type() == duckdb::ExceptionType::INTERNAL) {
-        throw duckdb::IOException(prefix + error_data.RawMessage());
-    }
-    throw duckdb::Exception(error_data.Type(), prefix + error_data.RawMessage());
+	const auto* duckdb_error = dynamic_cast<const duckdb::Exception*>(&error);
+	if (duckdb_error == nullptr) {
+		throw duckdb::IOException(prefix + error.what());
+	}
+
+	const duckdb::ErrorData error_data(*duckdb_error);
+	throw duckdb::Exception(error_data.Type(), prefix + error_data.RawMessage());
 }
 
 static void SapODataShowScan(duckdb::ClientContext &context, 
