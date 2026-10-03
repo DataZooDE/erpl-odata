@@ -51,6 +51,16 @@ configure on the first build or after `make clean`. Ninja's own dependency scann
 `CMakeLists.txt` changes and re-runs cmake configure automatically when needed, so you never
 miss a reconfiguration that matters.
 
+`make dev` builds only `shell`, `unittest` and `erpl_odata_tests`, not `all`. `all` also builds
+DuckDB-internal tools (e.g. `plan_serializer`) whose link can fail on a newer toolchain; that
+aborts the build before `./build/debug/duckdb` is relinked, so the shell silently runs stale
+code. Do not "fix" a stale shell by running `cmake --build` by hand: use `make dev`.
+
+If `build/debug` was configured under a different checkout path (the repo was renamed from
+`erpl-web`), cmake fails with "CMakeCache.txt directory is different". Delete
+`build/debug/CMakeCache.txt`, `build/debug/CMakeFiles` and `build/debug/build.ninja`, then
+`make dev` (a full rebuild).
+
 **When to use each target:**
 
 | Target | When to use |

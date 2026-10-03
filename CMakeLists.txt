@@ -54,7 +54,6 @@ else()
     message(STATUS "mold linker not found, using default linker")
 endif()
 
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 project(${TARGET_NAME})
 include_directories(
@@ -117,7 +116,6 @@ set(EXTENSION_SOURCES
     src/odata_type_resolver.cpp
     src/odata_error_mapping.cpp
     src/odata_storage.cpp
-    src/odata_catalog.cpp
     src/odata_transaction_manager.cpp
     src/secret_functions.cpp
     src/web_functions.cpp

@@ -32,3 +32,8 @@ debug.log
 !*_secret.cpp
 !*_secret.hpp
 .crew/
+
+__pycache__/
+erpl_ds_profile_*.json
+erpl_web_trace.log
+compile_commands.json

@@ -18,6 +18,12 @@ endif
 # when the build directory is already configured. Ninja detects CMakeLists.txt changes
 # on its own and re-runs cmake automatically when needed.
 # Use 'make debug' to force a full reconfigure (e.g. after adding a new dependency).
+#
+# Builds the three binaries this workflow runs (the 'duckdb' shell, the SQLLogicTest runner
+# and the C++ tests) instead of 'all'. 'all' also builds DuckDB-internal tools such as
+# plan_serializer, whose link can fail on a newer toolchain (duplicate
+# BufferedFileWriter::DEFAULT_OPEN_FLAGS with gcc 16). That failure aborts the build before
+# the shell is relinked, leaving ./build/debug/duckdb stale and silently running old code.
 .PHONY: dev
 dev:
 	@if [ ! -f build/debug/build.ninja ]; then \
@@ -26,7 +32,7 @@ dev:
 		cmake $(GENERATOR) $(BUILD_FLAGS) $(EXT_DEBUG_FLAGS) $(VCPKG_MANIFEST_FLAGS) \
 			-DCMAKE_BUILD_TYPE=Debug -S $(DUCKDB_SRCDIR) -B build/debug; \
 	fi
-	cmake --build build/debug --config Debug
+	cmake --build build/debug --config Debug --target shell unittest erpl_odata_tests
 
 # Relink ./build/debug/test/unittest, the SQLLogicTest runner.
 #
@@ -60,13 +66,16 @@ release_win: ${EXTENSION_CONFIG_STEP}
 # DeltaLinksOf entity set at all. A service named here must be one of those.
 #   ERPL_SAP_ODP_DELTA_SERVICE     - e.g. Z_ODP_DL2_SRV
 #   ERPL_SAP_ODP_DELTA_ENTITY_SET  - e.g. FactsOfZJRODPVSQL
+# An empty variable inherited from the caller's environment must be removed, not just left
+# out of the command line, or require-env still sees it as set.
+ERPL_SAP_ODP_UNSET := $(foreach v,ERPL_SAP_ODP_SERVICE ERPL_SAP_ODP_ENTITY_SET ERPL_SAP_ODP_DELTA_SERVICE ERPL_SAP_ODP_DELTA_ENTITY_SET,$(if $($(v)),,-u $(v)))
 ERPL_SAP_ODP_ENV := $(if $(ERPL_SAP_ODP_SERVICE),ERPL_SAP_ODP_SERVICE='$(ERPL_SAP_ODP_SERVICE)') \
                     $(if $(ERPL_SAP_ODP_ENTITY_SET),ERPL_SAP_ODP_ENTITY_SET='$(ERPL_SAP_ODP_ENTITY_SET)') \
                     $(if $(ERPL_SAP_ODP_DELTA_SERVICE),ERPL_SAP_ODP_DELTA_SERVICE='$(ERPL_SAP_ODP_DELTA_SERVICE)') \
                     $(if $(ERPL_SAP_ODP_DELTA_ENTITY_SET),ERPL_SAP_ODP_DELTA_ENTITY_SET='$(ERPL_SAP_ODP_DELTA_ENTITY_SET)')
 
 test_debug_sap: unittest
-	ERPL_SAP_BASE_URL='http://localhost:50000' ERPL_SAP_PASSWORD='ABAPtr2023#00' \
+	env $(ERPL_SAP_ODP_UNSET) ERPL_SAP_BASE_URL='http://localhost:50000' ERPL_SAP_PASSWORD='ABAPtr2023#00' \
 		$(ERPL_SAP_ODP_ENV) ./build/debug/test/unittest "[sap]"
 
 # Run Microsoft 365 / Graph API integration tests against a real tenant.
@@ -138,5 +147,6 @@ test_oauth2:
 # libduckdb.so. The duplicate symbol (LOOKUP_TABLE in nested_to_varchar_cast.cpp) is
 # benign—both copies are identical—but ASAN fires anyway due to debug linking strategy.
 test_cpp: ${EXTENSION_CONFIG_STEP}
+	cmake --build build/debug --config Debug --target erpl_odata_tests
 	ASAN_OPTIONS=detect_odr_violation=0 ./build/debug/extension/erpl_odata/test/cpp/erpl_odata_tests
 

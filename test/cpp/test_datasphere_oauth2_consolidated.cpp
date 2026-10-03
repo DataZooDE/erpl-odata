@@ -122,7 +122,7 @@ TEST_CASE("Test SAP CLI Client Type Detection", "[datasphere][oauth2][sap-cli]")
     
     // Test explicit custom client flag
     OAuth2Config config3;
-    config3.client_id = "sb-3ba2fc19-884e-47fe-a00f-7725136b6eae!b493973|client!b3650";
+    config3.client_id = "sb-test-client-id";
     config3.custom_client = true;
     
     auto client_type3 = config3.GetClientType();
@@ -155,17 +155,17 @@ TEST_CASE("Test Real Datasphere Environment", "[datasphere][oauth2][real]")
     std::cout << std::endl;
     
     OAuth2Config config;
-    config.tenant_name = "ak-datasphere-prd";
+    config.tenant_name = "test-tenant";
     config.data_center = "eu10";
-    config.client_id = "sb-3ba2fc19-884e-47fe-a00f-7725136b6eae!b493973|client!b3650";
-    config.client_secret = "f969011c-4926-4051-ac2a-c34d971ec4c9$Fq8IR4LMIJH-B4qDOXnTn1GjSSqs1UvR7T5szVkhT88=";
+    config.client_id = "sb-test-client-id";
+    config.client_secret = "test-client-secret";
     config.scope = "default";
     config.redirect_uri = "http://localhost:8080/callback";
     config.authorization_flow = GrantType::authorization_code;
     config.custom_client = true;
     
     // Verify environment configuration
-    REQUIRE(config.tenant_name == "ak-datasphere-prd");
+    REQUIRE(config.tenant_name == "test-tenant");
     REQUIRE(config.data_center == "eu10");
     REQUIRE(config.client_id.substr(0, 3) == "sb-");
     
@@ -179,10 +179,10 @@ TEST_CASE("Test Real Datasphere Environment", "[datasphere][oauth2][real]")
     
     // Verify URLs
     auto auth_url = config.GetAuthorizationUrl();
-    REQUIRE(auth_url == "https://ak-datasphere-prd.authentication.eu10.hana.ondemand.com/oauth/authorize");
+    REQUIRE(auth_url == "https://test-tenant.authentication.eu10.hana.ondemand.com/oauth/authorize");
     
     auto token_url = config.GetTokenUrl();
-    REQUIRE(token_url == "https://ak-datasphere-prd.authentication.eu10.hana.ondemand.com/oauth/token");
+    REQUIRE(token_url == "https://test-tenant.authentication.eu10.hana.ondemand.com/oauth/token");
 }
 
 TEST_CASE("Test Real OAuth2 Flow Initialization", "[datasphere][oauth2][real]")
@@ -190,10 +190,10 @@ TEST_CASE("Test Real OAuth2 Flow Initialization", "[datasphere][oauth2][real]")
     std::cout << std::endl;
     
     OAuth2Config config;
-    config.tenant_name = "ak-datasphere-prd";
+    config.tenant_name = "test-tenant";
     config.data_center = "eu10";
-    config.client_id = "sb-3ba2fc19-884e-47fe-a00f-7725136b6eae!b493973|client!b3650";
-    config.client_secret = "f969011c-4926-4051-ac2a-c34d971ec4c9$Fq8IR4LMIJH-B4qDOXnTn1GjSSqs1UvR7T5szVkhT88=";
+    config.client_id = "sb-test-client-id";
+    config.client_secret = "test-client-secret";
     config.scope = "default";
     config.redirect_uri = "http://localhost:8080/callback";
     config.authorization_flow = GrantType::authorization_code;
