@@ -90,16 +90,22 @@ void OdpSubscriptionStateManager::TransitionToError(const std::string& error_msg
     ERPL_TRACE_ERROR("ODP_STATE_MANAGER", "Transitioning to ERROR_STATE: " + error_msg);
 
     current_phase_ = SubscriptionPhase::ERROR_STATE;
+
+    // Independent attempts: the status update fails when another connection removed the subscription,
+    // and that must not stop the audit row from recording the real cause.
     try {
         UpdateSubscriptionStatus("error");
-
-        // Create audit entry for error
+    } catch (const std::exception& e) {
+        ERPL_TRACE_WARN("ODP_STATE_MANAGER", "Could not persist ERROR_STATE for subscription " +
+                                                 current_subscription_.subscription_id + ": " + e.what());
+    }
+    try {
         if (current_audit_id_ > 0) {
             UpdateAuditEntry(current_audit_id_, std::nullopt, 0, 0, "", error_msg);
         }
     } catch (const std::exception& e) {
-        ERPL_TRACE_WARN("ODP_STATE_MANAGER", "Could not persist ERROR_STATE for subscription " +
-                                                 current_subscription_.subscription_id + ": " + e.what());
+        ERPL_TRACE_WARN("ODP_STATE_MANAGER", "Could not record the error in audit entry " +
+                                                 std::to_string(current_audit_id_) + ": " + e.what());
     }
 
     LogCurrentState();

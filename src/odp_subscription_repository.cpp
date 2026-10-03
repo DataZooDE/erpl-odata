@@ -336,9 +336,13 @@ std::string OdpSubscriptionRepository::CreateSubscription(const std::string& ser
                 " WHERE service_url = ? AND entity_set_name = ? AND secret_name = ?",
                 {duckdb::Value(service_url), duckdb::Value(entity_set_name), duckdb::Value(effective_secret)});
             if (raced->RowCount() > 0) {
-                ERPL_TRACE_INFO("ODP_REPOSITORY", "Lost a race creating the subscription, adopting the winner: " +
+                ERPL_TRACE_INFO("ODP_REPOSITORY", "Lost a race creating the subscription, using the winner's row: " +
                                                       std::string(insert_error.what()));
-                return RowToSubscription(*raced, 0).subscription_id;
+                // Through the normal path, not straight back: the row exists now, so the lookup at the top
+                // takes the existing-subscription branch and applies its status handling (a winner that was
+                // already terminated is revived with a cleared token, not adopted as it is). It cannot
+                // reach this INSERT again.
+                return CreateSubscription(service_url, entity_set_name, secret_name);
             }
             std::this_thread::sleep_for(RACE_LOOKUP_INTERVAL);
         }

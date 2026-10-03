@@ -212,6 +212,27 @@ TEST_CASE("TransitionToError never throws, even when the subscription row is gon
     REQUIRE_FALSE(alive->HasError());
 }
 
+TEST_CASE("the audit row still records the fetch error when the status update fails",
+          "[internal_seams][transition]") {
+    odp_test::TempDatabase database("odp_251_audit");
+    auto &con = database.Conn();
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+
+    OdpSubscriptionStateManager manager(database.Context(), "https://test.example/sap/opu/odata/sap/A_SRV/Facts",
+                                        "Facts", "secret");
+    const auto audit_id = manager.CreateAuditEntry("initial_load", "https://test.example/page3");
+    REQUIRE(audit_id > 0);
+    // The subscription row is gone, so the status update fails; the audit update must still be tried.
+    OdpSubscriptionRepository(database.Context()).RemoveSubscription(manager.GetSubscriptionId());
+
+    REQUIRE_NOTHROW(manager.TransitionToError("HTTP 500 on page 3"));
+
+    auto audit = con.Query("SELECT count(*) FROM erpl_web.odp_subscription_audit WHERE audit_id = " +
+                           std::to_string(audit_id) + " AND error_message LIKE '%HTTP 500 on page 3%'");
+    REQUIRE_FALSE(audit->HasError());
+    CHECK(audit->GetValue(0, 0).GetValue<int64_t>() == 1);
+}
+
 // ---------------------------------------------------------------------------------------------
 // 4. A failed first fetch leaves the reader in ERROR_STATE; running the plan again must not
 //    turn that into an internal error.
