@@ -150,6 +150,22 @@ static duckdb::unique_ptr<duckdb::FunctionData> SapODataShowBind(duckdb::ClientC
     return std::move(bind_data);
 }
 
+// A failed catalog request is an ordinary, user-actionable error (HTTP status, connection
+// failure), not a defect in the extension, so it must not surface as INTERNAL (GitHub #261).
+// Typed DuckDB exceptions keep their class; anything else is a transport failure.
+[[noreturn]] static void ThrowDiscoveryError(const std::string& prefix, const std::exception& error) {
+    const auto* duckdb_error = dynamic_cast<const duckdb::Exception*>(&error);
+    if (duckdb_error == nullptr) {
+        throw duckdb::IOException(prefix + error.what());
+    }
+
+    const duckdb::ErrorData error_data(*duckdb_error);
+    if (error_data.Type() == duckdb::ExceptionType::INTERNAL) {
+        throw duckdb::IOException(prefix + error_data.RawMessage());
+    }
+    throw duckdb::Exception(error_data.Type(), prefix + error_data.RawMessage());
+}
+
 static void SapODataShowScan(duckdb::ClientContext &context, 
                              duckdb::TableFunctionInput &data_p, 
                              duckdb::DataChunk &output) {
@@ -200,8 +216,7 @@ static void SapODataShowScan(duckdb::ClientContext &context,
     state.current_index = end_idx;
     
     } catch (const std::exception& e) {
-        // Convert the exception to a DuckDB error that will be shown to the user
-        throw duckdb::Exception(duckdb::ExceptionType::INTERNAL, "SAP OData service discovery failed: " + std::string(e.what()));
+        ThrowDiscoveryError("SAP OData service discovery failed: ", e);
     }
 }
 
@@ -291,8 +306,7 @@ static void OdpODataShowScan(duckdb::ClientContext &context,
     state.current_index = end_idx;
     
     } catch (const std::exception& e) {
-        // Convert the exception to a DuckDB error that will be shown to the user
-        throw duckdb::Exception(duckdb::ExceptionType::INTERNAL, "ODP OData service discovery failed: " + std::string(e.what()));
+        ThrowDiscoveryError("ODP OData service discovery failed: ", e);
     }
 }
 
