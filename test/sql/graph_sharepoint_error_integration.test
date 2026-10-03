@@ -2,7 +2,7 @@
 # description: Error-handling integration tests for SharePoint functions.
 #              Verifies sensible errors for missing secret, wrong credentials,
 #              and non-existent list IDs.
-# group: [erpl_web]
+# group: [erpl_odata]
 
 require erpl_odata
 

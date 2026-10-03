@@ -1,6 +1,6 @@
-# name: test/sql/erpl_web_http.test
+# name: test/sql/web_http.test
 # description: Test erpl_odata extension HTTP client functionality
-# group: [erpl_web_http]
+# group: [erpl_odata_http]
 
 # Require statement will ensure this test is run with this extension loaded
 require erpl_odata

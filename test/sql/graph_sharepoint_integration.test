@@ -1,6 +1,6 @@
 # name: test/sql/graph_sharepoint_integration.test
 # description: Integration tests for Microsoft Graph SharePoint Lists and Drives
-# group: [erpl_web]
+# group: [erpl_odata]
 
 require erpl_odata
 

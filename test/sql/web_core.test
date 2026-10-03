@@ -1,6 +1,6 @@
-# name: test/sql/erpl_web_core.test
+# name: test/sql/web_core.test
 # description: Test core erpl_odata extension functionality - loading, configuration, and basic setup
-# group: [erpl_web_core]
+# group: [erpl_odata_core]
 
 # Require statement will ensure this test is run with this extension loaded
 require erpl_odata

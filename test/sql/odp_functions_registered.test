@@ -1,6 +1,6 @@
 # name: test/sql/odp_functions_registered.test
 # description: The ODP entry points exist without needing a provisioned SAP ODP service
-# group: [erpl_web]
+# group: [erpl_odata]
 #
 # The live ODP tests under test/sql/sap/ are gated on a real ODP service being
 # provisioned, so on a system without one they skip entirely. Registration is

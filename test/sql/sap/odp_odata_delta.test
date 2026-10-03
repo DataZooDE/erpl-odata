@@ -1,6 +1,6 @@
 # name: test/sql/sap/odp_odata_delta.test
 # description: the full ODP delta lifecycle against a delta-capable live SAP ODP service
-# group: [erpl_web_odp_integration]
+# group: [erpl_odata_odp_integration]
 #
 # odp_odata_read.test only asserts the weaker "a delta fetch is not larger than a full
 # load", because the service it is gated on (ERPL_SAP_ODP_SERVICE) need not be

@@ -46,10 +46,20 @@ make test_debug
 detection (`Detecting compiler hash for triplet x64-linux...`) even when nothing has changed.
 This adds 30–60 seconds to every build regardless of what was edited.
 
-`make dev` checks whether `build/debug/build.ninja` already exists and only runs cmake
+`make dev` checks whether `build/debug/CMakeCache.txt` already exists and only runs cmake
 configure on the first build or after `make clean`. Ninja's own dependency scanner detects
 `CMakeLists.txt` changes and re-runs cmake configure automatically when needed, so you never
 miss a reconfiguration that matters.
+
+`make dev` builds only `shell`, `unittest` and `erpl_odata_tests`, not `all`. `all` also builds
+DuckDB-internal tools (e.g. `plan_serializer`) whose link can fail on a newer toolchain; that
+aborts the build before `./build/debug/duckdb` is relinked, so the shell silently runs stale
+code. Do not "fix" a stale shell by running `cmake --build` by hand: use `make dev`.
+
+If `build/debug` was configured under a different checkout path (the repo was renamed from
+`erpl-web`), cmake fails with "CMakeCache.txt directory is different". Delete
+`build/debug/CMakeCache.txt`, `build/debug/CMakeFiles` and `build/debug/build.ninja`, then
+`make dev` (a full rebuild).
 
 **When to use each target:**
 
@@ -1031,8 +1041,8 @@ This project currently targets **DuckDB v1.4.5 and v1.5.6** (check `.github/work
 
 ### Core Module Organization
 
-#### 1. **HTTP Layer** (`http_client.*`, `timeout_http_client.*`)
-- Low-level HTTP request/response handling (libcurl-based)
+#### 1. **HTTP Layer** (`datazoo-oauth2/src/http_client.cpp`, `timeout_http_client.cpp`)
+- Owned by the `datazoo-oauth2` submodule, not `src/`; low-level HTTP request/response handling on top of cpp-httplib
 - Character set detection and conversion via charset_converter
 - Timeout management and keep-alive pooling
 - Returns consistent HttpResponse objects with headers, status, content
@@ -1050,7 +1060,6 @@ This project currently targets **DuckDB v1.4.5 and v1.5.6** (check `.github/work
 - **odata_url_helpers.hpp** - URL manipulation and OData query building
 
 #### 3. **ODP/SAP Integration** (`odp_*` modules)
-- **odp_client_integration.cpp** - Integration layer with SAP ODP (Operational Data Provisioning)
 - **odp_subscription_repository/state_manager.cpp** - Manages ODP subscriptions and state
 - **odp_odata_read_functions.cpp** - OData reading specifically for ODP sources
 - **odp_http_request_factory.cpp** - Custom HTTP request handling for ODP endpoints
@@ -1063,8 +1072,6 @@ This project currently targets **DuckDB v1.4.5 and v1.5.6** (check `.github/work
 - **datasphere_catalog.cpp/hpp** - Space/asset discovery and metadata
 - **datasphere_read.cpp/hpp** - Data reading for relational and analytical assets
 - **datasphere_secret.cpp/hpp** - Datasphere-specific secret handling
-- **datasphere_types.hpp** - Type definitions for Datasphere responses
-- **datasphere_local_server.hpp** - Local callback server for OAuth2 authorization_code flow
 
 #### 5. **SAP Analytics Cloud** (`sac_*` modules)
 - **sac_client.cpp/hpp** - HTTP client for SAC APIs
@@ -1075,11 +1082,7 @@ This project currently targets **DuckDB v1.4.5 and v1.5.6** (check `.github/work
 
 #### 6. **Authentication & Secrets**
 - **secret_functions.cpp/hpp** - DuckDB secret integration (CREATE SECRET)
-- **oauth2_flow_v2.cpp/hpp** - OAuth2 authorization_code and client_credentials flows
-- **oauth2_server.cpp/hpp** - Local HTTP server for OAuth2 redirect callback
-- **oauth2_browser.cpp/hpp** - Browser launching for user login
-- **oauth2_callback_handler.cpp/hpp** - Handles OAuth2 authorization code callback
-- **oauth2_types.hpp** - OAuth2 token structures
+- **datazoo-oauth2/** (submodule) - OAuth2 authorization_code and client_credentials flows, the local redirect/callback server, browser launching, callback handling and token structures (`oauth2_flow_v2`, `oauth2_server`, `oauth2_browser`, `oauth2_callback_handler`, `oauth2_types`). Its own tests run with `make test_oauth2`.
 
 #### 7. **HTTP Functions** (`web_functions.cpp/hpp`)
 - Implements `http_get()`, `http_head()`, `http_post()`, `http_put()`, `http_patch()`, `http_delete()`
@@ -1604,7 +1607,6 @@ Consultation: .ai/codex_context/20250130_091500_oauth_thread_safety.md"
 
 - **README.md** - Complete feature documentation and SQL examples
 - **docs/UPDATING.md** - Process for updating DuckDB version dependencies
-- **.ai/README.md** - Extension analysis and GitHub Actions documentation
 - **DuckDB Extension Template** - https://github.com/duckdb/extension-template
 - **Extension CI Tools** - https://github.com/duckdb/extension-ci-tools (supports 2 latest DuckDB versions)
 - **DuckDB CONTRIBUTING.md** - https://github.com/duckdb/duckdb/blob/main/CONTRIBUTING.md

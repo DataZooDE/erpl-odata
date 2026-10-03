@@ -4,6 +4,9 @@
 #include "duckdb.hpp"
 
 #include <string>
+#include "test_database.hpp"
+
+using erpl_web::test_support::TestDatabase;
 
 using namespace erpl_web::test_support;
 
@@ -21,26 +24,6 @@ using namespace erpl_web::test_support;
 // A client timeout can only be tested against a server SLOWER than it, which is what
 // CannedResponse::DelayedBy is for. See GitHub #246.
 
-namespace {
-
-class TestDatabase {
-public:
-    TestDatabase()
-    {
-        config.SetOption("allocator_background_threads", duckdb::Value::BOOLEAN(true));
-        database = duckdb::make_uniq<duckdb::DuckDB>(nullptr, &config);
-        connection = duckdb::make_uniq<duckdb::Connection>(*database);
-    }
-
-    duckdb::Connection &Con() const { return *connection; }
-
-private:
-    duckdb::DBConfig config;
-    duckdb::unique_ptr<duckdb::DuckDB> database;
-    duckdb::unique_ptr<duckdb::Connection> connection;
-};
-
-}  // namespace
 
 TEST_CASE("a timeout shorter than the server's delay fails the request", "[http_timeout]") {
     // THE case the old tests could not express. Without it, nothing distinguishes a timeout

@@ -1,6 +1,6 @@
 # name: test/sql/graph_outlook.test
 # description: Test Microsoft Graph Outlook functions
-# group: [erpl_web]
+# group: [erpl_odata]
 
 require erpl_odata
 

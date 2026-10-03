@@ -151,7 +151,6 @@ SELECT * FROM read_parquet(
 - ✅ Pre-signed URLs to cloud storage
 - ✅ Works with Databricks, SAP, and any Delta Sharing protocol-compliant service
 - ✅ Remote profiles transparently loaded via DuckDB's FileSystem API
-- Full documentation in `DELTA_SHARE_TESTING.md`
 
 ### Delta Sharing Discovery (Catalog Functions)
 
@@ -560,8 +559,10 @@ make test
 If you need to run the C++ unit tests binary directly, use your build folder path. For example:
 
 ```bash
-./build/debug/extension/erpl_odata/test/cpp/erpl_odata_tests
+ASAN_OPTIONS=detect_odr_violation=0 ./build/debug/extension/erpl_odata/test/cpp/erpl_odata_tests
 ```
+
+Prefer `make test_cpp`, which sets that option and rebuilds the test binary first.
 
 ---
 
@@ -593,23 +594,23 @@ Query planning models, analytics models, and stories from SAP Analytics Cloud di
 ### Setup SAC Secret
 
 ```sql
--- Create SAC OAuth2 secret
+-- Create a SAC secret from an access token you already hold
 CREATE SECRET my_sac (
   TYPE sac,
-  PROVIDER oauth2,
+  PROVIDER access_token,
   TENANT_NAME 'your-tenant',
   REGION 'eu10',                    -- eu10, us10, ap10, ca10, jp10, au10, br10, ch10
-  CLIENT_ID 'your-client-id',
-  CLIENT_SECRET 'your-client-secret',
-  SCOPE 'openid'
+  ACCESS_TOKEN 'your-access-token'
 );
+-- The 'config' provider also exists but cannot yet obtain a token itself
+-- (client_credentials is not implemented for SAC), so use access_token.
 ```
 
 ### SAC Discovery Functions
 
 Discover available models and stories:
 
-⚠️ **Implementation Note:** SAC catalog discovery functions (`sac_show_models`, `sac_show_stories`, `sac_get_model_info`, `sac_get_story_info`) are **stub implementations** and currently return empty results. For querying SAC data, use the fully functional data reading functions listed below instead.
+⚠️ **Not implemented yet:** the SAC catalog discovery functions (`sac_show_models`, `sac_show_stories`, `sac_describe_model`, `sac_describe_story`) raise a "not implemented yet" error rather than returning rows, because SAC's catalog wire format cannot be verified without a real tenant response (GitHub #243). For querying SAC data, use the data reading functions below instead.
 
 ```sql
 -- For data reading (fully functional):
@@ -659,7 +660,7 @@ SELECT * FROM sac.Stories WHERE Owner = 'john.doe@company.com';
 
 ### SAC Functions Reference
 
-**Discovery Functions (⚠️ Stub Implementations - Return Empty Results):**
+**Discovery Functions (⚠️ Not implemented yet - they raise a "not implemented yet" error, see #243):**
 - `sac_show_models()`
   - Named parameters: `secret` VARCHAR
   - Returns: id, name, description, type, owner, created_at, last_modified_at
@@ -668,11 +669,11 @@ SELECT * FROM sac.Stories WHERE Owner = 'john.doe@company.com';
   - Named parameters: `secret` VARCHAR
   - Returns: id, name, description, owner, created_at, last_modified_at, status
 
-- `sac_get_model_info(model_id)`
+- `sac_describe_model(model_id)`
   - Named parameters: `secret` VARCHAR
   - Returns: id, name, description, type, dimensions (comma-separated), created_at
 
-- `sac_get_story_info(story_id)`
+- `sac_describe_story(story_id)`
   - Named parameters: `secret` VARCHAR
   - Returns: id, name, description, owner, status, created_at, last_modified_at
 

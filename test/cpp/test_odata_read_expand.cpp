@@ -38,6 +38,9 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "test_database.hpp"
+
+using erpl_web::test_support::TestDatabase;
 
 using erpl_web::test_support::CannedResponse;
 using erpl_web::test_support::MakeV2Page;
@@ -47,25 +50,6 @@ using erpl_web::test_support::RecordedRequest;
 
 namespace {
 
-// The jemalloc/background-thread option is mandatory: a bare DuckDB(nullptr)
-// crashes in DEBUG builds shortly after the first query (see CLAUDE.md).
-// DBConfig is neither copyable nor movable, hence the small RAII wrapper.
-class TestDatabase {
-public:
-    TestDatabase()
-    {
-        config.SetOption("allocator_background_threads", duckdb::Value::BOOLEAN(true));
-        database = duckdb::make_uniq<duckdb::DuckDB>(nullptr, &config);
-        connection = duckdb::make_uniq<duckdb::Connection>(*database);
-    }
-
-    duckdb::Connection &Con() const { return *connection; }
-
-private:
-    duckdb::DBConfig config;
-    duckdb::unique_ptr<duckdb::DuckDB> database;
-    duckdb::unique_ptr<duckdb::Connection> connection;
-};
 
 // Decoded value of the $expand the extension sent for `path`, or an empty string
 // when it never sent one.

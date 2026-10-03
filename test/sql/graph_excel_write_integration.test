@@ -3,7 +3,7 @@
 #              Appends rows to SalesTable, reads back, verifies count delta,
 #              then cleans up by deleting the inserted rows.
 #              Prerequisite: SalesTable must exist in the test workbook.
-# group: [erpl_web]
+# group: [erpl_odata]
 
 require erpl_odata
 

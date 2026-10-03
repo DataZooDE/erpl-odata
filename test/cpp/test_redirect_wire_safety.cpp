@@ -5,33 +5,13 @@
 #include "duckdb.hpp"
 
 #include <string>
+#include "test_database.hpp"
+
+using erpl_web::test_support::TestDatabase;
 
 using erpl_web::HttpUrl;
 using namespace erpl_web::test_support;
 
-namespace {
-
-// Same shape as the other server-backed tests here. allocator_background_threads is
-// required: without it a DEBUG+jemalloc build throws from a worker thread shortly after
-// the first query (see CLAUDE.md).
-class TestDatabase {
-public:
-    TestDatabase()
-    {
-        config.SetOption("allocator_background_threads", duckdb::Value::BOOLEAN(true));
-        database = duckdb::make_uniq<duckdb::DuckDB>(nullptr, &config);
-        connection = duckdb::make_uniq<duckdb::Connection>(*database);
-    }
-
-    duckdb::Connection &Con() const { return *connection; }
-
-private:
-    duckdb::DBConfig config;
-    duckdb::unique_ptr<duckdb::DuckDB> database;
-    duckdb::unique_ptr<duckdb::Connection> connection;
-};
-
-}  // namespace
 
 // The redirect follower was the last seam that checked only HALF the question about a
 // service-supplied URL.

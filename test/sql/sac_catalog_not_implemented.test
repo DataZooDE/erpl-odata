@@ -1,0 +1,25 @@
+# name: test/sql/sac_catalog_not_implemented.test
+# description: SAC catalog discovery says it is not implemented instead of answering with zero rows (GitHub #243)
+# group: [erpl_odata_sac]
+
+require erpl_odata
+
+statement ok
+CREATE SECRET sac_stub (TYPE sac, PROVIDER access_token, ACCESS_TOKEN 'test-token', TENANT_NAME 'tenant', REGION 'eu10');
+
+# sac_describe_story used to swallow the error and report an empty result, which reads as
+# "no such story". It must surface the same error as sac_show_stories.
+statement error
+SELECT * FROM sac_describe_story('any-story', secret='sac_stub');
+----
+not implemented yet
+
+statement error
+SELECT * FROM sac_show_stories(secret='sac_stub');
+----
+not implemented yet
+
+statement error
+SELECT * FROM sac_describe_model('any-model', secret='sac_stub');
+----
+not implemented yet

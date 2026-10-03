@@ -17,16 +17,25 @@ endif
 # Skips cmake reconfiguration (and the vcpkg compiler-hash check that comes with it)
 # when the build directory is already configured. Ninja detects CMakeLists.txt changes
 # on its own and re-runs cmake automatically when needed.
+# (Keyed on CMakeCache.txt, not build.ninja: the default Makefiles generator never writes build.ninja,
+# which made every plain 'make dev' reconfigure.)
 # Use 'make debug' to force a full reconfigure (e.g. after adding a new dependency).
+# Requires the extension tests to be enabled (the default): it builds unittest and erpl_odata_tests.
+#
+# Builds the three binaries this workflow runs (the 'duckdb' shell, the SQLLogicTest runner
+# and the C++ tests) instead of 'all'. 'all' also builds DuckDB-internal tools such as
+# plan_serializer, whose link can fail on a newer toolchain (duplicate
+# BufferedFileWriter::DEFAULT_OPEN_FLAGS with gcc 16). That failure aborts the build before
+# the shell is relinked, leaving ./build/debug/duckdb stale and silently running old code.
 .PHONY: dev
 dev:
-	@if [ ! -f build/debug/build.ninja ]; then \
+	@if [ ! -f build/debug/CMakeCache.txt ]; then \
 		echo "Build directory not configured yet — running full cmake configure..."; \
 		mkdir -p build/debug && \
 		cmake $(GENERATOR) $(BUILD_FLAGS) $(EXT_DEBUG_FLAGS) $(VCPKG_MANIFEST_FLAGS) \
 			-DCMAKE_BUILD_TYPE=Debug -S $(DUCKDB_SRCDIR) -B build/debug; \
 	fi
-	cmake --build build/debug --config Debug
+	cmake --build build/debug --config Debug --target shell unittest erpl_odata_tests
 
 # Relink ./build/debug/test/unittest, the SQLLogicTest runner.
 #
@@ -60,13 +69,16 @@ release_win: ${EXTENSION_CONFIG_STEP}
 # DeltaLinksOf entity set at all. A service named here must be one of those.
 #   ERPL_SAP_ODP_DELTA_SERVICE     - e.g. Z_ODP_DL2_SRV
 #   ERPL_SAP_ODP_DELTA_ENTITY_SET  - e.g. FactsOfZJRODPVSQL
+# An empty variable inherited from the caller's environment must be removed, not just left
+# out of the command line, or require-env still sees it as set.
+ERPL_SAP_ODP_UNSET := $(foreach v,ERPL_SAP_ODP_SERVICE ERPL_SAP_ODP_ENTITY_SET ERPL_SAP_ODP_DELTA_SERVICE ERPL_SAP_ODP_DELTA_ENTITY_SET,$(if $($(v)),,-u $(v)))
 ERPL_SAP_ODP_ENV := $(if $(ERPL_SAP_ODP_SERVICE),ERPL_SAP_ODP_SERVICE='$(ERPL_SAP_ODP_SERVICE)') \
                     $(if $(ERPL_SAP_ODP_ENTITY_SET),ERPL_SAP_ODP_ENTITY_SET='$(ERPL_SAP_ODP_ENTITY_SET)') \
                     $(if $(ERPL_SAP_ODP_DELTA_SERVICE),ERPL_SAP_ODP_DELTA_SERVICE='$(ERPL_SAP_ODP_DELTA_SERVICE)') \
                     $(if $(ERPL_SAP_ODP_DELTA_ENTITY_SET),ERPL_SAP_ODP_DELTA_ENTITY_SET='$(ERPL_SAP_ODP_DELTA_ENTITY_SET)')
 
 test_debug_sap: unittest
-	ERPL_SAP_BASE_URL='http://localhost:50000' ERPL_SAP_PASSWORD='ABAPtr2023#00' \
+	env $(ERPL_SAP_ODP_UNSET) ERPL_SAP_BASE_URL='http://localhost:50000' ERPL_SAP_PASSWORD='ABAPtr2023#00' \
 		$(ERPL_SAP_ODP_ENV) ./build/debug/test/unittest "[sap]"
 
 # Run Microsoft 365 / Graph API integration tests against a real tenant.
@@ -91,6 +103,21 @@ test_debug_ms: unittest
 	./build/debug/test/unittest "test/sql/graph_excel_integration.test"
 	./build/debug/test/unittest "test/sql/graph_outlook_integration.test"
 	./build/debug/test/unittest "test/sql/graph_teams_integration.test"
+	./build/debug/test/unittest "test/sql/graph_excel_error_integration.test"
+	./build/debug/test/unittest "test/sql/graph_sharepoint_error_integration.test"
+	./build/debug/test/unittest "test/sql/graph_sharepoint_typed_read_integration.test"
+
+# The Microsoft integration tests that CREATE, UPDATE or DELETE data in the tenant. They are
+# kept out of test_debug_ms so a read-only run never mutates anything; they additionally need
+# the dedicated ERPL_MS_SHAREPOINT_TESTLIST_* / ERPL_MS_EXCEL_* targets to be sacrificial.
+.PHONY: test_debug_ms_write
+test_debug_ms_write: unittest
+	./build/debug/test/unittest "test/sql/graph_excel_write_integration.test"
+	./build/debug/test/unittest "test/sql/graph_sharepoint_write_integration.test"
+	./build/debug/test/unittest "test/sql/graph_sharepoint_scalar_write_integration.test"
+	./build/debug/test/unittest "test/sql/graph_sharepoint_attach_rw_integration.test"
+	./build/debug/test/unittest "test/sql/graph_excel_workbook_attach_integration.test"
+	./build/debug/test/unittest "test/sql/graph_excel_workbook_attach_name_integration.test"
 
 # Run Business Central integration tests against a live BC environment.
 # Requires environment variables sourced from an Azure App Registration registered in BC.
@@ -138,5 +165,6 @@ test_oauth2:
 # libduckdb.so. The duplicate symbol (LOOKUP_TABLE in nested_to_varchar_cast.cpp) is
 # benign—both copies are identical—but ASAN fires anyway due to debug linking strategy.
 test_cpp: ${EXTENSION_CONFIG_STEP}
+	cmake --build build/debug --config Debug --target erpl_odata_tests
 	ASAN_OPTIONS=detect_odr_violation=0 ./build/debug/extension/erpl_odata/test/cpp/erpl_odata_tests
 

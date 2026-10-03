@@ -13,6 +13,9 @@
 #include "odata_test_server.hpp"
 
 #include <string>
+#include "test_database.hpp"
+
+using erpl_web::test_support::TestDatabase;
 
 using erpl_web::test_support::CannedResponse;
 using erpl_web::test_support::ODataTestServer;
@@ -26,25 +29,6 @@ using erpl_web::ODataVersion;
 using erpl_web::HttpMethod;
 using erpl_web::HttpResponse;
 
-namespace {
-
-class TestDatabase {
-public:
-    TestDatabase()
-    {
-        config.SetOption("allocator_background_threads", duckdb::Value::BOOLEAN(true));
-        database = duckdb::make_uniq<duckdb::DuckDB>(nullptr, &config);
-        connection = duckdb::make_uniq<duckdb::Connection>(*database);
-    }
-    duckdb::Connection &Con() const { return *connection; }
-
-private:
-    duckdb::DBConfig config;
-    duckdb::unique_ptr<duckdb::DuckDB> database;
-    duckdb::unique_ptr<duckdb::Connection> connection;
-};
-
-}  // namespace
 
 TEST_CASE("credentials are not sent to a host named by @odata.context",
           "[odata_metadata][security]") {

@@ -1,6 +1,6 @@
 # name: test/sql/sap/odp_odata_read.test
 # description: odp_odata_read against a live SAP ODP service
-# group: [erpl_web_odp_integration]
+# group: [erpl_odata_odp_integration]
 #
 # Gated on ERPL_SAP_ODP_SERVICE for the reason given in odp_odata_show.test: without a
 # provisioned ODP service there is nothing to read, and failing on that is noise rather

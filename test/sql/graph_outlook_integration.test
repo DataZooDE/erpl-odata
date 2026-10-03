@@ -1,6 +1,6 @@
 # name: test/sql/graph_outlook_integration.test
 # description: Integration tests for Microsoft Graph Outlook (Calendar, Contacts, Mail)
-# group: [erpl_web]
+# group: [erpl_odata]
 # note: Outlook Application permissions require ERPL_MS_CLIENT_SECRET.
 #       Delegated-only tests (those using /me/) additionally require a live
 #       delegated access token via ERPL_MS_DELEGATED_ACCESS_TOKEN.

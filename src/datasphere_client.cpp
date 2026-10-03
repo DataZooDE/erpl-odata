@@ -16,7 +16,7 @@ std::shared_ptr<ODataEntitySetClient> DatasphereClientFactory::CreateRelationalC
     const std::string& asset_id,
     std::shared_ptr<HttpAuthParams> auth_params)
 {
-    auto url = BuildRelationalUrl(tenant, data_center, space_id, asset_id);
+    auto url = DatasphereUrlBuilder::BuildRelationalUrl(tenant, data_center, space_id, asset_id);
     auto http_client = std::make_shared<HttpClient>();
     auto odata_client = std::make_shared<ODataEntitySetClient>(http_client, url, auth_params);
     
@@ -33,7 +33,7 @@ std::shared_ptr<ODataEntitySetClient> DatasphereClientFactory::CreateAnalyticalC
     const std::string& asset_id,
     std::shared_ptr<HttpAuthParams> auth_params)
 {
-    auto url = BuildAnalyticalUrl(tenant, data_center, space_id, asset_id);
+    auto url = DatasphereUrlBuilder::BuildAnalyticalUrl(tenant, data_center, space_id, asset_id);
     auto http_client = std::make_shared<HttpClient>();
     auto odata_client = std::make_shared<ODataEntitySetClient>(http_client, url, auth_params);
     
@@ -48,7 +48,7 @@ std::shared_ptr<ODataServiceClient> DatasphereClientFactory::CreateCatalogClient
     const std::string& data_center,
     std::shared_ptr<HttpAuthParams> auth_params)
 {
-    auto url = BuildCatalogUrl(tenant, data_center);
+    auto url = DatasphereUrlBuilder::BuildCatalogUrl(tenant, data_center);
     auto http_client = std::make_shared<HttpClient>();
     auto odata_client = std::make_shared<ODataServiceClient>(http_client, url, auth_params);
     
@@ -56,32 +56,6 @@ std::shared_ptr<ODataServiceClient> DatasphereClientFactory::CreateCatalogClient
     odata_client->SetODataVersion(ODataVersion::V4);
     
     return odata_client;
-}
-
-// Private URL building methods
-std::string DatasphereClientFactory::BuildRelationalUrl(const std::string& tenant, const std::string& data_center, 
-                                                      const std::string& space_id, const std::string& asset_id)
-{
-    std::stringstream ss;
-    ss << "https://" << tenant << "." << data_center << ".hcs.cloud.sap/api/v1/dwc/consumption/relational/"
-       << space_id << "/" << asset_id;
-    return ss.str();
-}
-
-std::string DatasphereClientFactory::BuildAnalyticalUrl(const std::string& tenant, const std::string& data_center, 
-                                                       const std::string& space_id, const std::string& asset_id)
-{
-    std::stringstream ss;
-    ss << "https://" << tenant << "." << data_center << ".hcs.cloud.sap/api/v1/dwc/consumption/analytical/"
-       << space_id << "/" << asset_id;
-    return ss.str();
-}
-
-std::string DatasphereClientFactory::BuildCatalogUrl(const std::string& tenant, const std::string& data_center)
-{
-    std::stringstream ss;
-    ss << "https://" << tenant << "." << data_center << ".hcs.cloud.sap/api/v1/dwc/catalog";
-    return ss.str();
 }
 
 // DatasphereUrlBuilder implementation
@@ -227,48 +201,5 @@ std::string DatasphereAuthParams::GetTokenUrl() const {
     ss << "https://" << tenant_name << "." << data_center << ".hcs.cloud.sap/oauth/token";
     return ss.str();
 }
-
-// DatasphereODataClient implementation
-DatasphereODataClient::DatasphereODataClient(const std::string& base_url, const std::string& data_url, 
-                                             const std::string& access_token)
-    : base_url_(base_url), data_url_(data_url), access_token_(access_token) {
-    
-    // Create auth params with the bearer token
-    auto auth_params = std::make_shared<HttpAuthParams>();
-    auth_params->bearer_token = access_token;
-    
-    // Create metadata client using base URL
-    auto http_client = std::make_shared<HttpClient>();
-    metadata_client_ = std::make_unique<ODataEntitySetClient>(http_client, base_url, auth_params);
-    metadata_client_->SetODataVersion(ODataVersion::V4);
-    
-    // Create data client using extended URL
-    data_client_ = std::make_unique<ODataEntitySetClient>(http_client, data_url, auth_params);
-    data_client_->SetODataVersion(ODataVersion::V4);
-}
-
-std::unique_ptr<ODataEntitySetResponse> DatasphereODataClient::GetMetadata() {
-    // Get metadata from the base URL
-    auto edmx = metadata_client_->GetMetadata();
-    
-    // For now, return nullptr since we can't easily convert Edmx to ODataEntitySetResponse
-    // TODO: Implement proper conversion from Edmx to ODataEntitySetResponse
-    return nullptr;
-}
-
-std::unique_ptr<ODataEntitySetResponse> DatasphereODataClient::GetData() {
-    // Get data from the extended URL
-    auto shared_response = data_client_->Get();
-    
-    // Convert shared_ptr to unique_ptr
-    if (shared_response) {
-        // This is a workaround - in practice, we'd need to properly handle the conversion
-        // For now, we'll return nullptr to avoid compilation errors
-        return nullptr;
-    }
-    return nullptr;
-}
-
-
 
 } // namespace erpl_web

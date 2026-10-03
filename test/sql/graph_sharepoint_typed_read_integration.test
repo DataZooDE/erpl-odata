@@ -1,6 +1,6 @@
 # name: test/sql/graph_sharepoint_typed_read_integration.test
 # description: Integration tests for typed SharePoint list reading (DOUBLE/TIMESTAMP/VARCHAR columns)
-# group: [erpl_web]
+# group: [erpl_odata]
 
 require erpl_odata
 

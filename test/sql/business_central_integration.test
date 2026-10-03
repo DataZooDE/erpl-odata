@@ -1,6 +1,6 @@
 # name: test/sql/business_central_integration.test
 # description: Integration tests for Business Central functions against a live BC environment
-# group: [erpl_web]
+# group: [erpl_odata]
 
 require erpl_odata
 

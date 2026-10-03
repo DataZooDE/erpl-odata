@@ -37,13 +37,6 @@ public:
         const std::string& tenant,
         const std::string& data_center,
         std::shared_ptr<HttpAuthParams> auth_params);
-
-private:
-    static std::string BuildRelationalUrl(const std::string& tenant, const std::string& data_center, 
-                                        const std::string& space_id, const std::string& asset_id);
-    static std::string BuildAnalyticalUrl(const std::string& tenant, const std::string& data_center, 
-                                        const std::string& space_id, const std::string& asset_id);
-    static std::string BuildCatalogUrl(const std::string& tenant, const std::string& data_center);
 };
 
 // URL builder for Datasphere-specific URL patterns
@@ -117,25 +110,6 @@ struct DatasphereAuthParams : public HttpAuthParams {
     std::string GetTokenUrl() const;
 };
 
-// Datasphere OData client for handling dual-URL pattern
-class DatasphereODataClient {
-public:
-    DatasphereODataClient(const std::string& base_url, const std::string& data_url, 
-                          const std::string& access_token);
-    
-    // Get metadata from base URL
-    std::unique_ptr<ODataEntitySetResponse> GetMetadata();
-    
-    // Get data from extended URL
-    std::unique_ptr<ODataEntitySetResponse> GetData();
-    
-private:
-    std::string base_url_;
-    std::string data_url_;
-    std::string access_token_;
-    std::unique_ptr<ODataEntitySetClient> metadata_client_;
-    std::unique_ptr<ODataEntitySetClient> data_client_;
-};
 
 
 

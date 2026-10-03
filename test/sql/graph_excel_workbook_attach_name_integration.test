@@ -3,7 +3,7 @@
 #              SITE and DRIVE names instead of raw GUIDs.
 #              Attaches the test workbook by site/drive name, inserts 1 row,
 #              verifies the count, then cleans up.
-# group: [erpl_web]
+# group: [erpl_odata]
 
 require erpl_odata
 

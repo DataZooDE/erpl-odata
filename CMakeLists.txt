@@ -54,7 +54,6 @@ else()
     message(STATUS "mold linker not found, using default linker")
 endif()
 
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 project(${TARGET_NAME})
 include_directories(
@@ -117,7 +116,6 @@ set(EXTENSION_SOURCES
     src/odata_type_resolver.cpp
     src/odata_error_mapping.cpp
     src/odata_storage.cpp
-    src/odata_catalog.cpp
     src/odata_transaction_manager.cpp
     src/secret_functions.cpp
     src/web_functions.cpp
@@ -125,17 +123,10 @@ set(EXTENSION_SOURCES
     src/datasphere_client.cpp
     src/datasphere_catalog.cpp
     src/datasphere_read.cpp
-    src/datasphere_types.cpp
-    src/datasphere_local_server.cpp
     src/odata_odp_functions.cpp
     src/datasphere_secret.cpp
     src/odata_url_helpers.cpp
-    src/parameter_validation.cpp
-    src/error_context.cpp
-    src/url_parser.cpp
-    src/pattern_matcher.cpp
     src/odp_http_request_factory.cpp
-    src/odp_client_integration.cpp
     src/odp_subscription_repository.cpp
     src/odp_subscription_state_manager.cpp
     src/odp_request_orchestrator.cpp

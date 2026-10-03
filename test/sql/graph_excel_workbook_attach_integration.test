@@ -3,7 +3,7 @@
 #              Attaches an Excel workbook, reads SalesTable, inserts 2 rows,
 #              verifies the count increase, then cleans up.
 #              Prerequisite: SalesTable must exist in the test workbook.
-# group: [erpl_web]
+# group: [erpl_odata]
 
 require erpl_odata
 

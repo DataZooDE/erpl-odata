@@ -3,11 +3,6 @@
 #include <cstdlib>
 #include "catch.hpp"
 
-#ifdef _WIN32
-#include <cstdlib>
-#else
-#include <cstdlib>
-#endif
 
 int main(int argc, char *argv[]) {
   // Disable/suppress sanitizer checks for the test run
@@ -22,7 +17,7 @@ int main(int argc, char *argv[]) {
   setenv("UBSAN_OPTIONS", "halt_on_error=0:print_stacktrace=0", 0);
 #endif
 
-  std::cout << std::endl << "**** ERPL WEB CPP Unit Tests ****" << std::endl << std::endl;
+  std::cout << std::endl << "**** ERPL ODATA CPP Unit Tests ****" << std::endl << std::endl;
 
   int result = Catch::Session().run( argc, argv );
   return result;

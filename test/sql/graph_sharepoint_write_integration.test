@@ -3,7 +3,7 @@
 #              Inserts 1 item via COPY TO, reads back, verifies count delta,
 #              then deletes the inserted item via the catalog ATTACH interface.
 #              Uses TestList on Kommunikationswebsite (a plain custom SharePoint list).
-# group: [erpl_web]
+# group: [erpl_odata]
 
 require erpl_odata
 
