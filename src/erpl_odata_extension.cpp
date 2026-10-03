@@ -644,18 +644,17 @@ static void RegisterOdpFunctions(ExtensionLoader &loader)
     // Documented via the system catalog -- see RegisterDocumentedPragma below for why
     // the ExtensionLoader overload cannot carry metadata.
     {
-        auto pragma = erpl_web::CreateOdpRemoveSubscriptionFunction();
-        auto name = pragma.name;
-        PragmaFunctionSet set(name);
-        set.AddFunction(std::move(pragma));
+        auto set = erpl_web::CreateOdpRemoveSubscriptionFunction();
+        auto name = set.name;
         CreatePragmaFunctionInfo info(std::move(name), std::move(set));
         FunctionDescription d;
         d.description =
-            "Removes an ODP OData subscription so the source stops retaining delta state for it. "
-            "Pass the subscription id; the boolean controls whether removal is also attempted on "
-            "the remote system rather than only locally.";
-        d.examples = {"PRAGMA odp_odata_remove_subscription('SUB_ID', true);"};
-        d.parameter_names = {"subscription_id", "remove_remote"};
+            "Forgets an ODP OData subscription locally. This does NOT terminate it in the SAP system's ODQ "
+            "(do that in ODQMON). Pass the subscription id or a list of ids; every id must exist. The "
+            "optional boolean keeps the local record and marks it 'terminated' instead of deleting it.";
+        d.examples = {"PRAGMA odp_odata_remove_subscription('SUB_ID');",
+                      "PRAGMA odp_odata_remove_subscription('SUB_ID', true);"};
+        d.parameter_names = {"subscription_id", "keep_local_data"};
         d.categories = {"erpl_odata", "odp"};
         info.descriptions.push_back(std::move(d));
         auto &db = loader.GetDatabaseInstance();

@@ -95,8 +95,11 @@ void BcSchemaEntry::LoadTables() {
 
         ERPL_TRACE_INFO("BC_CATALOG", "Loaded " + std::to_string(table_entries.size()) + " BC entity sets");
     } catch (const std::exception &e) {
+        // Propagate: swallowing this made an expired token or a 403 indistinguishable from a company
+        // with no entity sets, and the caller then cached the empty result (GitHub #253). The callers
+        // only set tables_loaded after LoadTables returns, so a failure is retried next time.
         ERPL_TRACE_ERROR("BC_CATALOG", "Failed to load BC entity sets: " + std::string(e.what()));
-        table_entries.clear();
+        throw;
     }
 }
 
