@@ -1,4 +1,4 @@
-# name: test/sql/erpl_odata_sap_storage.test
+# name: test/sql/sap/odata_sap_storage.test
 # description: test erpl_odata extension for SAP OData service, including ignore attach option
 # group: [erpl_odata]
 

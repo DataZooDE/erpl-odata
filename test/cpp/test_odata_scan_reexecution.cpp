@@ -17,6 +17,9 @@
 
 #include <string>
 #include <vector>
+#include "test_database.hpp"
+
+using erpl_web::test_support::TestDatabase;
 
 using erpl_web::test_support::CannedResponse;
 using erpl_web::test_support::MakeV4Page;
@@ -25,24 +28,6 @@ using erpl_web::test_support::RecordedRequest;
 
 namespace {
 
-// See CLAUDE.md: a bare DuckDB(nullptr) crashes in DEBUG builds shortly after the first
-// query unless jemalloc's background threads own arena management.
-class TestDatabase {
-public:
-    TestDatabase()
-    {
-        config.SetOption("allocator_background_threads", duckdb::Value::BOOLEAN(true));
-        database = duckdb::make_uniq<duckdb::DuckDB>(nullptr, &config);
-        connection = duckdb::make_uniq<duckdb::Connection>(*database);
-    }
-
-    duckdb::Connection &Con() const { return *connection; }
-
-private:
-    duckdb::DBConfig config;
-    duckdb::unique_ptr<duckdb::DuckDB> database;
-    duckdb::unique_ptr<duckdb::Connection> connection;
-};
 
 const char *const AIRLINE_AA = R"({"AirlineCode":"AA","Name":"American Airlines"})";
 const char *const AIRLINE_FM = R"({"AirlineCode":"FM","Name":"Shanghai Airline"})";

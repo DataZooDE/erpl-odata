@@ -3,7 +3,6 @@
 #include "duckdb.hpp"
 #include "datazoo/oauth2/oauth2_types.hpp"
 #include "datazoo/oauth2/oauth2_browser.hpp"
-#include "datasphere_local_server.hpp"
 #include <iostream>
 #include <memory>
 
@@ -254,45 +253,4 @@ TEST_CASE("Test Browser Integration (Mock)", "[datasphere][oauth2][mock]")
     std::cout << "✅ Browser integration test completed" << std::endl;
 }
 
-TEST_CASE("Test Local Server (Mock)", "[datasphere][oauth2][mock]")
-{
-    std::cout << std::endl;
-    
-    // Test local server functionality
-    auto server = std::make_unique<DatasphereLocalServer>(8080);
-    REQUIRE(server != nullptr);
-    
-    // Test server start
-    server->Start();
-    REQUIRE(server->IsRunning() == true);
-    
-    // Test callback URL
-    std::string callback_url = server->GetCallbackUrl();
-    REQUIRE(callback_url.find("8080") != std::string::npos);
-    
-    // Test server stop
-    server->Stop();
-    REQUIRE(server->IsRunning() == false);
-    
-    std::cout << "✅ Local server test completed" << std::endl;
-}
 
-TEST_CASE("Test OAuth2 Flow Integration (Mock)", "[datasphere][oauth2][mock]")
-{
-    std::cout << std::endl;
-    
-    // Test complete OAuth2 flow integration (mock)
-    auto server = std::make_unique<DatasphereLocalServer>(8080);
-    
-    REQUIRE(server != nullptr);
-    
-    // Test flow initialization
-    server->Start();
-    REQUIRE(server->IsRunning() == true);
-    
-    // Test flow completion
-    server->Stop();
-    REQUIRE(server->IsRunning() == false);
-    
-    std::cout << "✅ OAuth2 flow integration test completed" << std::endl;
-}

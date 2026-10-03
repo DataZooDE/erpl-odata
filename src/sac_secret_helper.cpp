@@ -18,8 +18,8 @@ SacSecretData ResolveSacSecretData(duckdb::ClientContext& context, const std::st
 
     if (!secret_entry) {
         throw duckdb::InvalidInputException("Secret '" + secret_name + "' not found. Please create it using CREATE SECRET " +
-            secret_name + " (type 'sac', provider 'oauth2', tenant_name => '...', region => '...', " +
-            "client_id => '...', client_secret => '...', scope => 'openid');");
+            secret_name + " (type 'sac', provider 'access_token', tenant_name => '...', region => '...', " +
+            "access_token => '...');");
     }
 
     auto kv_secret = dynamic_cast<const duckdb::KeyValueSecret*>(secret_entry->secret.get());

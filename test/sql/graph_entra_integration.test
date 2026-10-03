@@ -1,6 +1,6 @@
 # name: test/sql/graph_entra_integration.test
 # description: Integration tests for Microsoft Graph Entra ID Directory
-# group: [erpl_web]
+# group: [erpl_odata]
 
 require erpl_odata
 

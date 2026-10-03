@@ -13,8 +13,8 @@
 			"detail": "CMake template build task",
 			"options": {
 				"env": {
-					"VCPKG_TOOLCHAIN_PATH": "${workspaceFolder}/vcpkg/scripts/buildsystems/vcpkg.cmake",
-					"CMAKE_TOOLCHAIN_FILE": "${workspaceFolder}/vcpkg/scripts/buildsystems/vcpkg.cmake"
+					"VCPKG_TOOLCHAIN_PATH": "${env:VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+					"CMAKE_TOOLCHAIN_FILE": "${env:VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
 				}
 			}
 		}

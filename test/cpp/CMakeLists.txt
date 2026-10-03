@@ -28,16 +28,16 @@ endif()
 # uncompiled and unrun, for their whole lifetime - one of them with nine already-failing
 # assertions nobody could see. CONFIGURE_DEPENDS makes the build re-glob when the set of
 # matching files changes. See GitHub #115.
-file(GLOB ERPL_WEB_TEST_FILES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/test_*.cpp")
+file(GLOB ERPL_ODATA_TEST_FILES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/test_*.cpp")
 
 # The harness support file is not a test_*.cpp, so it is named explicitly.
 list(APPEND TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/odata_test_server.cpp)
 
-if(NOT ERPL_WEB_TEST_FILES)
+if(NOT ERPL_ODATA_TEST_FILES)
     message(FATAL_ERROR "No test_*.cpp files found in ${CMAKE_CURRENT_SOURCE_DIR} - the test glob is broken")
 endif()
 
-list(APPEND TEST_SOURCES ${ERPL_WEB_TEST_FILES})
+list(APPEND TEST_SOURCES ${ERPL_ODATA_TEST_FILES})
 
 add_executable(erpl_odata_tests ${TEST_SOURCES})
 if(EXISTS "${CMAKE_SOURCE_DIR}/src/include/duckdb/main/extension_callback_manager.hpp")

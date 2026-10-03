@@ -3,7 +3,7 @@
 #              graph_sharepoint_update_item, and graph_sharepoint_delete_item.
 #              Creates one item, updates a field, reads back to verify,
 #              then deletes it and verifies the count is restored.
-# group: [erpl_web]
+# group: [erpl_odata]
 
 require erpl_odata
 

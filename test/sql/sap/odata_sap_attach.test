@@ -1,4 +1,4 @@
-# name: test/sql/erpl_odata_attach.test
+# name: test/sql/sap/odata_sap_attach.test
 # description: test erpl_odata extension
 # group: [erpl_odata]
 

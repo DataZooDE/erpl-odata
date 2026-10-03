@@ -48,29 +48,10 @@
 #include <set>
 #include <string>
 #include <vector>
+#include "test_database.hpp"
 
-namespace {
+using erpl_web::test_support::TestDatabase;
 
-// See CLAUDE.md: a bare DuckDB(nullptr) crashes in DEBUG builds shortly after the first
-// query unless jemalloc's background threads own arena management.
-class TestDatabase {
-public:
-    TestDatabase()
-    {
-        config.SetOption("allocator_background_threads", duckdb::Value::BOOLEAN(true));
-        database = duckdb::make_uniq<duckdb::DuckDB>(nullptr, &config);
-        connection = duckdb::make_uniq<duckdb::Connection>(*database);
-    }
-
-    duckdb::Connection &Con() const { return *connection; }
-
-private:
-    duckdb::DBConfig config;
-    duckdb::unique_ptr<duckdb::DuckDB> database;
-    duckdb::unique_ptr<duckdb::Connection> connection;
-};
-
-}  // namespace
 
 // Walks the catalog rather than a hand-written list of names. A list is the mechanism
 // that already failed once: the first cut of the #202 fix missed excel_table_scan because

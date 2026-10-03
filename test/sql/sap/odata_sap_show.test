@@ -1,6 +1,6 @@
-# name: test/sql/erpl_web_sap_odata_show.test
+# name: test/sql/sap/odata_sap_show.test
 # description: Test erpl_odata extension SAP OData service discovery functionality
-# group: [erpl_web_sap_odata]
+# group: [erpl_odata_sap_odata]
 
 # Require statement will ensure this test is run with this extension loaded
 require erpl_odata

@@ -8,6 +8,9 @@
 #include "odata_test_server.hpp"
 
 #include <string>
+#include "test_database.hpp"
+
+using erpl_web::test_support::TestDatabase;
 
 using erpl_web::test_support::CannedResponse;
 using erpl_web::test_support::ODataTestServer;
@@ -15,24 +18,6 @@ using erpl_web::test_support::RecordedRequest;
 
 namespace {
 
-// See CLAUDE.md: a bare DuckDB(nullptr) crashes in DEBUG builds unless jemalloc's background
-// threads own arena management.
-class TestDatabase {
-public:
-    TestDatabase()
-    {
-        config.SetOption("allocator_background_threads", duckdb::Value::BOOLEAN(true));
-        database = duckdb::make_uniq<duckdb::DuckDB>(nullptr, &config);
-        connection = duckdb::make_uniq<duckdb::Connection>(*database);
-    }
-
-    duckdb::Connection &Con() const { return *connection; }
-
-private:
-    duckdb::DBConfig config;
-    duckdb::unique_ptr<duckdb::DuckDB> database;
-    duckdb::unique_ptr<duckdb::Connection> connection;
-};
 
 void RequireIOError(const std::string &function, int status)
 {

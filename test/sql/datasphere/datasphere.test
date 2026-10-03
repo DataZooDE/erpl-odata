@@ -1,6 +1,6 @@
-# name: test/sql/erpl_web_datasphere.test
+# name: test/sql/datasphere/datasphere.test
 # description: Test erpl_odata extension Datasphere functionality
-# group: [erpl_web_datasphere]
+# group: [erpl_odata_datasphere]
 
 # Require statement will ensure this test is run with this extension loaded
 require erpl_odata

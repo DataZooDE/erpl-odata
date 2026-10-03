@@ -1,6 +1,6 @@
 # name: test/sql/graph_teams_integration.test
 # description: Integration tests for Microsoft Graph Teams
-# group: [erpl_web]
+# group: [erpl_odata]
 # note: Teams functions require delegated authentication
 #       Run ./scripts/acquire_graph_token.sh to get delegated tokens
 

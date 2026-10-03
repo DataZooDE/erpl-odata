@@ -1,11 +1,11 @@
 {
     "cmake.sourceDirectory": "${workspaceFolder}/duckdb",
+    "cmake.generator": "Ninja",
     "cmake.buildDirectory": "${workspaceFolder}/build/debug/",
     "cmake.configureSettings": {
-        "CMAKE_TOOLCHAIN_FILE": "${workspaceFolder}/vcpkg/scripts/buildsystems/vcpkg.cmake",
+        "CMAKE_TOOLCHAIN_FILE": "${env:VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
         "VCPKG_MANIFEST_DIR": "${workspaceFolder}",
-        "VCPKG_BUILD": "1",
-        "GEN": "ninja"
+        "VCPKG_BUILD": "1"
     },
     "cmake.configureArgs": [
         "-DDUCKDB_EXTENSION_CONFIGS=${workspaceFolder}/extension_config.cmake",

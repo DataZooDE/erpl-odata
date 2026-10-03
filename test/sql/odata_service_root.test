@@ -1,6 +1,6 @@
-# name: test/sql/erpl_web_odata_service_root.test
+# name: test/sql/odata_service_root.test
 # description: Test OData service root functionality for both V4 and V2
-# group: [erpl_web]
+# group: [erpl_odata]
 
 # Require statement will ensure this test is run with this extension loaded
 require erpl_odata

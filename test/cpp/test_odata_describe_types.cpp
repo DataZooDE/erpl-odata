@@ -13,6 +13,9 @@
 
 #include <string>
 #include <vector>
+#include "test_database.hpp"
+
+using erpl_web::test_support::TestDatabase;
 
 using erpl_web::test_support::CannedResponse;
 using erpl_web::test_support::MakeV4Page;
@@ -20,24 +23,6 @@ using erpl_web::test_support::ODataTestServer;
 
 namespace {
 
-// The jemalloc/background-thread option is mandatory: a bare DuckDB(nullptr) crashes in
-// DEBUG builds shortly after the first query (see CLAUDE.md).
-class TestDatabase {
-public:
-    TestDatabase()
-    {
-        config.SetOption("allocator_background_threads", duckdb::Value::BOOLEAN(true));
-        database = duckdb::make_uniq<duckdb::DuckDB>(nullptr, &config);
-        connection = duckdb::make_uniq<duckdb::Connection>(*database);
-    }
-
-    duckdb::Connection &Con() const { return *connection; }
-
-private:
-    duckdb::DBConfig config;
-    duckdb::unique_ptr<duckdb::DuckDB> database;
-    duckdb::unique_ptr<duckdb::Connection> connection;
-};
 
 // One entity type exercising every facet-sensitive shape at once.
 const char *const DESCRIBE_EDMX = R"XML(<?xml version="1.0" encoding="utf-8"?>

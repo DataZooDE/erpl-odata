@@ -18,6 +18,7 @@ endif
 # when the build directory is already configured. Ninja detects CMakeLists.txt changes
 # on its own and re-runs cmake automatically when needed.
 # Use 'make debug' to force a full reconfigure (e.g. after adding a new dependency).
+# Requires the extension tests to be enabled (the default): it builds unittest and erpl_odata_tests.
 #
 # Builds the three binaries this workflow runs (the 'duckdb' shell, the SQLLogicTest runner
 # and the C++ tests) instead of 'all'. 'all' also builds DuckDB-internal tools such as
@@ -100,6 +101,21 @@ test_debug_ms: unittest
 	./build/debug/test/unittest "test/sql/graph_excel_integration.test"
 	./build/debug/test/unittest "test/sql/graph_outlook_integration.test"
 	./build/debug/test/unittest "test/sql/graph_teams_integration.test"
+	./build/debug/test/unittest "test/sql/graph_excel_error_integration.test"
+	./build/debug/test/unittest "test/sql/graph_sharepoint_error_integration.test"
+	./build/debug/test/unittest "test/sql/graph_sharepoint_typed_read_integration.test"
+	./build/debug/test/unittest "test/sql/graph_excel_workbook_attach_integration.test"
+	./build/debug/test/unittest "test/sql/graph_excel_workbook_attach_name_integration.test"
+
+# The Microsoft integration tests that CREATE, UPDATE or DELETE data in the tenant. They are
+# kept out of test_debug_ms so a read-only run never mutates anything; they additionally need
+# the dedicated ERPL_MS_SHAREPOINT_TESTLIST_* / ERPL_MS_EXCEL_* targets to be sacrificial.
+.PHONY: test_debug_ms_write
+test_debug_ms_write: unittest
+	./build/debug/test/unittest "test/sql/graph_excel_write_integration.test"
+	./build/debug/test/unittest "test/sql/graph_sharepoint_write_integration.test"
+	./build/debug/test/unittest "test/sql/graph_sharepoint_scalar_write_integration.test"
+	./build/debug/test/unittest "test/sql/graph_sharepoint_attach_rw_integration.test"
 
 # Run Business Central integration tests against a live BC environment.
 # Requires environment variables sourced from an Azure App Registration registered in BC.

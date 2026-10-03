@@ -92,9 +92,9 @@ file now has a narrower reason to change.
    conversion does not.
 9. Centralize schema/type construction so bind code and row construction cannot
    drift.
-10. Rebuild before testing runtime behavior: `GEN=ninja make debug`. If the full
-    build fails in an unrelated auxiliary target, verify the touched targets
-    directly with `cmake --build build/debug --target duckdb erpl_odata_tests`.
+10. Rebuild before testing runtime behavior with `make dev`, which builds only the
+    shell, `unittest` and `erpl_odata_tests`, so an unrelated auxiliary target cannot
+    abort it.
 11. Run focused tests first, then broader tests when the environment allows it.
 12. Record residual debt instead of mixing a large file split into the first
     behavior-preserving cleanup.
@@ -223,18 +223,10 @@ Recommended split:
 This refactor should be staged carefully because the header is broad and can
 create compile/link churn.
 
-### Lower Priority: `src/http_client.cpp`
+### Out of scope: the HTTP client
 
-The HTTP client is large, but its responsibilities are more coherent than the
-Datasphere catalog file. It should come after the mixed catalog/parsing files.
-
-Good splits when touched:
-
-- URL parsing and normalization.
-- libcurl option construction.
-- response-header/body collection.
-- auth/header composition.
-- charset/response decoding if not already owned elsewhere.
+The HTTP client (`http_client.cpp`, `timeout_http_client.cpp`) lives in the `datazoo-oauth2`
+submodule and is built on cpp-httplib, so any split belongs in that repository, not here.
 
 ## Next Proposals
 

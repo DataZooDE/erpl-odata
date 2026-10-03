@@ -1,6 +1,6 @@
 # name: test/sql/tls_enforcement.test
 # description: Proves TLS certificate verification is actually enforced, not merely configured
-# group: [erpl_web]
+# group: [erpl_odata]
 #
 # tls_settings.test asserts the settings EXIST and validate their input. That is not the
 # same as proving a handshake is refused, and the difference matters: when TLS verification

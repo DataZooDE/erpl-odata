@@ -1,6 +1,6 @@
 # name: test/sql/business_central.test
 # description: Test Business Central integration functions and secret management
-# group: [erpl_web]
+# group: [erpl_odata]
 
 require erpl_odata
 

@@ -3,11 +3,6 @@
 #include <cstdlib>
 #include "catch.hpp"
 
-#ifdef _WIN32
-#include <cstdlib>
-#else
-#include <cstdlib>
-#endif
 
 int main(int argc, char *argv[]) {
   // Disable/suppress sanitizer checks for the test run

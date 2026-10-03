@@ -68,16 +68,6 @@ public:
      */
     std::optional<SacModel> GetModel(const std::string& model_id) const;
 
-    /**
-     * List dimensions for a model
-     */
-    std::vector<std::string> GetModelDimensions(const std::string& model_id) const;
-
-    /**
-     * List measures for an analytics model
-     */
-    std::vector<std::string> GetModelMeasures(const std::string& model_id) const;
-
     // Story discovery
 
     /**
@@ -90,26 +80,11 @@ public:
      */
     std::optional<SacStory> GetStory(const std::string& story_id) const;
 
-    /**
-     * List stories by owner
-     */
-    std::vector<SacStory> ListStoriesByOwner(const std::string& owner) const;
-
 private:
     std::string tenant_;
     std::string region_;
     std::shared_ptr<HttpAuthParams> auth_params_;
     std::shared_ptr<ODataServiceClient> catalog_client_;
-
-    // Helper methods for parsing OData responses
-    std::vector<SacModel> ParseModelsResponse(
-        const std::string& odata_response) const;
-
-    std::vector<SacStory> ParseStoriesResponse(
-        const std::string& odata_response) const;
-
-    SacModel ParseModelEntity(const std::string& entity_json) const;
-    SacStory ParseStoryEntity(const std::string& entity_json) const;
 };
 
 /**

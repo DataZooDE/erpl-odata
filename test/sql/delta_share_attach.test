@@ -1,0 +1,10 @@
+# name: test/sql/delta_share_attach.test
+# description: ATTACH ... TYPE delta_share reports that it is not implemented instead of attaching an empty catalog
+# group: [erpl_odata_delta_share]
+
+require erpl_odata
+
+statement error
+ATTACH 'unused' AS delta_attached (TYPE delta_share);
+----
+not implemented yet

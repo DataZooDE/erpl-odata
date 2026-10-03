@@ -50,30 +50,6 @@ std::vector<SacModel> SacCatalogService::ListModels() const {
         "SacCatalogService::ListModels is not implemented yet. SAC catalog discovery needs the tenant's OData service "
         "document, which this build cannot parse. Use the Datasphere functions, or open an "
         "issue with a captured SAC response if you need this.");
-
-    std::vector<SacModel> models;
-
-    try {
-        // STUB IMPLEMENTATION: Returns empty vector
-        // TODO: Implement full functionality to query planning models via OData
-        //
-        // Expected implementation:
-        // 1. Call catalog_client_->GetMetadata() or similar to fetch model list
-        // 2. Parse OData response using ParseModelsResponse()
-        // 3. Return populated models vector
-        //
-        // Required infrastructure:
-        // - catalog_client_ is initialized and available
-        // - OData v4 service endpoint is configured
-        // - ParseModelsResponse() needs implementation (see TODO below)
-        //
-        // Related: GetModel(), GetModelDimensions(), GetModelMeasures()
-        ERPL_TRACE_INFO("SAC_CATALOG", "Listing models for tenant " + tenant_ + " in region " + region_ + " [STUB]");
-    } catch (const std::exception& e) {
-        ERPL_TRACE_ERROR("SAC_CATALOG", "Failed to list planning models: " + std::string(e.what()));
-    }
-
-    return models;
 }
 
 std::optional<SacModel> SacCatalogService::GetModel(const std::string& model_id) const {
@@ -91,54 +67,6 @@ std::optional<SacModel> SacCatalogService::GetModel(const std::string& model_id)
         "SacCatalogService::GetModel is not implemented yet. SAC catalog discovery needs the tenant's OData service "
         "document, which this build cannot parse. Use the Datasphere functions, or open an "
         "issue with a captured SAC response if you need this.");
-
-    try {
-        // STUB IMPLEMENTATION: Returns nullopt (no data)
-        // TODO: Implement full functionality to query specific planning model via OData
-        //
-        // Expected implementation:
-        // 1. Use catalog_client_ to query specific model endpoint
-        // 2. Call ParseModelEntity() on response
-        // 3. Return SacModel wrapped in optional
-        //
-        // Note: GetModelDimensions() and GetModelMeasures() depend on this method
-        auto url_str = SacUrlBuilder::BuildPlanningDataUrl(tenant_, region_, model_id);
-        ERPL_TRACE_INFO("SAC_CATALOG", "Getting model " + model_id + " from " + url_str + " [STUB]");
-    } catch (const std::exception& e) {
-        ERPL_TRACE_ERROR("SAC_CATALOG", "Failed to get model " + model_id + ": " + std::string(e.what()));
-    }
-
-    return std::nullopt;
-}
-
-std::vector<std::string> SacCatalogService::GetModelDimensions(const std::string& model_id) const {
-    std::vector<std::string> dimensions;
-
-    try {
-        auto model = GetModel(model_id);
-        if (model.has_value()) {
-            dimensions = model->dimensions;
-        }
-    } catch (const std::exception& e) {
-        ERPL_TRACE_ERROR("SAC_CATALOG", "Failed to get model dimensions: " + std::string(e.what()));
-    }
-
-    return dimensions;
-}
-
-std::vector<std::string> SacCatalogService::GetModelMeasures(const std::string& model_id) const {
-    std::vector<std::string> measures;
-
-    try {
-        auto model = GetModel(model_id);
-        if (model.has_value()) {
-            measures = model->measures;
-        }
-    } catch (const std::exception& e) {
-        ERPL_TRACE_ERROR("SAC_CATALOG", "Failed to get model measures: " + std::string(e.what()));
-    }
-
-    return measures;
 }
 
 std::vector<SacStory> SacCatalogService::ListStories() const {
@@ -148,153 +76,18 @@ std::vector<SacStory> SacCatalogService::ListStories() const {
         "SacCatalogService::ListStories is not implemented yet. SAC catalog discovery needs the "
         "tenant's OData service document, which this build cannot parse. Open an issue with a "
         "captured SAC response if you need this.");
-
-    std::vector<SacStory> stories;
-
-    try {
-        // STUB IMPLEMENTATION: Returns empty vector
-        // TODO: Implement full functionality to query stories via OData story service
-        //
-        // Expected implementation:
-        // 1. Call catalog_client_->Query() or similar to fetch stories
-        // 2. Parse OData response using ParseStoriesResponse()
-        // 3. Return populated stories vector
-        //
-        // Dependent methods:
-        // - GetStory() depends on this
-        // - ListStoriesByOwner() depends on this
-        auto stories_url = SacUrlBuilder::BuildStoryServiceUrl(tenant_, region_);
-        ERPL_TRACE_INFO("SAC_CATALOG", "Listing stories from " + stories_url + " [STUB]");
-    } catch (const std::exception& e) {
-        ERPL_TRACE_ERROR("SAC_CATALOG", "Failed to list stories: " + std::string(e.what()));
-    }
-
-    return stories;
 }
 
 std::optional<SacStory> SacCatalogService::GetStory(const std::string& story_id) const {
-    try {
-        auto stories = ListStories();
-        auto it = std::find_if(stories.begin(), stories.end(),
-            [&story_id](const SacStory& s) { return s.id == story_id; });
-        if (it != stories.end()) {
-            return *it;
-        }
-    } catch (const std::exception& e) {
-        ERPL_TRACE_ERROR("SAC_CATALOG", "Failed to get story " + story_id + ": " + std::string(e.what()));
+    // ListStories throws NotImplementedException until the catalog wire format is known; letting
+    // it propagate keeps "not implemented" distinguishable from "no such story" (GitHub #243).
+    const auto stories = ListStories();
+    const auto it = std::find_if(stories.begin(), stories.end(),
+        [&story_id](const SacStory& story) { return story.id == story_id; });
+    if (it == stories.end()) {
+        return std::nullopt;
     }
-
-    return std::nullopt;
-}
-
-std::vector<SacStory> SacCatalogService::ListStoriesByOwner(const std::string& owner) const {
-    std::vector<SacStory> result;
-
-    try {
-        auto stories = ListStories();
-        for (const auto& story : stories) {
-            if (story.owner == owner) {
-                result.push_back(story);
-            }
-        }
-    } catch (const std::exception& e) {
-        ERPL_TRACE_ERROR("SAC_CATALOG", "Failed to list stories by owner: " + std::string(e.what()));
-    }
-
-    return result;
-}
-
-// Helper methods for parsing OData responses
-
-std::vector<SacModel> SacCatalogService::ParseModelsResponse(const std::string& odata_response) const {
-    std::vector<SacModel> models;
-
-    // STUB IMPLEMENTATION: Returns empty vector (no parsing)
-    // TODO: Implement OData response parsing for models
-    //
-    // Expected implementation:
-    // 1. Parse JSON response using yyjson (consistent with Delta Share code)
-    // 2. Extract "value" array from OData response
-    // 3. Iterate through entities and call ParseModelEntity() for each
-    // 4. Return populated models vector
-    //
-    // Example response structure (OData v4):
-    // {
-    //   "value": [
-    //     { "ID": "MODEL_001", "name": "Sales Planning", "type": "PLANNING", ... },
-    //     { "ID": "MODEL_002", "name": "Analytics", "type": "ANALYTICS", ... }
-    //   ]
-    // }
-    //
-    // Parser: Use yyjson like Delta Share does in delta_share_client.cpp
-
-    size_t value_pos = odata_response.find("\"value\":");
-    if (value_pos == std::string::npos) {
-        ERPL_TRACE_DEBUG("SAC_CATALOG", "No 'value' array found in OData response (stub)");
-        return models;
-    }
-
-    ERPL_TRACE_DEBUG("SAC_CATALOG", "ParseModelsResponse is a stub - implement full parsing [STUB]");
-    return models;
-}
-
-std::vector<SacStory> SacCatalogService::ParseStoriesResponse(const std::string& odata_response) const {
-    std::vector<SacStory> stories;
-
-    // STUB IMPLEMENTATION: Returns empty vector (no parsing)
-    // TODO: Implement OData response parsing for stories (similar to ParseModelsResponse)
-    //
-    // Expected implementation:
-    // 1. Parse JSON response using yyjson
-    // 2. Extract "value" array from OData response
-    // 3. Iterate through entities and call ParseStoryEntity() for each
-    // 4. Return populated stories vector
-
-    return stories;
-}
-
-SacModel SacCatalogService::ParseModelEntity(const std::string& entity_json) const {
-    SacModel model;
-
-    // STUB IMPLEMENTATION: Returns default struct (no parsing)
-    // TODO: Implement JSON entity parsing for models
-    //
-    // Expected implementation:
-    // 1. Parse JSON string using yyjson
-    // 2. Extract fields:
-    //    - ID -> model.id
-    //    - name -> model.name
-    //    - description -> model.description
-    //    - type -> model.type (PLANNING or ANALYTICS)
-    //    - owner -> model.owner
-    //    - createdAt -> model.created_at
-    //    - modifiedAt -> model.last_modified_at
-    //    - dimensions -> model.dimensions (array)
-    //    - measures -> model.measures (array)
-    // 3. Return populated SacModel
-
-    return model;
-}
-
-SacStory SacCatalogService::ParseStoryEntity(const std::string& entity_json) const {
-    SacStory story;
-
-    // STUB IMPLEMENTATION: Returns default struct (no parsing)
-    // TODO: Implement JSON entity parsing for stories
-    //
-    // Expected implementation:
-    // 1. Parse JSON string using yyjson
-    // 2. Extract fields:
-    //    - ID -> story.id
-    //    - name -> story.name
-    //    - description -> story.description
-    //    - owner -> story.owner
-    //    - createdAt -> story.created_at
-    //    - modifiedAt -> story.last_modified_at
-    //    - status -> story.status (DRAFT or PUBLISHED)
-    // 3. Return populated SacStory
-
-    return story;
+    return *it;
 }
 
 // ===== DuckDB Table Functions =====
@@ -514,7 +307,7 @@ static duckdb::unique_ptr<duckdb::FunctionData> SacGetModelInfoBind(
     auto bind = duckdb::make_uniq<SacGetModelInfoBindData>();
     if (model_opt.has_value()) {
         bind->item = model_opt.value();
-        bind->details = catalog->GetModelDimensions(model_id);
+        bind->details = bind->item.dimensions;
         bind->item_found = true;
     } else {
         bind->item_found = false;

@@ -1,6 +1,6 @@
 # name: test/sql/tls_settings.test
 # description: TLS server certificate verification settings (GitHub #63)
-# group: [erpl_web]
+# group: [erpl_odata]
 
 require erpl_odata
 

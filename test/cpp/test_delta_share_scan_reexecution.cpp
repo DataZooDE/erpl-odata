@@ -24,30 +24,15 @@
 #include <cstdio>
 #include <fstream>
 #include <string>
+#include "test_database.hpp"
+
+using erpl_web::test_support::TestDatabase;
 
 using erpl_web::test_support::CannedResponse;
 using erpl_web::test_support::ODataTestServer;
 
 namespace {
 
-// See CLAUDE.md: a bare DuckDB(nullptr) crashes in DEBUG builds shortly after the first
-// query unless jemalloc's background threads own arena management.
-class TestDatabase {
-public:
-    TestDatabase()
-    {
-        config.SetOption("allocator_background_threads", duckdb::Value::BOOLEAN(true));
-        database = duckdb::make_uniq<duckdb::DuckDB>(nullptr, &config);
-        connection = duckdb::make_uniq<duckdb::Connection>(*database);
-    }
-
-    duckdb::Connection &Con() const { return *connection; }
-
-private:
-    duckdb::DBConfig config;
-    duckdb::unique_ptr<duckdb::DuckDB> database;
-    duckdb::unique_ptr<duckdb::Connection> connection;
-};
 
 // Writes a Delta Sharing profile next to the test binary and removes it again, so the
 // fixture leaves nothing behind whichever way the test exits. The name carries a

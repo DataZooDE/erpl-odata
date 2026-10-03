@@ -1,6 +1,6 @@
 # name: test/sql/dataverse.test
 # description: Test Dataverse/CRM integration functions and secret management
-# group: [erpl_web]
+# group: [erpl_odata]
 
 require erpl_odata
 

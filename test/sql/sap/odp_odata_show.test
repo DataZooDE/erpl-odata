@@ -1,6 +1,6 @@
 # name: test/sql/sap/odp_odata_show.test
 # description: Discovery of SAP ODP OData services against a live system
-# group: [erpl_web_odp_odata]
+# group: [erpl_odata_odp_odata]
 #
 # ODP is not part of a stock SAP system: the service has to be provisioned and exposed
 # first. Naming it in ERPL_SAP_ODP_SERVICE is what opts a machine into these tests, so a

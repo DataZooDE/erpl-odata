@@ -10,7 +10,6 @@
 #include "duckdb/common/vector.hpp"
 #include "duckdb/common/named_parameter_map.hpp"
 #include <vector>
-#include <string>
 
 namespace erpl_web 
 {   

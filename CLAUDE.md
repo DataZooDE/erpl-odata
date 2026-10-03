@@ -1041,8 +1041,8 @@ This project currently targets **DuckDB v1.4.5 and v1.5.6** (check `.github/work
 
 ### Core Module Organization
 
-#### 1. **HTTP Layer** (`http_client.*`, `timeout_http_client.*`)
-- Low-level HTTP request/response handling (libcurl-based)
+#### 1. **HTTP Layer** (`datazoo-oauth2/src/http_client.cpp`, `timeout_http_client.cpp`)
+- Owned by the `datazoo-oauth2` submodule, not `src/`; low-level HTTP request/response handling on top of cpp-httplib
 - Character set detection and conversion via charset_converter
 - Timeout management and keep-alive pooling
 - Returns consistent HttpResponse objects with headers, status, content
@@ -1085,11 +1085,7 @@ This project currently targets **DuckDB v1.4.5 and v1.5.6** (check `.github/work
 
 #### 6. **Authentication & Secrets**
 - **secret_functions.cpp/hpp** - DuckDB secret integration (CREATE SECRET)
-- **oauth2_flow_v2.cpp/hpp** - OAuth2 authorization_code and client_credentials flows
-- **oauth2_server.cpp/hpp** - Local HTTP server for OAuth2 redirect callback
-- **oauth2_browser.cpp/hpp** - Browser launching for user login
-- **oauth2_callback_handler.cpp/hpp** - Handles OAuth2 authorization code callback
-- **oauth2_types.hpp** - OAuth2 token structures
+- **datazoo-oauth2/** (submodule) - OAuth2 authorization_code and client_credentials flows, the local redirect/callback server, browser launching, callback handling and token structures (`oauth2_flow_v2`, `oauth2_server`, `oauth2_browser`, `oauth2_callback_handler`, `oauth2_types`). Its own tests run with `make test_oauth2`.
 
 #### 7. **HTTP Functions** (`web_functions.cpp/hpp`)
 - Implements `http_get()`, `http_head()`, `http_post()`, `http_put()`, `http_patch()`, `http_delete()`
@@ -1614,7 +1610,6 @@ Consultation: .ai/codex_context/20250130_091500_oauth_thread_safety.md"
 
 - **README.md** - Complete feature documentation and SQL examples
 - **docs/UPDATING.md** - Process for updating DuckDB version dependencies
-- **.ai/README.md** - Extension analysis and GitHub Actions documentation
 - **DuckDB Extension Template** - https://github.com/duckdb/extension-template
 - **Extension CI Tools** - https://github.com/duckdb/extension-ci-tools (supports 2 latest DuckDB versions)
 - **DuckDB CONTRIBUTING.md** - https://github.com/duckdb/duckdb/blob/main/CONTRIBUTING.md

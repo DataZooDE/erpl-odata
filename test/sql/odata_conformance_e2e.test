@@ -1,6 +1,6 @@
 # name: test/sql/odata_conformance_e2e.test
 # description: End-to-end conformance checks against live public OData services
-# group: [erpl_web_odata]
+# group: [erpl_odata_odata]
 #
 # Every case here reproduces a defect that reached users, and each one is
 # asserted against a real server rather than a fixture, because the defects were

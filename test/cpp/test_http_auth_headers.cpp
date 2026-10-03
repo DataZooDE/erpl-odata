@@ -4,6 +4,9 @@
 #include "duckdb.hpp"
 
 #include <string>
+#include "test_database.hpp"
+
+using erpl_web::test_support::TestDatabase;
 
 using namespace erpl_web::test_support;
 
@@ -25,22 +28,6 @@ using namespace erpl_web::test_support;
 
 namespace {
 
-class TestDatabase {
-public:
-    TestDatabase()
-    {
-        config.SetOption("allocator_background_threads", duckdb::Value::BOOLEAN(true));
-        database = duckdb::make_uniq<duckdb::DuckDB>(nullptr, &config);
-        connection = duckdb::make_uniq<duckdb::Connection>(*database);
-    }
-
-    duckdb::Connection &Con() const { return *connection; }
-
-private:
-    duckdb::DBConfig config;
-    duckdb::unique_ptr<duckdb::DuckDB> database;
-    duckdb::unique_ptr<duckdb::Connection> connection;
-};
 
 // base64 of the credential pairs under test, so the expectations read as what they are.
 // "username_only:" keeps its trailing colon: the empty password is the point of that case.

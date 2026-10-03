@@ -1,6 +1,6 @@
 # name: test/sql/graph_excel.test
 # description: Test Microsoft Graph Excel integration functions and secret management
-# group: [erpl_web]
+# group: [erpl_odata]
 
 require erpl_odata
 
