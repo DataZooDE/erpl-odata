@@ -414,7 +414,7 @@ bool OdpODataReadBindData::HandleInitialLoad() {
     ERPL_TRACE_INFO("ODP_BIND_DATA", "Handling initial load request");
 
     try {
-        current_audit_id_ = state_manager_->CreateAuditEntry("initial_load", entity_set_url_);
+        current_audit_id_ = state_manager_->CreateAuditEntry(OdpOperationName(OdpOperation::INITIAL_LOAD), entity_set_url_);
 
         auto result = request_orchestrator_->ExecuteInitialLoad(entity_set_url_, max_page_size_);
 
@@ -433,7 +433,7 @@ bool OdpODataReadBindData::HandleInitialLoad() {
 
         if (pending_next_url_.empty()) {
             // Single-page response: process state transition immediately.
-            ProcessRequestResult(result, "initial_load");
+            ProcessRequestResult(result, OdpOperation::INITIAL_LOAD);
         } else {
             // Multi-page: defer state transition until FetchAndLoadNextPage reaches the last page.
             initial_load_in_progress_ = true;
@@ -462,7 +462,7 @@ bool OdpODataReadBindData::HandleDeltaFetch() {
     }
 
     try {
-        current_audit_id_ = state_manager_->CreateAuditEntry("delta_fetch", entity_set_url_);
+        current_audit_id_ = state_manager_->CreateAuditEntry(OdpOperationName(OdpOperation::DELTA_FETCH), entity_set_url_);
 
         ERPL_TRACE_INFO("ODP_BIND_DATA", duckdb::StringUtil::Format(
             "Delta fetch with token: %s", current_token.substr(0, 64)));
@@ -479,7 +479,7 @@ bool OdpODataReadBindData::HandleDeltaFetch() {
 
         if (pending_next_url_.empty()) {
             // Single-page delta response: process state transition immediately.
-            ProcessRequestResult(result, "delta_fetch");
+            ProcessRequestResult(result, OdpOperation::DELTA_FETCH);
         } else {
             // Multi-page: defer state transition until FetchAndLoadNextPage reaches the last page.
             delta_fetch_in_progress_ = true;
@@ -524,7 +524,8 @@ bool OdpODataReadBindData::HandleDeltaFetch() {
 }
 
 void OdpODataReadBindData::ProcessRequestResult(const OdpRequestOrchestrator::OdpRequestResult& result,
-                                              const std::string& operation_type) {
+                                              OdpOperation operation) {
+    const std::string operation_type = OdpOperationName(operation);
     ERPL_TRACE_DEBUG("ODP_BIND_DATA", duckdb::StringUtil::Format(
         "Processing %s result - Status: %d, DeltaToken: %s, PreferenceApplied: %s",
         operation_type, result.http_status_code,
@@ -543,10 +544,10 @@ void OdpODataReadBindData::ProcessRequestResult(const OdpRequestOrchestrator::Od
     // cancelled query, a failed page or a crash during the scan skips that package
     // permanently. CommitStagedDeltaToken() writes it once the scan has drained.
     // See GitHub #62.
-    if (operation_type == "initial_load") {
+    if (operation == OdpOperation::INITIAL_LOAD) {
         if (!result.extracted_delta_token.empty() && result.preference_applied) {
             staged_delta_token_ = result.extracted_delta_token;
-            staged_operation_type_ = operation_type;
+            staged_operation_ = operation;
             staged_preference_applied_ = result.preference_applied;
             has_staged_delta_token_ = true;
             ERPL_TRACE_DEBUG("ODP_BIND_DATA", "Staged delta token from initial load, pending scan completion");
@@ -554,10 +555,10 @@ void OdpODataReadBindData::ProcessRequestResult(const OdpRequestOrchestrator::Od
             // Initial load without change tracking - stay in initial load mode
             ERPL_TRACE_WARN("ODP_BIND_DATA", "Initial load completed but change tracking not established");
         }
-    } else if (operation_type == "delta_fetch") {
+    } else if (operation == OdpOperation::DELTA_FETCH) {
         if (!result.extracted_delta_token.empty()) {
             staged_delta_token_ = result.extracted_delta_token;
-            staged_operation_type_ = operation_type;
+            staged_operation_ = operation;
             staged_preference_applied_ = false;
             has_staged_delta_token_ = true;
             ERPL_TRACE_DEBUG("ODP_BIND_DATA", "Staged delta token from delta fetch, pending scan completion");
@@ -595,17 +596,17 @@ void OdpODataReadBindData::CommitStagedDeltaToken() {
     }
 
     ERPL_TRACE_INFO("ODP_BIND_DATA",
-                    "Scan drained; committing staged delta token for " + staged_operation_type_);
+                    std::string("Scan drained; committing staged delta token for ") + OdpOperationName(staged_operation_));
 
     const auto token = staged_delta_token_;
-    const auto operation_type = staged_operation_type_;
+    const auto operation = staged_operation_;
     const auto preference_applied = staged_preference_applied_;
 
     // Persist FIRST. Clearing the staging fields up front would discard the token if the
     // write then failed, and the next read would re-extract from the previous position.
     // The flag is cleared only once the write has succeeded, which also makes a second
     // call a no-op when the scan is drained more than once.
-    if (operation_type == "initial_load") {
+    if (operation == OdpOperation::INITIAL_LOAD) {
         state_manager_->TransitionToDeltaFetch(token, preference_applied);
     } else {
         state_manager_->UpdateDeltaToken(token);
@@ -613,7 +614,6 @@ void OdpODataReadBindData::CommitStagedDeltaToken() {
 
     has_staged_delta_token_ = false;
     staged_delta_token_.clear();
-    staged_operation_type_.clear();
 }
 
 void OdpODataReadBindData::UpdateODataClientWithResponse(const std::string& url, const std::string& response_content) {
@@ -768,7 +768,10 @@ void OdpODataReadBindData::FetchAndLoadNextPage() {
     const std::string url_to_fetch = pending_next_url_;
     ERPL_TRACE_INFO("ODP_BIND_DATA", "Fetching next ODP page: " + url_to_fetch);
 
-    auto next_result = request_orchestrator_->ExecuteNextPage(url_to_fetch);
+    // Only the first page carries Preference-Applied, so the confirmation it earned is passed along: the
+    // DeltaLinksOf token recovery has to be able to run on the LAST page (GitHub #250).
+    const bool change_tracking_confirmed = initial_load_in_progress_ && initial_load_preference_applied_;
+    auto next_result = request_orchestrator_->ExecuteNextPage(url_to_fetch, change_tracking_confirmed);
     if (!next_result.response) {
         // Ending pagination here would hand the user a partial extraction presented as a
         // complete one, and the staged delta token would then be committed over rows that
@@ -792,7 +795,11 @@ void OdpODataReadBindData::FetchAndLoadNextPage() {
     // in HandleInitialLoad / HandleDeltaFetch.
     if (pending_next_url_.empty()) {
         // Extract and normalize the delta token from this final page.
+        // The body first; failing that, whatever the orchestrator recovered from DeltaLinksOf.
         std::string raw_token    = OdpRequestOrchestrator::ExtractDeltaToken(*next_result.response);
+        if (raw_token.empty()) {
+            raw_token = next_result.extracted_delta_token;
+        }
         std::string delta_url    = OdpRequestOrchestrator::ExtractDeltaUrl(*next_result.response);
         std::string norm_token   = OdpRequestOrchestrator::NormalizeDeltaToken(raw_token);
         std::string norm_url     = delta_url.empty() ? "" : OdpRequestOrchestrator::NormalizeDeltaUrl(delta_url);
@@ -817,11 +824,11 @@ void OdpODataReadBindData::FetchAndLoadNextPage() {
             // GitHub #97 closed: a token without change tracking transitions the subscription to
             // DELTA_FETCH over data that was never tracked.
             last_page.preference_applied = initial_load_preference_applied_;
-            ProcessRequestResult(last_page, "initial_load");
+            ProcessRequestResult(last_page, OdpOperation::INITIAL_LOAD);
         } else if (delta_fetch_in_progress_) {
             delta_fetch_in_progress_   = false;
             last_page.preference_applied = false; // unused for delta_fetch path
-            ProcessRequestResult(last_page, "delta_fetch");
+            ProcessRequestResult(last_page, OdpOperation::DELTA_FETCH);
         }
     }
 
