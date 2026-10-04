@@ -15,7 +15,18 @@ ATTACH 'https://tenant.eu10.sapanalytics.cloud' AS sac_attached (TYPE sac, SECRE
 ----
 not implemented yet
 
-# Nothing was attached, and no local file named after the URL appeared.
+# A local path as the target: before the fix DuckDB created or opened it as a plain database file.
+statement error
+ATTACH '__TEST_DIR__/sac_attach_probe.db' AS sac_probe (TYPE sac, SECRET sac_attach_secret);
+----
+not implemented yet
+
+query I
+SELECT count(*) FROM glob('__TEST_DIR__/sac_attach_probe.db*');
+----
+0
+
+# Nothing was attached.
 query I
 SELECT count(*) FROM duckdb_databases() WHERE database_name = 'sac_attached';
 ----

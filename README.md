@@ -644,7 +644,7 @@ SELECT * FROM sac_read_story_data('DASHBOARD_001', secret := 'my_sac');
 
 ### SAC ATTACH
 
-⚠️ `ATTACH ... (TYPE sac)` is **not implemented yet** and fails with a "not implemented yet" error (GitHub #252, #243): SAC's catalog format cannot be verified without a tenant response. Use the `sac_read_*` functions above. (`TYPE sac` is valid for `CREATE SECRET`; it is the `ATTACH` type that does not work.)
+⚠️ `ATTACH ... (TYPE sac)` is **not implemented yet** and fails with a "not implemented yet" error (GitHub #252, #243): SAC's catalog format cannot be verified without a tenant response. Use the `sac_read_*` functions above. They need a model or story ID, and the discovery functions that would list IDs are not implemented yet either, so the IDs have to come from SAC itself. (`TYPE sac` is valid for `CREATE SECRET`; it is the `ATTACH` type that does not work.)
 
 ### SAC Functions Reference
 
@@ -907,7 +907,7 @@ Functions: `graph_sharepoint_create_item(site, list, fields_json, [secret])`, `g
 
 Attach SharePoint lists from a site as a DuckDB catalog (reads, plus `INSERT`, `UPDATE` and `DELETE` on list items). Tables are lazy — list data is fetched when a table is queried.
 
-Required permissions: `Sites.Read.All`.
+Required permissions: `Sites.Read.All` to read lists; `Sites.ReadWrite.All` to also `INSERT`, `UPDATE` or `DELETE` list items.
 
 ```sql
 ATTACH 'Finance' AS finance_sp (TYPE sharepoint_lists, SECRET 'ms_graph');
