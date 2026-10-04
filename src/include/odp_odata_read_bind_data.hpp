@@ -287,7 +287,7 @@ private:
     // therefore held here and only written to the repository once the scan has drained.
     // See GitHub #62.
     std::string staged_delta_token_;
-    std::string staged_operation_type_;
+    OdpOperation staged_operation_ = OdpOperation::INITIAL_LOAD;
     bool staged_preference_applied_ = false;
     bool has_staged_delta_token_ = false;
 
@@ -337,10 +337,9 @@ private:
     /**
      * @brief Process request result and update subscription state
      * @param result Request result from orchestrator
-     * @param operation_type Type of operation performed
+     * @param operation Type of operation performed
      */
-    void ProcessRequestResult(const OdpRequestOrchestrator::OdpRequestResult& result,
-                             const std::string& operation_type);
+    void ProcessRequestResult(const OdpRequestOrchestrator::OdpRequestResult& result, OdpOperation operation);
 
 
     /**

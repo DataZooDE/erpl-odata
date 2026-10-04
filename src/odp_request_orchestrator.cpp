@@ -112,7 +112,7 @@ OdpRequestOrchestrator::OdpRequestResult OdpRequestOrchestrator::ExecuteInitialL
     
     // Return the first page only. The caller (OdpODataReadBindData) is responsible for
     // following __next links page by page and accumulating rows incrementally.
-    return ExecuteRequest(request, "initial_load");
+    return ExecuteRequest(request, OdpOperation::INITIAL_LOAD);
 }
 
 OdpRequestOrchestrator::OdpRequestResult OdpRequestOrchestrator::ExecuteDeltaFetch(
@@ -139,10 +139,11 @@ OdpRequestOrchestrator::OdpRequestResult OdpRequestOrchestrator::ExecuteDeltaFet
     // Create delta fetch request
     HttpRequest request = http_factory_->CreateDeltaFetchRequest(delta_url, max_page_size);
     
-    return ExecuteRequest(request, "delta_fetch");
+    return ExecuteRequest(request, OdpOperation::DELTA_FETCH);
 }
 
-OdpRequestOrchestrator::OdpRequestResult OdpRequestOrchestrator::ExecuteNextPage(const std::string& next_url) {
+OdpRequestOrchestrator::OdpRequestResult OdpRequestOrchestrator::ExecuteNextPage(const std::string& next_url,
+                                                                                  bool change_tracking_confirmed) {
     ERPL_TRACE_INFO("ODP_ORCHESTRATOR", "Executing next page request for URL: " + next_url);
 
     // Same check the 202 Location follow below makes, for the same reason: this link comes
@@ -181,7 +182,7 @@ OdpRequestOrchestrator::OdpRequestResult OdpRequestOrchestrator::ExecuteNextPage
         request.AuthHeadersFromParams(*auth_params_);
     }
     
-    return ExecuteRequest(request, "next_page");
+    return ExecuteRequest(request, OdpOperation::NEXT_PAGE, change_tracking_confirmed);
 }
 
 bool OdpRequestOrchestrator::ValidatePreferenceApplied(const HttpResponse& response) {
@@ -368,16 +369,29 @@ std::optional<std::chrono::milliseconds> OdpRequestOrchestrator::ParseRetryAfter
 // Private Helper Methods
 // ============================================================================
 
+const char* OdpOperationName(OdpOperation operation) {
+    switch (operation) {
+    case OdpOperation::INITIAL_LOAD:
+        return "initial_load";
+    case OdpOperation::DELTA_FETCH:
+        return "delta_fetch";
+    case OdpOperation::NEXT_PAGE:
+        return "next_page";
+    }
+    return "unknown";
+}
+
 OdpRequestOrchestrator::OdpRequestResult OdpRequestOrchestrator::ExecuteRequest(
-    const HttpRequest& request, const std::string& operation_type) {
-    
-    LogRequestDetails(request, operation_type);
+    const HttpRequest& request, OdpOperation operation, bool change_tracking_confirmed) {
+    const std::string operation_type = OdpOperationName(operation);
+
+    LogRequestDetails(request, operation);
     
     OdpRequestResult result;
     
     try {
         // Execute HTTP request, absorbing any 202 Accepted "still preparing" responses.
-        auto http_response = SendRequestHandlingAccepted(request, operation_type);
+        auto http_response = SendRequestHandlingAccepted(request, operation);
 
         result.http_status_code = http_response->Code();
         result.response_size_bytes = http_response->Content().size();
@@ -403,8 +417,9 @@ OdpRequestOrchestrator::OdpRequestResult OdpRequestOrchestrator::ExecuteRequest(
         // over data that was never change-tracked, silently dropping every subsequent change.
         // See GitHub #97.
         result.response_headers = http_response->headers;
-        if (operation_type == "initial_load") {
+        if (operation == OdpOperation::INITIAL_LOAD) {
             result.preference_applied = ValidatePreferenceApplied(*http_response);
+            change_tracking_confirmed = result.preference_applied;
             if (!result.preference_applied) {
                 ERPL_TRACE_WARN("ODP_ORCHESTRATOR",
                     "Initial load response did not carry 'Preference-Applied: odata.track-changes'. "
@@ -429,7 +444,11 @@ OdpRequestOrchestrator::OdpRequestResult OdpRequestOrchestrator::ExecuteRequest(
         // than silently dropping back to initial-load mode and re-extracting everything on
         // the next read (GitHub #169). Checked after has_more_pages is known, because only
         // the last page of an extraction can carry a token.
-        if (result.extracted_delta_token.empty() && result.preference_applied &&
+        //
+        // change_tracking_confirmed, not result.preference_applied: the latter is only ever set for the
+        // first page, so gating on it meant this never ran on the last page of a multi-page extraction -
+        // the only page where !has_more_pages holds (GitHub #250).
+        if (result.extracted_delta_token.empty() && change_tracking_confirmed &&
             !result.has_more_pages) {
             ERPL_TRACE_DEBUG("ODP_ORCHESTRATOR",
                              "Change tracking was applied but the response carried no delta link; "
@@ -437,7 +456,7 @@ OdpRequestOrchestrator::OdpRequestResult OdpRequestOrchestrator::ExecuteRequest(
             result.extracted_delta_token = FetchDeltaTokenFromDeltaLinks(request.url);
         }
 
-        LogResponseDetails(result, operation_type);
+        LogResponseDetails(result, operation);
         
     } catch (const std::exception& e) {
         ERPL_TRACE_ERROR("ODP_ORCHESTRATOR", duckdb::StringUtil::Format(
@@ -449,7 +468,8 @@ OdpRequestOrchestrator::OdpRequestResult OdpRequestOrchestrator::ExecuteRequest(
 }
 
 std::unique_ptr<HttpResponse> OdpRequestOrchestrator::SendRequestHandlingAccepted(
-    const HttpRequest& request, const std::string& operation_type) {
+    const HttpRequest& request, OdpOperation operation) {
+    const std::string operation_type = OdpOperationName(operation);
 
     HttpRequest current_request = request;
     std::chrono::milliseconds total_waited{0};
@@ -565,9 +585,9 @@ std::shared_ptr<ODataEntitySetResponse> OdpRequestOrchestrator::ProcessHttpRespo
     return odata_response;
 }
 
-void OdpRequestOrchestrator::LogRequestDetails(const HttpRequest& request, const std::string& operation_type) const {
+void OdpRequestOrchestrator::LogRequestDetails(const HttpRequest& request, OdpOperation operation) const {
     std::stringstream log_msg;
-    log_msg << "Executing " << operation_type << " request:" << std::endl;
+    log_msg << "Executing " << OdpOperationName(operation) << " request:" << std::endl;
     log_msg << "  Method: " << request.method.ToString() << std::endl;
     log_msg << "  URL: " << request.url.ToString() << std::endl;
     // Redacted: an Authorization header written verbatim puts the SAP password
@@ -577,9 +597,9 @@ void OdpRequestOrchestrator::LogRequestDetails(const HttpRequest& request, const
     ERPL_TRACE_DEBUG("ODP_ORCHESTRATOR", log_msg.str());
 }
 
-void OdpRequestOrchestrator::LogResponseDetails(const OdpRequestResult& result, const std::string& operation_type) const {
+void OdpRequestOrchestrator::LogResponseDetails(const OdpRequestResult& result, OdpOperation operation) const {
     std::stringstream log_msg;
-    log_msg << "Completed " << operation_type << " request:" << std::endl;
+    log_msg << "Completed " << OdpOperationName(operation) << " request:" << std::endl;
     log_msg << "  HTTP Status: " << result.http_status_code << std::endl;
     log_msg << "  Response Size: " << result.response_size_bytes << " bytes" << std::endl;
     log_msg << "  Delta Token: " << (result.extracted_delta_token.empty() ? "NONE" : result.extracted_delta_token.substr(0, 20) + "...") << std::endl;

@@ -37,6 +37,18 @@ private:
 };
 
 /**
+ * @brief The kind of ODP request being made
+ *
+ * Behavioural gates (is change tracking validated here, may a delta token be staged) key on this, not
+ * on a label: with string comparisons "initial_load" versus "next_page" the #169 delta-token fallback
+ * could only ever fire for a single-page extraction and nothing noticed (GitHub #250).
+ */
+enum class OdpOperation { INITIAL_LOAD, DELTA_FETCH, NEXT_PAGE };
+
+/// Stable lower-case name, used in logs and audit rows.
+const char* OdpOperationName(OdpOperation operation);
+
+/**
  * @brief Orchestrates ODP-specific HTTP requests and response processing
  * 
  * This class coordinates between the ODP HTTP factory, OData client, and response
@@ -130,9 +142,13 @@ public:
     /**
      * @brief Execute next page request (for pagination)
      * @param next_url Next page URL from previous response
+     * @param change_tracking_confirmed True when the service confirmed Preference-Applied:
+     *        odata.track-changes on this extraction's FIRST page. Only the first page carries that
+     *        header, so a later page cannot know on its own; without it the DeltaLinksOf token
+     *        recovery could never run for a multi-page initial load (GitHub #250).
      * @return Result containing response data
      */
-    OdpRequestResult ExecuteNextPage(const std::string& next_url);
+    OdpRequestResult ExecuteNextPage(const std::string& next_url, bool change_tracking_confirmed = false);
 
 
     /**
@@ -222,10 +238,11 @@ private:
     /// Send `request`, servicing any HTTP 202 Accepted responses by waiting for the interval the
     /// server asks for and asking again, within the bounds of `retry_policy_`.
     std::unique_ptr<HttpResponse> SendRequestHandlingAccepted(const HttpRequest& request,
-                                                             const std::string& operation_type);
+                                                             OdpOperation operation);
 
     // Helper methods
-    OdpRequestResult ExecuteRequest(const HttpRequest& request, const std::string& operation_type);
+    OdpRequestResult ExecuteRequest(const HttpRequest& request, OdpOperation operation,
+                                    bool change_tracking_confirmed = false);
 
     // Recover the delta token from the service's DeltaLinksOf<EntitySet> entity set.
     //
@@ -237,8 +254,8 @@ private:
     // the lookup fails - callers stay in initial-load mode, as before. See GitHub #169.
     std::string FetchDeltaTokenFromDeltaLinks(const HttpUrl& entity_set_url);
     std::shared_ptr<ODataEntitySetResponse> ProcessHttpResponse(std::unique_ptr<HttpResponse> http_response);
-    void LogRequestDetails(const HttpRequest& request, const std::string& operation_type) const;
-    void LogResponseDetails(const OdpRequestResult& result, const std::string& operation_type) const;
+    void LogRequestDetails(const HttpRequest& request, OdpOperation operation) const;
+    void LogResponseDetails(const OdpRequestResult& result, OdpOperation operation) const;
     
 public:
     // Static utility methods (public for testing)

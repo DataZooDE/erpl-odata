@@ -95,3 +95,21 @@ query I
 SELECT COUNT(*) FROM odp_odata_read('${ERPL_SAP_BASE_URL}/sap/opu/odata/sap/${ERPL_SAP_ODP_DELTA_SERVICE}/${ERPL_SAP_ODP_DELTA_ENTITY_SET}', secret='odp_delta_secret');
 ----
 0
+
+# A MULTI-PAGE initial load must also leave a usable delta token (GitHub #250). The recovery of a
+# token from DeltaLinksOf<EntitySet> used to run only for a single-page extraction, so a service that
+# does not put __delta in the body made every multi-page read re-extract the whole entity set the next
+# time. Start from a terminated queue so the first read is an initial load, force several pages with a
+# small page size, and then check the next read is a delta rather than a second full extraction.
+statement ok
+SELECT status FROM http_get('${ERPL_SAP_BASE_URL}/sap/opu/odata/sap/${ERPL_SAP_ODP_DELTA_SERVICE}/TerminateDeltasFor${ERPL_SAP_ODP_DELTA_ENTITY_SET}?$format=json', auth='DEVELOPER:${ERPL_SAP_PASSWORD}', auth_type='BASIC');
+
+query I
+SELECT COUNT(*) > 100 FROM odp_odata_read('${ERPL_SAP_BASE_URL}/sap/opu/odata/sap/${ERPL_SAP_ODP_DELTA_SERVICE}/${ERPL_SAP_ODP_DELTA_ENTITY_SET}', secret='odp_delta_secret', force_full_load=true, max_page_size=100);
+----
+true
+
+query I
+SELECT COUNT(*) FROM odp_odata_read('${ERPL_SAP_BASE_URL}/sap/opu/odata/sap/${ERPL_SAP_ODP_DELTA_SERVICE}/${ERPL_SAP_ODP_DELTA_ENTITY_SET}', secret='odp_delta_secret');
+----
+0
