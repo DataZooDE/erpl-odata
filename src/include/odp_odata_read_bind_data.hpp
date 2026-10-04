@@ -163,12 +163,6 @@ public:
     OdpSubscriptionStateManager::SubscriptionPhase GetCurrentPhase() const;
 
     /**
-     * @brief Force transition to initial load phase
-     * This will clear the delta token and restart from full load
-     */
-    void ForceInitialLoad();
-
-    /**
      * @brief Get audit history for this subscription
      * @param days_back Number of days to look back (default: 30)
      * @return Vector of audit entries

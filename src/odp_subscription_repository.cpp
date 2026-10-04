@@ -481,6 +481,19 @@ bool OdpSubscriptionRepository::UpdateSubscriptionStatus(const std::string& subs
     return true;
 }
 
+bool OdpSubscriptionRepository::ResetDeltaPosition(const std::string& subscription_id) {
+    ERPL_TRACE_INFO("ODP_REPOSITORY", "Resetting delta position of subscription " + subscription_id);
+
+    EnsureTablesExist();
+
+    auto result = Execute(
+        "UPDATE " + QualifiedTable(SUBSCRIPTIONS_TABLE) + " SET delta_token = '', preference_applied = FALSE, "
+        "last_updated = ? WHERE subscription_id = ?",
+        {TimePointToValue(std::chrono::system_clock::now()), duckdb::Value(subscription_id)});
+
+    return RowsChanged(*result) > 0;
+}
+
 bool OdpSubscriptionRepository::RemoveSubscription(const std::string& subscription_id) {
     ERPL_TRACE_INFO("ODP_REPOSITORY", "Removing subscription: " + subscription_id);
 

@@ -264,19 +264,6 @@ OdpSubscriptionStateManager::SubscriptionPhase OdpODataReadBindData::GetCurrentP
     return state_manager_->GetCurrentPhase();
 }
 
-void OdpODataReadBindData::ForceInitialLoad() {
-    ERPL_TRACE_INFO("ODP_BIND_DATA", "Forcing initial load");
-
-    state_manager_->TransitionToInitialLoad();
-    first_fetch_completed_         = false;
-    pending_next_url_              = "";
-    initial_load_in_progress_      = false;
-    delta_fetch_in_progress_       = false;
-    initial_load_preference_applied_ = false;
-
-    CreateODataBindData();
-}
-
 std::vector<OdpAuditEntry> OdpODataReadBindData::GetAuditHistory(int days_back) const {
     // This would be implemented by the repository
     // For now, return empty vector

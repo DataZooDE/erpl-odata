@@ -104,6 +104,8 @@ public:
                            const std::string& expected_delta_token,
                            const std::string& new_delta_token);
     bool UpdateSubscriptionStatus(const std::string& subscription_id, const std::string& status);
+    // Forgets the stored delta position (token and Preference-Applied) so the next read is a full load.
+    bool ResetDeltaPosition(const std::string& subscription_id);
     bool RemoveSubscription(const std::string& subscription_id);
 
     // Audit management

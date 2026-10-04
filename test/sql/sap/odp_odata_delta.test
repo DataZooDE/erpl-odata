@@ -65,3 +65,33 @@ query I
 SELECT COUNT(*) FROM odp_odata_read('${ERPL_SAP_BASE_URL}/sap/opu/odata/sap/${ERPL_SAP_ODP_DELTA_SERVICE}/${ERPL_SAP_ODP_DELTA_ENTITY_SET}', secret='odp_delta_secret');
 ----
 0
+
+# force_full_load must mean a full extraction even though a delta token is now stored.
+# It used to be silently ignored: the scan resumed from the stored token and returned the
+# empty delta above, so a user asking for everything got nothing (GitHub #249). The row
+# count is a property of the provisioned dataset, so the assertion is that the forced read
+# is no longer the empty delta.
+query I
+SELECT COUNT(*) > 0 FROM odp_odata_read('${ERPL_SAP_BASE_URL}/sap/opu/odata/sap/${ERPL_SAP_ODP_DELTA_SERVICE}/${ERPL_SAP_ODP_DELTA_ENTITY_SET}', secret='odp_delta_secret', force_full_load=true);
+----
+true
+
+# The option is one-shot: the forced load recorded a fresh token, so the next ordinary read
+# resumes from it and sees no changes instead of extracting everything again.
+query I
+SELECT COUNT(*) FROM odp_odata_read('${ERPL_SAP_BASE_URL}/sap/opu/odata/sap/${ERPL_SAP_ODP_DELTA_SERVICE}/${ERPL_SAP_ODP_DELTA_ENTITY_SET}', secret='odp_delta_secret');
+----
+0
+
+# Forcing repeatedly must keep working: each forced load asks the SAP queue for a fresh start and
+# comes back with a fresh token, so it neither returns an empty delta nor leaves the queue unusable
+# for the ordinary read that follows.
+query I
+SELECT COUNT(*) > 0 FROM odp_odata_read('${ERPL_SAP_BASE_URL}/sap/opu/odata/sap/${ERPL_SAP_ODP_DELTA_SERVICE}/${ERPL_SAP_ODP_DELTA_ENTITY_SET}', secret='odp_delta_secret', force_full_load=true);
+----
+true
+
+query I
+SELECT COUNT(*) FROM odp_odata_read('${ERPL_SAP_BASE_URL}/sap/opu/odata/sap/${ERPL_SAP_ODP_DELTA_SERVICE}/${ERPL_SAP_ODP_DELTA_ENTITY_SET}', secret='odp_delta_secret');
+----
+0
