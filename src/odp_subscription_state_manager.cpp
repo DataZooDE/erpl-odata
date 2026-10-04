@@ -299,7 +299,22 @@ void OdpSubscriptionStateManager::CreateNewSubscription() {
         }
         
         current_subscription_ = subscription.value();
-        
+
+        // CreateSubscription hands back an existing ACTIVE row untouched, token and all. When the
+        // caller forced a full load that row has to forget its position here, in the database: the scan
+        // runs on a clone built with force_full_load = false, which loads this row and would otherwise
+        // send !deltatoken=T and return a delta - usually nothing - for a request for everything
+        // (GitHub #249). One-shot by construction: the clone sees the reset position, not the option.
+        if (force_full_load_ && (!current_subscription_.delta_token.empty() || current_subscription_.preference_applied)) {
+            ERPL_TRACE_INFO("ODP_STATE_MANAGER", "Full load forced: discarding the stored delta position");
+            if (!repository_->ResetDeltaPosition(current_subscription_.subscription_id)) {
+                throw duckdb::IOException("Could not reset the delta position of ODP subscription '%s'",
+                                          current_subscription_.subscription_id);
+            }
+            current_subscription_.delta_token.clear();
+            current_subscription_.preference_applied = false;
+        }
+
         // Handle imported delta token for new subscription
         if (!import_delta_token_.empty()) {
             ERPL_TRACE_INFO("ODP_STATE_MANAGER", "Setting imported delta token on new subscription");
