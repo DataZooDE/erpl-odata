@@ -1,0 +1,28 @@
+# name: test/sql/sac_attach.test
+# description: ATTACH ... TYPE sac fails clearly instead of crashing or opening a local file (GitHub #252)
+# group: [erpl_odata_sac]
+
+require erpl_odata
+
+statement ok
+CREATE SECRET sac_attach_secret (TYPE sac, PROVIDER access_token, ACCESS_TOKEN 'test-token', TENANT_NAME 'tenant', REGION 'eu10');
+
+# SacStorageExtension set neither callback, and StorageExtension does not initialise them, so what
+# ATTACH did depended on heap contents: DuckDB opened a plain database file named after the URL, or
+# dereferenced a garbage function pointer. It must be a clear error naming what does work.
+statement error
+ATTACH 'https://tenant.eu10.sapanalytics.cloud' AS sac_attached (TYPE sac, SECRET sac_attach_secret);
+----
+not implemented yet
+
+# Nothing was attached, and no local file named after the URL appeared.
+query I
+SELECT count(*) FROM duckdb_databases() WHERE database_name = 'sac_attached';
+----
+0
+
+# The instance is still usable afterwards.
+query I
+SELECT 42;
+----
+42

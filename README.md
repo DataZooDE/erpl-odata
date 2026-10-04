@@ -642,21 +642,9 @@ FROM sac_read_analytical(
 SELECT * FROM sac_read_story_data('DASHBOARD_001', secret := 'my_sac');
 ```
 
-### SAC ATTACH (Direct SQL Access)
+### SAC ATTACH
 
-For direct SQL access to SAC OData services:
-
-```sql
--- Attach SAC instance
-ATTACH 'https://your-tenant.eu10.sapanalytics.cloud' AS sac (
-  TYPE sac,
-  SECRET my_sac
-);
-
--- Query attached models
-SELECT * FROM sac.Planning_Models WHERE ID = 'REVENUE_MODEL';
-SELECT * FROM sac.Stories WHERE Owner = 'john.doe@company.com';
-```
+⚠️ `ATTACH ... (TYPE sac)` is **not implemented yet** and fails with a "not implemented yet" error (GitHub #252, #243): SAC's catalog format cannot be verified without a tenant response. Use the `sac_read_*` functions above. (`TYPE sac` is valid for `CREATE SECRET`; it is the `ATTACH` type that does not work.)
 
 ### SAC Functions Reference
 
