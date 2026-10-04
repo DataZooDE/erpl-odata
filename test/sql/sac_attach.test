@@ -8,12 +8,15 @@ statement ok
 CREATE SECRET sac_attach_secret (TYPE sac, PROVIDER access_token, ACCESS_TOKEN 'test-token', TENANT_NAME 'tenant', REGION 'eu10');
 
 # SacStorageExtension set neither callback, and StorageExtension does not initialise them, so what
-# ATTACH did depended on heap contents: DuckDB opened a plain database file named after the URL, or
-# dereferenced a garbage function pointer. It must be a clear error naming what does work.
+# ATTACH did depended on heap contents: DuckDB opened a plain database file named after the path, or
+# dereferenced a garbage function pointer. It must be a clear error.
+#
+# The URL form only has to fail. Before it reaches our storage extension DuckDB checks that the
+# 'httpfs' extension is loaded for an https:// path, so on a machine that cannot autoload it the
+# error is DuckDB's own "requires extension 'httpfs'" rather than ours; both are ordinary errors.
 statement error
 ATTACH 'https://tenant.eu10.sapanalytics.cloud' AS sac_attached (TYPE sac, SECRET sac_attach_secret);
 ----
-not implemented yet
 
 # A local path as the target: before the fix DuckDB created or opened it as a plain database file.
 statement error
