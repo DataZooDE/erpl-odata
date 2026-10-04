@@ -22,7 +22,7 @@ extension whose result set is **not** a snapshot.
 | Parameter | Type | Meaning |
 |---|---|---|
 | `secret` | `VARCHAR` | Name of the DuckDB secret to authenticate with |
-| `force_full_load` | `BOOLEAN` | Discard the stored delta token and re-run an initial load |
+| `force_full_load` | `BOOLEAN` | Discard the stored delta token and re-run an initial load. The token is discarded when the statement is *bound*, not when it first runs, so a `PREPARE` or `EXPLAIN` of such a statement also forgets it; the next read is then a full load rather than a delta (extra work, never missed rows). |
 | `import_delta_token` | `VARCHAR` | Adopt a delta token obtained elsewhere |
 | `max_page_size` | `UINTEGER` | Override the `odata.maxpagesize` preference (default 15000) |
 

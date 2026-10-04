@@ -82,3 +82,16 @@ query I
 SELECT COUNT(*) FROM odp_odata_read('${ERPL_SAP_BASE_URL}/sap/opu/odata/sap/${ERPL_SAP_ODP_DELTA_SERVICE}/${ERPL_SAP_ODP_DELTA_ENTITY_SET}', secret='odp_delta_secret');
 ----
 0
+
+# Forcing repeatedly must keep working: each forced load asks the SAP queue for a fresh start and
+# comes back with a fresh token, so it neither returns an empty delta nor leaves the queue unusable
+# for the ordinary read that follows.
+query I
+SELECT COUNT(*) > 0 FROM odp_odata_read('${ERPL_SAP_BASE_URL}/sap/opu/odata/sap/${ERPL_SAP_ODP_DELTA_SERVICE}/${ERPL_SAP_ODP_DELTA_ENTITY_SET}', secret='odp_delta_secret', force_full_load=true);
+----
+true
+
+query I
+SELECT COUNT(*) FROM odp_odata_read('${ERPL_SAP_BASE_URL}/sap/opu/odata/sap/${ERPL_SAP_ODP_DELTA_SERVICE}/${ERPL_SAP_ODP_DELTA_ENTITY_SET}', secret='odp_delta_secret');
+----
+0
