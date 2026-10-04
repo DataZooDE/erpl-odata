@@ -453,7 +453,15 @@ OdpRequestOrchestrator::OdpRequestResult OdpRequestOrchestrator::ExecuteRequest(
             ERPL_TRACE_DEBUG("ODP_ORCHESTRATOR",
                              "Change tracking was applied but the response carried no delta link; "
                              "asking the service for the current token");
-            result.extracted_delta_token = FetchDeltaTokenFromDeltaLinks(request.url);
+            // The lookup goes to the service the caller pointed at, never to the URL of THIS request:
+            // a later page is a server-supplied __next link that can name another origin, and the
+            // credentials FetchDeltaTokenFromDeltaLinks attaches would follow it there. DeltaLinksOf
+            // belongs to the service anyway (service_origin_url_ is the initial-load URL).
+            if (operation != OdpOperation::NEXT_PAGE) {
+                result.extracted_delta_token = FetchDeltaTokenFromDeltaLinks(request.url);
+            } else if (!service_origin_url_.empty()) {
+                result.extracted_delta_token = FetchDeltaTokenFromDeltaLinks(HttpUrl(service_origin_url_));
+            }
         }
 
         LogResponseDetails(result, operation);

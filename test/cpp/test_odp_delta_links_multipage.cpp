@@ -114,3 +114,51 @@ TEST_CASE("the read after a multi-page initial load is a delta, not a second ful
     CHECK(sent_token);
     CHECK(second->GetValue(0, 0).GetValue<int64_t>() == 0);
 }
+
+// The recovery runs on the LAST page, whose URL is a server-supplied __next link and may point at
+// another origin. ExecuteNextPage rightly sends that request without credentials; the DeltaLinksOf
+// lookup must not be derived from that URL, or it would send them to the foreign host. It has to go
+// to the service the caller pointed at, which is where DeltaLinksOf lives anyway.
+TEST_CASE("token recovery after a cross-origin last page does not send credentials to the other origin",
+          "[odp_delta_links][multipage][origin]") {
+    ODataTestServer service;
+    ODataTestServer foreign;
+    const std::string entity_path = SERVICE + "/" + ENTITY_SET;
+
+    service.ServeMetadataFixture(SERVICE + "/$metadata", "edm_sap_odp_bw_fact.xml");
+    service.ServeMetadataFixture(entity_path + "/$metadata", "edm_sap_odp_bw_fact.xml");
+    // Page 1 lives on the service and sends the client to the foreign origin for page 2.
+    service.OnPath(entity_path,
+                   CannedResponse::Json(R"({"d":{"results":[)" + Rows(0, 2) + R"(],"__next":")" +
+                                        foreign.Url(entity_path) + R"(?$format=json&$skiptoken=2"}})")
+                       .WithHeader("Preference-Applied", "odata.track-changes"));
+    service.OnPath(SERVICE + "/DeltaLinksOf" + ENTITY_SET,
+                   CannedResponse::Json(R"({"d":{"results":[{"DeltaToken":"D_FROM_SERVICE",)"
+                                        R"("IsInitialLoad":"True"}]}})"));
+    // The foreign origin serves the last page, with no __delta.
+    foreign.OnPath(entity_path, CannedResponse::Json(R"({"d":{"results":[)" + Rows(2, 2) + R"(]}})"));
+
+    odp_test::TempDatabase database("odp_250_origin");
+    auto &con = database.Conn();
+    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query("CREATE SECRET svc (TYPE http_basic, USERNAME 'u', PASSWORD 'p', SCOPE '" +
+                            service.BaseUrl() + "')")
+                      ->HasError());
+
+    auto read = con.Query("SELECT COUNT(*) FROM odp_odata_read('" + service.Url(entity_path) + "')");
+    INFO((read->HasError() ? read->GetError() : std::string()));
+    REQUIRE_FALSE(read->HasError());
+    REQUIRE(read->GetValue(0, 0).GetValue<int64_t>() == 4);
+
+    for (const auto &request : foreign.Requests()) {
+        INFO("the foreign origin received: " << request.method << " " << request.target);
+        CHECK_FALSE(request.HasHeader("Authorization"));
+        CHECK(request.target.find("DeltaLinksOf") == std::string::npos);
+    }
+
+    // The token still comes back: DeltaLinksOf was asked of the service, not of the foreign host.
+    auto state = con.Query("SELECT delta_token FROM erpl_web.odp_subscriptions");
+    REQUIRE_FALSE(state->HasError());
+    REQUIRE(state->RowCount() == 1);
+    CHECK(state->GetValue(0, 0).ToString() == "D_FROM_SERVICE");
+}
