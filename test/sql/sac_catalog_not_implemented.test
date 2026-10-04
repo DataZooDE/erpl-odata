@@ -23,3 +23,8 @@ statement error
 SELECT * FROM sac_describe_model('any-model', secret='sac_stub');
 ----
 not implemented yet
+
+statement error
+SELECT * FROM sac_show_models(secret='sac_stub');
+----
+not implemented yet

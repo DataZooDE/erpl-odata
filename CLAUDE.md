@@ -1077,7 +1077,7 @@ This project currently targets **DuckDB v1.4.5 and v1.5.6** (check `.github/work
 - **sac_client.cpp/hpp** - HTTP client for SAC APIs
 - **sac_catalog.cpp/hpp** - Model/story discovery and metadata
 - **sac_read_functions.cpp** - Implements `sac_read_*` functions
-- **sac_attach_functions.cpp** - Implements `ATTACH...TYPE sac` statements
+- **sac_attach_functions.cpp** - Registers `TYPE sac` so that `ATTACH` fails with a clear not-implemented error (not implemented, #252)
 - **sac_url_builder.hpp** - Constructs SAC endpoint URLs
 
 #### 6. **Authentication & Secrets**
