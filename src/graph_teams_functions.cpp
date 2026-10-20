@@ -1,4 +1,5 @@
 #include "graph_teams_functions.hpp"
+#include "duckdb_compat.hpp"
 #include "graph_client.hpp"
 #include "graph_teams_client.hpp"
 #include "graph_excel_secret.hpp"
@@ -54,7 +55,7 @@ static bool FetchTeamsPage(GraphPagedScanState &state, const TeamsBindData &bd,
 
 static bool InitTeamsScan(GraphPagedScanState &state, const TeamsBindData &bd, DataChunk &output) {
     if (state.done) {
-        output.SetCardinality(0);
+        duckdb_compat::SetChildCardinality(output, 0);
         return false;
     }
     if (!state.initialized) {
@@ -62,7 +63,7 @@ static bool InitTeamsScan(GraphPagedScanState &state, const TeamsBindData &bd, D
         state.origin_url = bd.first_url;
         if (!FetchTeamsPage(state, bd, bd.first_url)) {
             state.done = true;
-            output.SetCardinality(0);
+            duckdb_compat::SetChildCardinality(output, 0);
             return false;
         }
         state.initialized = true;
@@ -75,9 +76,9 @@ static yyjson_val *NextTeamsItem(GraphPagedScanState &state, const TeamsBindData
 }
 
 static std::string GetNamedStr(TableFunctionBindInput &input, const char *name) {
-    auto it = input.named_parameters.find(name);
-    if (it != input.named_parameters.end() && !it->second.IsNull()) {
-        return it->second.GetValue<std::string>();
+    const auto value = duckdb_compat::FindNamedParameter(input.named_parameters, name);
+    if (value && !value->IsNull()) {
+        return value->GetValue<std::string>();
     }
     return {};
 }
@@ -90,7 +91,7 @@ unique_ptr<FunctionData> GraphTeamsFunctions::MyTeamsBind(
     ClientContext &context,
     TableFunctionBindInput &input,
     vector<LogicalType> &return_types,
-    vector<std::string> &names) {
+    duckdb_compat::BindNames &names) {
 
     auto bind_data         = make_uniq<TeamsBindData>();
     bind_data->secret_name = GetNamedStr(input, "secret");
@@ -137,7 +138,7 @@ void GraphTeamsFunctions::MyTeamsScan(
         SetBoolCell(output.data[5], row, yyjson_obj_get(item, "isArchived"));
         row++;
     }
-    output.SetCardinality(row);
+    duckdb_compat::SetChildCardinality(output, row);
 }
 
 // =============================================================================
@@ -148,7 +149,7 @@ unique_ptr<FunctionData> GraphTeamsFunctions::TeamChannelsBind(
     ClientContext &context,
     TableFunctionBindInput &input,
     vector<LogicalType> &return_types,
-    vector<std::string> &names) {
+    duckdb_compat::BindNames &names) {
 
     if (input.inputs.empty()) {
         throw BinderException("graph_teams_channels requires a team_id parameter");
@@ -202,7 +203,7 @@ void GraphTeamsFunctions::TeamChannelsScan(
         SetStrCell(output.data[4], row, yyjson_obj_get(item, "createdDateTime"));
         row++;
     }
-    output.SetCardinality(row);
+    duckdb_compat::SetChildCardinality(output, row);
 }
 
 // =============================================================================
@@ -213,7 +214,7 @@ unique_ptr<FunctionData> GraphTeamsFunctions::TeamMembersBind(
     ClientContext &context,
     TableFunctionBindInput &input,
     vector<LogicalType> &return_types,
-    vector<std::string> &names) {
+    duckdb_compat::BindNames &names) {
 
     if (input.inputs.empty()) {
         throw BinderException("graph_teams_members requires a team_id parameter");
@@ -275,7 +276,7 @@ void GraphTeamsFunctions::TeamMembersScan(
         }
         row++;
     }
-    output.SetCardinality(row);
+    duckdb_compat::SetChildCardinality(output, row);
 }
 
 // =============================================================================
@@ -286,7 +287,7 @@ unique_ptr<FunctionData> GraphTeamsFunctions::ChannelMessagesBind(
     ClientContext &context,
     TableFunctionBindInput &input,
     vector<LogicalType> &return_types,
-    vector<std::string> &names) {
+    duckdb_compat::BindNames &names) {
 
     if (input.inputs.size() < 2) {
         throw BinderException("graph_channel_messages requires team_id and channel_id parameters");
@@ -351,7 +352,7 @@ void GraphTeamsFunctions::ChannelMessagesScan(
         SetStrCell(output.data[5], row, yyjson_obj_get(item, "messageType"));
         row++;
     }
-    output.SetCardinality(row);
+    duckdb_compat::SetChildCardinality(output, row);
 }
 
 // =============================================================================
@@ -361,8 +362,8 @@ void GraphTeamsFunctions::ChannelMessagesScan(
 void GraphTeamsFunctions::Register(ExtensionLoader &loader) {
     {
         TableFunction my_teams_func("graph_my_teams", {}, DATAZOO_GUARD(ERPL_ODATA_BANNER, MyTeamsScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, MyTeamsBind));
-        my_teams_func.named_parameters["user"]   = LogicalType::VARCHAR;
-        my_teams_func.named_parameters["secret"] = LogicalType::VARCHAR;
+        duckdb_compat::AddNamedParameter(my_teams_func, "user", LogicalType::VARCHAR);
+        duckdb_compat::AddNamedParameter(my_teams_func, "secret", LogicalType::VARCHAR);
         my_teams_func.init_global = GraphPagedScanState::Init;
         CreateTableFunctionInfo info(my_teams_func);
         FunctionDescription desc;
@@ -376,12 +377,13 @@ void GraphTeamsFunctions::Register(ExtensionLoader &loader) {
         };
         desc.categories = {"microsoft", "graph", "teams"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
         TableFunction team_channels_func("graph_teams_channels", {LogicalType::VARCHAR}, DATAZOO_GUARD(ERPL_ODATA_BANNER, TeamChannelsScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, TeamChannelsBind));
-        team_channels_func.named_parameters["secret"] = LogicalType::VARCHAR;
-        team_channels_func.named_parameters["user"]   = LogicalType::VARCHAR;
+        duckdb_compat::AddNamedParameter(team_channels_func, "secret", LogicalType::VARCHAR);
+        duckdb_compat::AddNamedParameter(team_channels_func, "user", LogicalType::VARCHAR);
         team_channels_func.init_global = GraphPagedScanState::Init;
         CreateTableFunctionInfo info(team_channels_func);
         FunctionDescription desc;
@@ -395,12 +397,13 @@ void GraphTeamsFunctions::Register(ExtensionLoader &loader) {
         };
         desc.categories = {"microsoft", "graph", "teams"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
         TableFunction team_members_func("graph_teams_members", {LogicalType::VARCHAR}, DATAZOO_GUARD(ERPL_ODATA_BANNER, TeamMembersScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, TeamMembersBind));
-        team_members_func.named_parameters["secret"] = LogicalType::VARCHAR;
-        team_members_func.named_parameters["user"]   = LogicalType::VARCHAR;
+        duckdb_compat::AddNamedParameter(team_members_func, "secret", LogicalType::VARCHAR);
+        duckdb_compat::AddNamedParameter(team_members_func, "user", LogicalType::VARCHAR);
         team_members_func.init_global = GraphPagedScanState::Init;
         CreateTableFunctionInfo info(team_members_func);
         FunctionDescription desc;
@@ -414,14 +417,15 @@ void GraphTeamsFunctions::Register(ExtensionLoader &loader) {
         };
         desc.categories = {"microsoft", "graph", "teams"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
         TableFunction channel_messages_func("graph_channel_messages",
             {LogicalType::VARCHAR, LogicalType::VARCHAR},
             DATAZOO_GUARD(ERPL_ODATA_BANNER, ChannelMessagesScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, ChannelMessagesBind));
-        channel_messages_func.named_parameters["secret"] = LogicalType::VARCHAR;
-        channel_messages_func.named_parameters["user"]   = LogicalType::VARCHAR;
+        duckdb_compat::AddNamedParameter(channel_messages_func, "secret", LogicalType::VARCHAR);
+        duckdb_compat::AddNamedParameter(channel_messages_func, "user", LogicalType::VARCHAR);
         channel_messages_func.init_global = GraphPagedScanState::Init;
         CreateTableFunctionInfo info(channel_messages_func);
         FunctionDescription desc;
@@ -436,6 +440,7 @@ void GraphTeamsFunctions::Register(ExtensionLoader &loader) {
         };
         desc.categories = {"microsoft", "graph", "teams"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
 }

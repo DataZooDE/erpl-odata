@@ -5,6 +5,8 @@
 // delta package was fully delivered - which is the only thing it is for.
 
 #include "catch.hpp"
+#include "test_extension_load_sql.hpp"
+#include "duckdb_compat.hpp"
 #include "duckdb.hpp"
 
 #include "odata_test_server.hpp"
@@ -54,13 +56,13 @@ TEST_CASE("the ODP audit row records the whole extraction, not the last chunk",
 
     odp_test::TempDatabase db("odp_audit_totals");
     auto &con = db.Conn();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     const auto url = server.Url("/sap/opu/odata/sap/Z_TEST_SRV/FactsOf0D_NW_C01");
     auto read = con.Query("SELECT COUNT(*) FROM odp_odata_read('" + url + "')");
     INFO((read->HasError() ? read->GetError() : std::string()));
     REQUIRE_FALSE(read->HasError());
-    REQUIRE(read->GetValue(0, 0).GetValue<int64_t>() == static_cast<int64_t>(ROW_COUNT));
+    REQUIRE(duckdb_compat::ResultValue(*read, 0, 0).GetValue<int64_t>() == static_cast<int64_t>(ROW_COUNT));
 
     auto audit = con.Query(
         "SELECT max(rows_fetched) FROM erpl_web.odp_subscription_audit");
@@ -68,7 +70,7 @@ TEST_CASE("the ODP audit row records the whole extraction, not the last chunk",
     REQUIRE_FALSE(audit->HasError());
     REQUIRE(audit->RowCount() == 1);
 
-    const auto recorded = audit->GetValue(0, 0);
+    const auto recorded = duckdb_compat::ResultValue(*audit, 0, 0);
     INFO("audit rows_fetched = " << recorded.ToString() << ", extraction delivered " << ROW_COUNT);
     REQUIRE_FALSE(recorded.IsNull());
     REQUIRE(recorded.GetValue<int64_t>() == static_cast<int64_t>(ROW_COUNT));
@@ -99,16 +101,16 @@ TEST_CASE("a delta token is recovered from DeltaLinksOf when the body has none",
 
     odp_test::TempDatabase db("odp_delta_recovery");
     auto &con = db.Conn();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     auto read = con.Query("SELECT COUNT(*) FROM odp_odata_read('" + server.Url(service + "/FactsOf0D_NW_C01") + "')");
     INFO((read->HasError() ? read->GetError() : std::string()));
     REQUIRE_FALSE(read->HasError());
-    REQUIRE(read->GetValue(0, 0).GetValue<int64_t>() == 3);
+    REQUIRE(duckdb_compat::ResultValue(*read, 0, 0).GetValue<int64_t>() == 3);
 
     auto state = con.Query("SELECT delta_token FROM erpl_web.odp_subscriptions");
     REQUIRE_FALSE(state->HasError());
     REQUIRE(state->RowCount() == 1);
-    INFO("stored delta token: " << state->GetValue(0, 0).ToString());
-    CHECK(state->GetValue(0, 0).ToString() == "D_RECOVERED_0001");
+    INFO("stored delta token: " << duckdb_compat::ResultValue(*state, 0, 0).ToString());
+    CHECK(duckdb_compat::ResultValue(*state, 0, 0).ToString() == "D_RECOVERED_0001");
 }

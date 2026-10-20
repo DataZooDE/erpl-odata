@@ -1,6 +1,7 @@
 #pragma once
 
 #include "duckdb.hpp"
+#include "duckdb_compat.hpp"
 #include "duckdb/main/extension/extension_loader.hpp"
 
 namespace erpl_web {
@@ -16,7 +17,7 @@ private:
         duckdb::ClientContext &context,
         duckdb::TableFunctionBindInput &input,
         duckdb::vector<duckdb::LogicalType> &return_types,
-        duckdb::vector<std::string> &names);
+        duckdb_compat::BindNames &names);
 
     static void ListFilesScan(
         duckdb::ClientContext &context,
@@ -28,7 +29,7 @@ private:
         duckdb::ClientContext &context,
         duckdb::TableFunctionBindInput &input,
         duckdb::vector<duckdb::LogicalType> &return_types,
-        duckdb::vector<std::string> &names);
+        duckdb_compat::BindNames &names);
 
     static void ExcelTablesScan(
         duckdb::ClientContext &context,
@@ -40,7 +41,7 @@ private:
         duckdb::ClientContext &context,
         duckdb::TableFunctionBindInput &input,
         duckdb::vector<duckdb::LogicalType> &return_types,
-        duckdb::vector<std::string> &names);
+        duckdb_compat::BindNames &names);
 
     static void ExcelWorksheetsScan(
         duckdb::ClientContext &context,
@@ -52,7 +53,7 @@ private:
         duckdb::ClientContext &context,
         duckdb::TableFunctionBindInput &input,
         duckdb::vector<duckdb::LogicalType> &return_types,
-        duckdb::vector<std::string> &names);
+        duckdb_compat::BindNames &names);
 
     static void ExcelRangeScan(
         duckdb::ClientContext &context,
@@ -64,7 +65,7 @@ private:
         duckdb::ClientContext &context,
         duckdb::TableFunctionBindInput &input,
         duckdb::vector<duckdb::LogicalType> &return_types,
-        duckdb::vector<std::string> &names);
+        duckdb_compat::BindNames &names);
 
     static void ExcelTableDataScan(
         duckdb::ClientContext &context,
@@ -77,7 +78,7 @@ private:
         duckdb::ClientContext &context,
         duckdb::TableFunctionBindInput &input,
         duckdb::vector<duckdb::LogicalType> &return_types,
-        duckdb::vector<std::string> &names);
+        duckdb_compat::BindNames &names);
 
     static void AddRowsScan(
         duckdb::ClientContext &context,
@@ -90,7 +91,7 @@ private:
         duckdb::ClientContext &context,
         duckdb::TableFunctionBindInput &input,
         duckdb::vector<duckdb::LogicalType> &return_types,
-        duckdb::vector<std::string> &names);
+        duckdb_compat::BindNames &names);
 
     // graph_excel_delete_rows(file_path, table_name, column, col_value, ...) where column is a
     // column name. The name is resolved to a 0-based index against the table's header at scan time;
@@ -99,7 +100,7 @@ private:
         duckdb::ClientContext &context,
         duckdb::TableFunctionBindInput &input,
         duckdb::vector<duckdb::LogicalType> &return_types,
-        duckdb::vector<std::string> &names);
+        duckdb_compat::BindNames &names);
 
     static void DeleteRowsScan(
         duckdb::ClientContext &context,

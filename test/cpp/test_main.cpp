@@ -2,9 +2,34 @@
 #include <iostream>
 #include <cstdlib>
 #include "catch.hpp"
+#ifdef ODATA_TEST_HAS_LOADABLE_LIBRARY
+#include "duckdb_static_extension.h"
+#include "erpl_odata_extension.hpp"
+#include "core_functions_extension.hpp"
+#include "json_extension.hpp"
+#include "parquet_extension.hpp"
+extern "C" int32_t duckdb_extension_loadable_extensions_describe(duckdb_extension_descriptor *);
+#endif
 
 
 int main(int argc, char *argv[]) {
+#ifdef ODATA_TEST_HAS_LOADABLE_LIBRARY
+  if (duckdb_register_static_extension(duckdb_extension_loadable_extensions_describe) != 0) {
+    return 1;
+  }
+  if (duckdb_register_static_extension(
+          &duckdb::StaticExtensionDescriber<duckdb::ErplOdataExtension>::Describe) != 0) {
+    return 1;
+  }
+  if (duckdb_register_static_extension(
+          &duckdb::StaticExtensionDescriber<duckdb::CoreFunctionsExtension>::Describe) != 0 ||
+      duckdb_register_static_extension(
+          &duckdb::StaticExtensionDescriber<duckdb::JsonExtension>::Describe) != 0 ||
+      duckdb_register_static_extension(
+          &duckdb::StaticExtensionDescriber<duckdb::ParquetExtension>::Describe) != 0) {
+    return 1;
+  }
+#endif
   // Disable/suppress sanitizer checks for the test run
   // - disable ODR detection (causes false positives when mixing libs)
   // - disable leak detection (OpenSSL/httplib noise)

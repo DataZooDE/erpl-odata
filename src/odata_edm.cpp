@@ -1,4 +1,5 @@
 #include "odata_edm.hpp"
+#include "duckdb_compat.hpp"
 #include "datazoo/oauth2/http_client.hpp"
 
 namespace erpl_web {
@@ -315,7 +316,7 @@ duckdb::LogicalType ODataEdmTypeBuilder::BuildExpandedColumnType(const std::stri
     if (!nested_children.empty() && base_struct.id() == duckdb::LogicalTypeId::STRUCT) {
         auto children = duckdb::StructType::GetChildTypes(base_struct);
         std::set<std::string> seen;
-        for (const auto &p : children) seen.insert(p.first);
+        for (const auto &p : children) seen.insert(duckdb_compat::Str(p.first));
         for (const auto &child_nav : nested_children) {
             if (seen.count(child_nav)) continue;
             auto [child_is_coll, child_target] = ResolveNavTargetOnEntity(target_type_name, child_nav);

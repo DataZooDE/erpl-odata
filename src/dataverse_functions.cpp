@@ -1,4 +1,5 @@
 #include "dataverse_functions.hpp"
+#include "duckdb_compat.hpp"
 #include "dataverse_secret.hpp"
 #include "dataverse_client.hpp"
 #include "odata_read_functions.hpp"
@@ -44,12 +45,12 @@ static unique_ptr<FunctionData> CrmShowEntitiesBind(
     ClientContext &context,
     TableFunctionBindInput &input,
     vector<LogicalType> &return_types,
-    vector<string> &names) {
+    duckdb_compat::BindNames &names) {
 
     ERPL_TRACE_DEBUG("CRM_FUNC", "Binding crm_show_entities");
 
     // Get secret parameter
-    auto secret_name = input.named_parameters.at("secret").GetValue<string>();
+    auto secret_name = input.named_parameters.at(duckdb_compat::Ident("secret")).GetValue<string>();
 
     // Resolve auth
     auto auth_info = ResolveDataverseAuth(context, secret_name);
@@ -65,7 +66,7 @@ static unique_ptr<FunctionData> CrmShowEntitiesBind(
     bind_data->odata_bind_data = ODataReadBindData::FromEntitySetClient(client);
 
     // Get schema from OData
-    names = bind_data->odata_bind_data->GetResultNames();
+    duckdb_compat::AssignBindNames(names, bind_data->odata_bind_data->GetResultNames());
     return_types = bind_data->odata_bind_data->GetResultTypes();
 
     ERPL_TRACE_INFO("CRM_FUNC", "crm_show_entities bound with " + std::to_string(names.size()) + " columns");
@@ -89,7 +90,7 @@ TableFunctionSet CreateCrmShowEntitiesFunction() {
     TableFunctionSet set("crm_show_entities");
 
     TableFunction func({}, DATAZOO_GUARD(ERPL_ODATA_BANNER, CrmShowEntitiesScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, CrmShowEntitiesBind), CrmShowEntitiesInitGlobalState);
-    func.named_parameters["secret"] = LogicalType::VARCHAR;
+    duckdb_compat::AddNamedParameter(func, "secret", LogicalType::VARCHAR);
 
     set.AddFunction(func);
     return set;
@@ -123,7 +124,7 @@ static unique_ptr<FunctionData> CrmDescribeBind(
     ClientContext &context,
     TableFunctionBindInput &input,
     vector<LogicalType> &return_types,
-    vector<string> &names) {
+    duckdb_compat::BindNames &names) {
 
     ERPL_TRACE_DEBUG("CRM_FUNC", "Binding crm_describe");
 
@@ -131,7 +132,7 @@ static unique_ptr<FunctionData> CrmDescribeBind(
     auto entity_name = input.inputs[0].GetValue<string>();
 
     // Get secret parameter
-    auto secret_name = input.named_parameters.at("secret").GetValue<string>();
+    auto secret_name = input.named_parameters.at(duckdb_compat::Ident("secret")).GetValue<string>();
 
     // Resolve auth
     auto auth_info = ResolveDataverseAuth(context, secret_name);
@@ -176,9 +177,9 @@ static unique_ptr<FunctionData> CrmDescribeBind(
             // Get LogicalName
             if (logical_name_idx != idx_t(-1)) {
                 auto val = chunk.GetValue(logical_name_idx, row);
-                bind_data->attribute_names.push_back(val.IsNull() ? "" : val.ToString());
+                bind_data->attribute_names.emplace_back(val.IsNull() ? "" : val.ToString());
             } else {
-                bind_data->attribute_names.push_back("unknown");
+                bind_data->attribute_names.emplace_back("unknown");
             }
 
             // Get AttributeType
@@ -226,14 +227,14 @@ static void CrmDescribeScan(ClientContext &context, TableFunctionInput &data, Da
         count++;
     }
 
-    output.SetCardinality(count);
+    duckdb_compat::SetChildCardinality(output, count);
 }
 
 TableFunctionSet CreateCrmDescribeFunction() {
     TableFunctionSet set("crm_describe");
 
     TableFunction func({LogicalType::VARCHAR}, DATAZOO_GUARD(ERPL_ODATA_BANNER, CrmDescribeScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, CrmDescribeBind), CrmDescribeInitGlobalState);
-    func.named_parameters["secret"] = LogicalType::VARCHAR;
+    duckdb_compat::AddNamedParameter(func, "secret", LogicalType::VARCHAR);
 
     set.AddFunction(func);
     return set;
@@ -268,7 +269,7 @@ static unique_ptr<FunctionData> CrmReadBind(
     ClientContext &context,
     TableFunctionBindInput &input,
     vector<LogicalType> &return_types,
-    vector<string> &names) {
+    duckdb_compat::BindNames &names) {
 
     ERPL_TRACE_DEBUG("CRM_FUNC", "Binding crm_read");
 
@@ -276,7 +277,7 @@ static unique_ptr<FunctionData> CrmReadBind(
     auto entity_name = input.inputs[0].GetValue<string>();
 
     // Get secret parameter
-    auto secret_name = input.named_parameters.at("secret").GetValue<string>();
+    auto secret_name = input.named_parameters.at(duckdb_compat::Ident("secret")).GetValue<string>();
 
     // Resolve auth
     auto auth_info = ResolveDataverseAuth(context, secret_name);
@@ -294,13 +295,13 @@ static unique_ptr<FunctionData> CrmReadBind(
 
     // Handle expand parameter — must call ProcessExpandClause so ConsumeExpand
     // feeds $expand into the predicate pushdown helper and sets up expanded schema.
-    if (input.named_parameters.count("expand")) {
-        auto expand_clause = input.named_parameters.at("expand").GetValue<string>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "expand") != nullptr) {
+        auto expand_clause = input.named_parameters.at(duckdb_compat::Ident("expand")).GetValue<string>();
         ODataReadBindHelpers::ProcessExpandClause(bind_data->odata_bind_data.get(), expand_clause);
     }
 
     // Get schema from OData (includes expanded columns if expand was set)
-    names = bind_data->odata_bind_data->GetResultNames();
+    duckdb_compat::AssignBindNames(names, bind_data->odata_bind_data->GetResultNames());
     return_types = bind_data->odata_bind_data->GetResultTypes();
 
     ERPL_TRACE_INFO("CRM_FUNC", "crm_read bound for entity: " + entity_name + " with " + std::to_string(names.size()) + " columns");
@@ -360,8 +361,8 @@ TableFunctionSet CreateCrmReadFunction() {
     TableFunctionSet set("crm_read");
 
     TableFunction func({LogicalType::VARCHAR}, DATAZOO_GUARD(ERPL_ODATA_BANNER, CrmReadScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, CrmReadBind), CrmReadInitGlobalState);
-    func.named_parameters["secret"] = LogicalType::VARCHAR;
-    func.named_parameters["expand"] = LogicalType::VARCHAR;
+    duckdb_compat::AddNamedParameter(func, "secret", LogicalType::VARCHAR);
+    duckdb_compat::AddNamedParameter(func, "expand", LogicalType::VARCHAR);
 
     // Enable pushdown features
     func.filter_pushdown = true;

@@ -1,4 +1,5 @@
 #include "datasphere_catalog.hpp"
+#include "duckdb_compat.hpp"
 #include <tuple>
 #include <set>
 #include "odata_url_helpers.hpp"
@@ -1179,7 +1180,7 @@ std::vector<duckdb::LogicalType> erpl_web::DatasphereDescribeBindData::GetColumn
 static duckdb::unique_ptr<duckdb::FunctionData> DatasphereDescribeSpaceBind(duckdb::ClientContext &context,
                                                                            duckdb::TableFunctionBindInput &input,
                                                                            duckdb::vector<duckdb::LogicalType> &return_types,
-                                                                           duckdb::vector<std::string> &names) {
+                                                                           duckdb_compat::BindNames &names) {
     PostHogTelemetry::Instance().RecordFunctionCall("datasphere_describe_space");
     // Extract space_id from input
     auto space_id = input.inputs[0].GetValue<std::string>();
@@ -1188,8 +1189,8 @@ static duckdb::unique_ptr<duckdb::FunctionData> DatasphereDescribeSpaceBind(duck
     // catalog functions have always used; "default" was never right here, and the value was
     // discarded anyway because the parameter was not registered (GitHub #243).
     std::string secret_name = "datasphere";
-    if (input.named_parameters.find("secret") != input.named_parameters.end()) {
-        secret_name = input.named_parameters["secret"].GetValue<std::string>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "secret") != nullptr) {
+        secret_name = (*duckdb_compat::FindNamedParameter(input.named_parameters, "secret")).GetValue<std::string>();
     }
     
     // Return types based on actual Datasphere API schema (SpaceEntityV1)
@@ -1232,7 +1233,7 @@ static duckdb::unique_ptr<duckdb::FunctionData> DatasphereDescribeSpaceBind(duck
 static duckdb::unique_ptr<duckdb::FunctionData> DatasphereDescribeAssetBind(duckdb::ClientContext &context,
                                                                            duckdb::TableFunctionBindInput &input,
                                                                            duckdb::vector<duckdb::LogicalType> &return_types,
-                                                                           duckdb::vector<std::string> &names) {
+                                                                           duckdb_compat::BindNames &names) {
     PostHogTelemetry::Instance().RecordFunctionCall("datasphere_describe_asset");
     // Extract space_id and asset_id from input
     auto space_id = input.inputs[0].GetValue<std::string>();
@@ -1242,8 +1243,8 @@ static duckdb::unique_ptr<duckdb::FunctionData> DatasphereDescribeAssetBind(duck
     // catalog functions have always used; "default" was never right here, and the value was
     // discarded anyway because the parameter was not registered (GitHub #243).
     std::string secret_name = "datasphere";
-    if (input.named_parameters.find("secret") != input.named_parameters.end()) {
-        secret_name = input.named_parameters["secret"].GetValue<std::string>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "secret") != nullptr) {
+        secret_name = (*duckdb_compat::FindNamedParameter(input.named_parameters, "secret")).GetValue<std::string>();
     }
     
     // Return types based on actual Datasphere API schema (AssetEntityV1) - all 15 fields
@@ -1304,7 +1305,7 @@ static void DatasphereDescribeSpaceFunction(duckdb::ClientContext &context,
     
     // Check if we've already returned the data
     if (state.finished) {
-        output.SetCardinality(0);
+        duckdb_compat::SetChildCardinality(output, 0);
         return;
     }
     
@@ -1318,12 +1319,12 @@ static void DatasphereDescribeSpaceFunction(duckdb::ClientContext &context,
     
     // Check if we have data to return
     if (bind_data.resource_data.empty()) {
-        output.SetCardinality(0);
+        duckdb_compat::SetChildCardinality(output, 0);
         return;
     }
     
     // Return the actual data from the OData response
-    output.SetCardinality(1);
+    duckdb_compat::SetChildCardinality(output, 1);
     
     // Set values based on the actual Datasphere API schema (SpaceEntityV1)
     // The LoadResourceDetails method should have populated resource_data with the correct schema
@@ -1359,7 +1360,7 @@ static void DatasphereDescribeAssetFunction(duckdb::ClientContext &context,
     
     // Check if we've already returned the data
     if (state.finished) {
-        output.SetCardinality(0);
+        duckdb_compat::SetChildCardinality(output, 0);
         return;
     }
     
@@ -1378,12 +1379,12 @@ static void DatasphereDescribeAssetFunction(duckdb::ClientContext &context,
     
     // Check if we have data to return
     if (bind_data.resource_data.empty()) {
-        output.SetCardinality(0);
+        duckdb_compat::SetChildCardinality(output, 0);
         return;
     }
     
     // Return the actual data from the OData response
-    output.SetCardinality(1);
+    duckdb_compat::SetChildCardinality(output, 1);
     
     // Set values based on the actual Datasphere API schema (AssetEntityV1) - all 15 fields
     // The LoadResourceDetails method should have populated resource_data with the correct schema
@@ -1446,10 +1447,10 @@ duckdb::TableFunctionSet CreateDatasphereShowSpacesFunction() {
                 state.current_index++;
                 count++;
             }
-            output.SetCardinality(count);
+            duckdb_compat::SetChildCardinality(output, count);
         },
         // bind
-        [](duckdb::ClientContext &context, duckdb::TableFunctionBindInput &input, duckdb::vector<duckdb::LogicalType> &return_types, duckdb::vector<std::string> &names) -> duckdb::unique_ptr<duckdb::FunctionData> {
+        [](duckdb::ClientContext &context, duckdb::TableFunctionBindInput &input, duckdb::vector<duckdb::LogicalType> &return_types, duckdb_compat::BindNames &names) -> duckdb::unique_ptr<duckdb::FunctionData> {
             PostHogTelemetry::Instance().RecordFunctionCall("datasphere_show_spaces");
             return_types = {duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR)};
             names = {"name"};
@@ -1457,8 +1458,8 @@ duckdb::TableFunctionSet CreateDatasphereShowSpacesFunction() {
             // Auth via secret. The name is a named parameter now, registered below; these
             // binds previously had no way to accept one at all (GitHub #243).
             std::string secret_name = "datasphere";
-            if (input.named_parameters.find("secret") != input.named_parameters.end()) {
-                secret_name = input.named_parameters["secret"].GetValue<std::string>();
+            if (duckdb_compat::FindNamedParameter(input.named_parameters, "secret") != nullptr) {
+                secret_name = (*duckdb_compat::FindNamedParameter(input.named_parameters, "secret")).GetValue<std::string>();
             }
             OAuth2Config cfg; // populated by helper
             auto token = GetOrRefreshDatasphereToken(context, cfg, secret_name);
@@ -1501,7 +1502,7 @@ duckdb::TableFunctionSet CreateDatasphereShowSpacesFunction() {
         }
     );
     scan_function.init_global = ScanRowCursorState::Init;
-    scan_function.named_parameters["secret"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
+    duckdb_compat::AddNamedParameter(scan_function, "secret", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
     function_set.AddFunction(scan_function);
 
     return function_set;
@@ -1525,10 +1526,10 @@ duckdb::TableFunctionSet CreateDatasphereShowAssetsFunction() {
                 state.current_index++;
                 count++;
             }
-            output.SetCardinality(count);
+            duckdb_compat::SetChildCardinality(output, count);
         },
         // bind
-        [](duckdb::ClientContext &context, duckdb::TableFunctionBindInput &input, duckdb::vector<duckdb::LogicalType> &return_types, duckdb::vector<std::string> &names) -> duckdb::unique_ptr<duckdb::FunctionData> {
+        [](duckdb::ClientContext &context, duckdb::TableFunctionBindInput &input, duckdb::vector<duckdb::LogicalType> &return_types, duckdb_compat::BindNames &names) -> duckdb::unique_ptr<duckdb::FunctionData> {
             PostHogTelemetry::Instance().RecordFunctionCall("datasphere_show_assets");
             return_types = {duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR), duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR), duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR)};
             names = {"name", "object_type", "technical_name"};
@@ -1536,8 +1537,8 @@ duckdb::TableFunctionSet CreateDatasphereShowAssetsFunction() {
             auto space_id = input.inputs[0].GetValue<std::string>();
 
             std::string secret_name = "datasphere";
-            if (input.named_parameters.find("secret") != input.named_parameters.end()) {
-                secret_name = input.named_parameters["secret"].GetValue<std::string>();
+            if (duckdb_compat::FindNamedParameter(input.named_parameters, "secret") != nullptr) {
+                secret_name = (*duckdb_compat::FindNamedParameter(input.named_parameters, "secret")).GetValue<std::string>();
             }
             OAuth2Config cfg;
             auto token = GetOrRefreshDatasphereToken(context, cfg, secret_name);
@@ -1676,7 +1677,7 @@ duckdb::TableFunctionSet CreateDatasphereShowAssetsFunction() {
         }
     );
     scan_function.init_global = ScanRowCursorState::Init;
-    scan_function.named_parameters["secret"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
+    duckdb_compat::AddNamedParameter(scan_function, "secret", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
     function_set.AddFunction(scan_function);
 
     // Function 2: Show all assets from all accessible spaces (new functionality)
@@ -1695,16 +1696,16 @@ duckdb::TableFunctionSet CreateDatasphereShowAssetsFunction() {
                 state.current_index++;
                 count++;
             }
-            output.SetCardinality(count);
+            duckdb_compat::SetChildCardinality(output, count);
         },
         // bind
-        [](duckdb::ClientContext &context, duckdb::TableFunctionBindInput &input, duckdb::vector<duckdb::LogicalType> &return_types, duckdb::vector<std::string> &names) -> duckdb::unique_ptr<duckdb::FunctionData> {
+        [](duckdb::ClientContext &context, duckdb::TableFunctionBindInput &input, duckdb::vector<duckdb::LogicalType> &return_types, duckdb_compat::BindNames &names) -> duckdb::unique_ptr<duckdb::FunctionData> {
             return_types = {duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR), duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR), duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR), duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR)};
             names = {"name", "object_type", "technical_name", "space_name"};
 
             std::string secret_name = "datasphere";
-            if (input.named_parameters.find("secret") != input.named_parameters.end()) {
-                secret_name = input.named_parameters["secret"].GetValue<std::string>();
+            if (duckdb_compat::FindNamedParameter(input.named_parameters, "secret") != nullptr) {
+                secret_name = (*duckdb_compat::FindNamedParameter(input.named_parameters, "secret")).GetValue<std::string>();
             }
             OAuth2Config cfg;
             auto token = GetOrRefreshDatasphereToken(context, cfg, secret_name);
@@ -1870,7 +1871,7 @@ duckdb::TableFunctionSet CreateDatasphereShowAssetsFunction() {
         }
     );
     all_spaces_scan_function.init_global = ScanRowCursorState::Init;
-    all_spaces_scan_function.named_parameters["secret"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
+    duckdb_compat::AddNamedParameter(all_spaces_scan_function, "secret", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
     function_set.AddFunction(all_spaces_scan_function);
 
     return function_set;
@@ -1884,7 +1885,7 @@ duckdb::TableFunctionSet CreateDatasphereDescribeSpaceFunction() {
     // Registering the parameter is what makes it usable: the binder rejects any named
     // parameter a function does not declare, so `secret := 'x'` failed with "Invalid named
     // parameter" while two binds contained code to read it (GitHub #243).
-    describe_space.named_parameters["secret"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
+    duckdb_compat::AddNamedParameter(describe_space, "secret", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
     
     function_set.AddFunction(describe_space);
     return function_set;
@@ -1899,7 +1900,7 @@ duckdb::TableFunctionSet CreateDatasphereDescribeAssetFunction() {
     // Registering the parameter is what makes it usable: the binder rejects any named
     // parameter a function does not declare, so `secret := 'x'` failed with "Invalid named
     // parameter" while two binds contained code to read it (GitHub #243).
-    describe_asset.named_parameters["secret"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
+    duckdb_compat::AddNamedParameter(describe_asset, "secret", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
     
     function_set.AddFunction(describe_asset);
     return function_set;

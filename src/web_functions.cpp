@@ -1,4 +1,5 @@
 #include "web_functions.hpp"
+#include "duckdb_compat.hpp"
 #include "duckdb_argument_helper.hpp"
 
 #include "telemetry.hpp"
@@ -45,7 +46,7 @@ unsigned int HttpBindData::SendRequest(DataChunk &output) const
         output.SetValue(i, 0, row[i]);
     }
 
-    output.SetCardinality(1);
+    duckdb_compat::SetChildCardinality(output, 1);
     return 1;
 }
 
@@ -58,7 +59,7 @@ unsigned int HttpBindData::FetchNextResult(DataChunk &output) const
 
 // ----------------------------------------------------------------------
 
-static void PopulateHeadersFromHeadersParam(duckdb::named_parameter_map_t &named_params, 
+static void PopulateHeadersFromHeadersParam(duckdb_compat::BindNamedParameters &named_params,
                                             duckdb::vector<duckdb::Value> &header_keys, 
                                             duckdb::vector<duckdb::Value> &header_vals)
 {
@@ -282,20 +283,20 @@ static std::shared_ptr<HttpAuthParams> AuthParamsFromInput(duckdb::ClientContext
 static unique_ptr<FunctionData> HttpGetBind(ClientContext &context, 
                                             TableFunctionBindInput &input, 
                                             vector<LogicalType> &return_types, 
-                                            vector<string> &names) 
+                                            duckdb_compat::BindNames &names)
 {
     PostHogTelemetry::Instance().RecordFunctionCall("http_get");
     auto auth_params = AuthParamsFromInput(context, input);
     HttpParams http_params;
     if (HasParam(input.named_parameters, "timeout")) {
-        http_params.timeout = input.named_parameters["timeout"].GetValue<int64_t>();
+        http_params.timeout = (*duckdb_compat::FindNamedParameter(input.named_parameters, "timeout")).GetValue<int64_t>();
     }
     if (HasParam(input.named_parameters, "url_encode")) {
-        http_params.url_encode = input.named_parameters["url_encode"].GetValue<bool>();
+        http_params.url_encode = (*duckdb_compat::FindNamedParameter(input.named_parameters, "url_encode")).GetValue<bool>();
     }
     auto bind_data = make_uniq<HttpBindData>(RequestFromInput(*auth_params, input, HttpMethod::GET), auth_params, http_params);
     
-    names = bind_data->GetResultNames();
+    duckdb_compat::AssignBindNames(names, bind_data->GetResultNames());
     return_types = bind_data->GetResultTypes();
     
     return std::move(bind_data);
@@ -304,20 +305,20 @@ static unique_ptr<FunctionData> HttpGetBind(ClientContext &context,
 static unique_ptr<FunctionData> HttpHeadBind(ClientContext &context, 
                                             TableFunctionBindInput &input, 
                                             vector<LogicalType> &return_types, 
-                                            vector<string> &names) 
+                                            duckdb_compat::BindNames &names)
 {
     PostHogTelemetry::Instance().RecordFunctionCall("http_head");
     auto auth_params = AuthParamsFromInput(context, input);
     HttpParams http_params;
     if (HasParam(input.named_parameters, "timeout")) {
-        http_params.timeout = input.named_parameters["timeout"].GetValue<int64_t>();
+        http_params.timeout = (*duckdb_compat::FindNamedParameter(input.named_parameters, "timeout")).GetValue<int64_t>();
     }
     if (HasParam(input.named_parameters, "url_encode")) {
-        http_params.url_encode = input.named_parameters["url_encode"].GetValue<bool>();
+        http_params.url_encode = (*duckdb_compat::FindNamedParameter(input.named_parameters, "url_encode")).GetValue<bool>();
     }
     auto bind_data = make_uniq<HttpBindData>(RequestFromInput(*auth_params, input, HttpMethod::HEAD), auth_params, http_params);
     
-    names = bind_data->GetResultNames();
+    duckdb_compat::AssignBindNames(names, bind_data->GetResultNames());
     return_types = bind_data->GetResultTypes();
     
     return std::move(bind_data);
@@ -326,20 +327,20 @@ static unique_ptr<FunctionData> HttpHeadBind(ClientContext &context,
 static unique_ptr<FunctionData> HttpMutatingBind(ClientContext &context, 
                                                  TableFunctionBindInput &input, 
                                                  vector<LogicalType> &return_types, 
-                                                 vector<string> &names,
+                                                 duckdb_compat::BindNames &names,
                                                  HttpMethod method) 
 {
     auto auth_params = AuthParamsFromInput(context, input);
     HttpParams http_params;
     if (HasParam(input.named_parameters, "timeout")) {
-        http_params.timeout = input.named_parameters["timeout"].GetValue<int64_t>();
+        http_params.timeout = (*duckdb_compat::FindNamedParameter(input.named_parameters, "timeout")).GetValue<int64_t>();
     }
     if (HasParam(input.named_parameters, "url_encode")) {
-        http_params.url_encode = input.named_parameters["url_encode"].GetValue<bool>();
+        http_params.url_encode = (*duckdb_compat::FindNamedParameter(input.named_parameters, "url_encode")).GetValue<bool>();
     }
     auto bind_data = make_uniq<HttpBindData>(MutatingRequestFromInput(*auth_params, input, method), auth_params, http_params); 
 
-    names = bind_data->GetResultNames();
+    duckdb_compat::AssignBindNames(names, bind_data->GetResultNames());
     return_types = bind_data->GetResultTypes();
 
     return std::move(bind_data);
@@ -348,7 +349,7 @@ static unique_ptr<FunctionData> HttpMutatingBind(ClientContext &context,
 static unique_ptr<FunctionData> HttpPostBind(ClientContext &context, 
                                              TableFunctionBindInput &input, 
                                              vector<LogicalType> &return_types, 
-                                             vector<string> &names) 
+                                             duckdb_compat::BindNames &names)
 {
     PostHogTelemetry::Instance().RecordFunctionCall("http_post");
     return HttpMutatingBind(context, input, return_types, names, HttpMethod::POST);
@@ -357,7 +358,7 @@ static unique_ptr<FunctionData> HttpPostBind(ClientContext &context,
 static unique_ptr<FunctionData> HttpPutBind(ClientContext &context, 
                                              TableFunctionBindInput &input, 
                                              vector<LogicalType> &return_types, 
-                                             vector<string> &names) 
+                                             duckdb_compat::BindNames &names)
 {
     PostHogTelemetry::Instance().RecordFunctionCall("http_put");
     return HttpMutatingBind(context, input, return_types, names, HttpMethod::PUT);
@@ -366,7 +367,7 @@ static unique_ptr<FunctionData> HttpPutBind(ClientContext &context,
 static unique_ptr<FunctionData> HttpPatchBind(ClientContext &context, 
                                              TableFunctionBindInput &input, 
                                              vector<LogicalType> &return_types, 
-                                             vector<string> &names) 
+                                             duckdb_compat::BindNames &names)
 {
     PostHogTelemetry::Instance().RecordFunctionCall("http_patch");
     return HttpMutatingBind(context, input, return_types, names, HttpMethod::PATCH);
@@ -375,7 +376,7 @@ static unique_ptr<FunctionData> HttpPatchBind(ClientContext &context,
 static unique_ptr<FunctionData> HttpDeleteBind(ClientContext &context, 
                                               TableFunctionBindInput &input, 
                                               vector<LogicalType> &return_types, 
-                                              vector<string> &names) 
+                                              duckdb_compat::BindNames &names)
 {
     PostHogTelemetry::Instance().RecordFunctionCall("http_delete");
     return HttpMutatingBind(context, input, return_types, names, HttpMethod::_DELETE);
@@ -397,7 +398,7 @@ static void HttpScan(ClientContext &context,
     
     if (!bind_data.HasMoreResults()) {
         ERPL_TRACE_DEBUG("HTTP_SCAN", "No more results available");
-        output.SetCardinality(0);
+        duckdb_compat::SetChildCardinality(output, 0);
         return;
     }
     
@@ -425,7 +426,7 @@ static void HttpReadScan(ClientContext &context,
 
     if (state.finished) {
         ERPL_TRACE_DEBUG("HTTP_SCAN", "Response already emitted for this execution");
-        output.SetCardinality(0);
+        duckdb_compat::SetChildCardinality(output, 0);
         return;
     }
     state.finished = true;
@@ -446,8 +447,7 @@ LogicalType CreateHttpHeaderType()
     // Use MAP type to accept key-value pairs like MAP{'key': 'value', 'key2': 'value2'}
     // This is the proper DuckDB MAP type for headers
     auto type = LogicalType::MAP(LogicalType::VARCHAR, LogicalType::VARCHAR);
-    type.SetAlias("ERPL_HTTP_HEADER");
-    return type;
+    return duckdb_compat::WithAlias(type, "ERPL_HTTP_HEADER");
 }
 
 LogicalType CreateHttpAuthTypeType() 
@@ -458,25 +458,25 @@ LogicalType CreateHttpAuthTypeType()
     auth_type_enum.SetValue(2, Value("BEARER"));
     
     auto typ = LogicalType::ENUM("AUTH_TYPE", auth_type_enum, 3);
-    typ.SetAlias("HTTP_AUTH_TYPE");
-
-    return typ;
+    return duckdb_compat::WithAlias(typ, "HTTP_AUTH_TYPE");
 }
 
-static void AddDefaultHttpNamedParams(TableFunction &func) 
+static void AddDefaultHttpNamedParams(TableFunction &func, bool include_content_type = true)
 {
-    func.named_parameters["headers"] = CreateHttpHeaderType();
-    func.named_parameters["content_type"] = LogicalType::VARCHAR;
-    func.named_parameters["accept"] = LogicalType::VARCHAR;
-    func.named_parameters["auth"] = LogicalType::VARCHAR;
-    func.named_parameters["auth_type"] = CreateHttpAuthTypeType();
-    func.named_parameters["timeout"] = LogicalType::INTEGER;
-    func.named_parameters["url_encode"] = LogicalType::BOOLEAN;
+    duckdb_compat::AddNamedParameter(func, "headers", CreateHttpHeaderType());
+    if (include_content_type) {
+        duckdb_compat::AddNamedParameter(func, "content_type", LogicalType::VARCHAR);
+    }
+    duckdb_compat::AddNamedParameter(func, "accept", LogicalType::VARCHAR);
+    duckdb_compat::AddNamedParameter(func, "auth", LogicalType::VARCHAR);
+    duckdb_compat::AddNamedParameter(func, "auth_type", CreateHttpAuthTypeType());
+    duckdb_compat::AddNamedParameter(func, "timeout", LogicalType::INTEGER);
+    duckdb_compat::AddNamedParameter(func, "url_encode", LogicalType::BOOLEAN);
 }
 
 TableFunctionSet CreatHttpFunction(const std::string &http_verb, const duckdb::table_function_bind_t bind_func)
 {
-    TableFunctionSet function_set(StringUtil::Format("http_%s", http_verb));
+    TableFunctionSet function_set(duckdb_compat::FunctionName(StringUtil::Format("http_%s", http_verb)));
 	
     auto get_with_url = TableFunction({ LogicalType::VARCHAR}, HttpReadScan, bind_func);
     get_with_url.init_global = ScanRowCursorState::Init;
@@ -489,11 +489,10 @@ TableFunctionSet CreatHttpFunction(const std::string &http_verb, const duckdb::t
 
 TableFunctionSet CreateMutatingHttpFunction(const std::string &http_verb, const duckdb::table_function_bind_t bind_func)
 {
-    TableFunctionSet function_set(StringUtil::Format("http_%s", http_verb));
+    TableFunctionSet function_set(duckdb_compat::FunctionName(StringUtil::Format("http_%s", http_verb)));
 
     auto with_json_data = TableFunction({ LogicalType::VARCHAR, LogicalType::JSON() }, HttpScan, bind_func);
-    AddDefaultHttpNamedParams(with_json_data);
-    with_json_data.named_parameters.erase("content_type"); // remove content_type, as for this overload JSON is fixed
+    AddDefaultHttpNamedParams(with_json_data, false); // JSON fixes content_type for this overload
 
     auto with_content_and_type = TableFunction({ LogicalType::VARCHAR, LogicalType::VARCHAR, LogicalType::VARCHAR }, HttpScan, bind_func);
     AddDefaultHttpNamedParams(with_content_and_type);

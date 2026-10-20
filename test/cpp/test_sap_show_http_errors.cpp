@@ -3,6 +3,7 @@
 // failures through the in-process server, which a SQL test cannot do without a live service.
 
 #include "catch.hpp"
+#include "test_extension_load_sql.hpp"
 #include "duckdb.hpp"
 
 #include "odata_test_server.hpp"
@@ -27,7 +28,7 @@ void RequireIOError(const std::string &function, int status)
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     auto result = con.Query("SELECT * FROM " + function + "('" + server.BaseUrl() + "')");
 

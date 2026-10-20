@@ -1,4 +1,5 @@
 #include "catch.hpp"
+#include "test_extension_load_sql.hpp"
 #include "graph_entra_client.hpp"
 #include "duckdb.hpp"
 
@@ -70,7 +71,7 @@ TEST_CASE("Graph Entra functions are registered in DuckDB", "[graph_entra][duckd
     Connection con(db);
 
     // Load extension
-    con.Query("LOAD erpl_odata");
+    con.Query(ErplOdataLoadSql());
 
     SECTION("graph_users function exists") {
         auto result = con.Query("SELECT function_name FROM duckdb_functions() WHERE function_name = 'graph_users'");
@@ -99,7 +100,7 @@ TEST_CASE("Graph Entra functions require secret parameter", "[graph_entra][duckd
     DuckDB db(nullptr, &config);
     Connection con(db);
 
-    con.Query("LOAD erpl_odata");
+    con.Query(ErplOdataLoadSql());
     con.Query("SET allow_persistent_secrets=false");
 
     SECTION("graph_users requires secret") {

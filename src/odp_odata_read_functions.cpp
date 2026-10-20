@@ -1,4 +1,5 @@
 #include "odp_odata_read_functions.hpp"
+#include "duckdb_compat.hpp"
 #include "odp_odata_read_bind_data.hpp"
 #include "odata_read_functions.hpp"
 #include "tracing.hpp"
@@ -16,7 +17,7 @@ using duckdb::PostHogTelemetry;
 duckdb::unique_ptr<duckdb::FunctionData> OdpODataReadBind(duckdb::ClientContext &context,
                                                           duckdb::TableFunctionBindInput &input,
                                                           duckdb::vector<duckdb::LogicalType> &return_types,
-                                                          duckdb::vector<std::string> &names) {
+                                                          duckdb_compat::BindNames &names) {
     PostHogTelemetry::Instance().RecordFunctionCall("odp_odata_read");
     ERPL_TRACE_DEBUG("ODP_ODATA_READ_BIND", "=== BINDING ODP_ODATA_READ FUNCTION ===");
     
@@ -67,7 +68,7 @@ duckdb::unique_ptr<duckdb::FunctionData> OdpODataReadBind(duckdb::ClientContext 
         
         // Set up return types and column names from the OData schema
         return_types = odata_bind_data.GetResultTypes();
-        names = odata_bind_data.GetResultNames();
+        duckdb_compat::AssignBindNames(names, odata_bind_data.GetResultNames());
         
         ERPL_TRACE_INFO("ODP_ODATA_READ_BIND", duckdb::StringUtil::Format(
             "Bound ODP function with %zu columns", names.size()));
@@ -228,12 +229,12 @@ duckdb::TableFunctionSet CreateOdpODataReadFunction() {
     odp_read_function.table_scan_progress = OdpODataReadProgress;
     
     // Add named parameters for ODP-specific functionality
-    odp_read_function.named_parameters["secret"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
-    odp_read_function.named_parameters["force_full_load"] = duckdb::LogicalType(duckdb::LogicalTypeId::BOOLEAN);
-    odp_read_function.named_parameters["import_delta_token"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
+    duckdb_compat::AddNamedParameter(odp_read_function, "secret", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
+    duckdb_compat::AddNamedParameter(odp_read_function, "force_full_load", duckdb::LogicalType(duckdb::LogicalTypeId::BOOLEAN));
+    duckdb_compat::AddNamedParameter(odp_read_function, "import_delta_token", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
     // UBIGINT to match odata_read; the shared validator range-checks it down to 32 bits
     // and reports an out-of-range value as an argument error rather than silently wrapping.
-    odp_read_function.named_parameters["max_page_size"] = duckdb::LogicalType(duckdb::LogicalTypeId::UBIGINT);
+    duckdb_compat::AddNamedParameter(odp_read_function, "max_page_size", duckdb::LogicalType(duckdb::LogicalTypeId::UBIGINT));
     
     function_set.AddFunction(odp_read_function);
     

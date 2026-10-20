@@ -1,4 +1,6 @@
 #include "catch.hpp"
+#include "test_extension_load_sql.hpp"
+#include "duckdb_compat.hpp"
 #include "duckdb.hpp"
 #include "graph_excel_client.hpp"
 #include "graph_excel_functions.hpp"
@@ -107,7 +109,7 @@ TEST_CASE("Microsoft Graph Secret Creation via DuckDB", "[graph_excel][secret]")
     duckdb::Connection con(db);
 
     // Load the extension
-    auto result = con.Query("LOAD erpl_odata");
+    auto result = con.Query(ErplOdataLoadSql());
     REQUIRE_FALSE(result->HasError());
 
     SECTION("Create secret with client_credentials provider") {
@@ -124,7 +126,7 @@ TEST_CASE("Microsoft Graph Secret Creation via DuckDB", "[graph_excel][secret]")
         // Verify secret was created
         result = con.Query("SELECT count(*) FROM duckdb_secrets() WHERE name = 'test_graph_secret'");
         REQUIRE_FALSE(result->HasError());
-        REQUIRE(result->GetValue(0, 0).GetValue<int64_t>() == 1);
+        REQUIRE(duckdb_compat::ResultValue(*result, 0, 0).GetValue<int64_t>() == 1);
 
         // Cleanup
         con.Query("DROP SECRET test_graph_secret");
@@ -144,7 +146,7 @@ TEST_CASE("Microsoft Graph Secret Creation via DuckDB", "[graph_excel][secret]")
         // Verify secret was created
         result = con.Query("SELECT count(*) FROM duckdb_secrets() WHERE name = 'test_graph_config_secret'");
         REQUIRE_FALSE(result->HasError());
-        REQUIRE(result->GetValue(0, 0).GetValue<int64_t>() == 1);
+        REQUIRE(duckdb_compat::ResultValue(*result, 0, 0).GetValue<int64_t>() == 1);
 
         // Cleanup
         con.Query("DROP SECRET test_graph_config_secret");
@@ -194,44 +196,44 @@ TEST_CASE("Microsoft Graph Excel Functions Exist", "[graph_excel][functions]") {
     duckdb::Connection con(db);
 
     // Load the extension
-    auto result = con.Query("LOAD erpl_odata");
+    auto result = con.Query(ErplOdataLoadSql());
     REQUIRE_FALSE(result->HasError());
 
     SECTION("graph_show_files function exists") {
         result = con.Query("SELECT count(*) FROM duckdb_functions() WHERE function_name = 'graph_show_files'");
         REQUIRE_FALSE(result->HasError());
-        REQUIRE(result->GetValue(0, 0).GetValue<int64_t>() == 1);
+        REQUIRE(duckdb_compat::ResultValue(*result, 0, 0).GetValue<int64_t>() == 1);
     }
 
     SECTION("graph_excel_tables function exists") {
         result = con.Query("SELECT count(*) FROM duckdb_functions() WHERE function_name = 'graph_excel_tables'");
         REQUIRE_FALSE(result->HasError());
-        REQUIRE(result->GetValue(0, 0).GetValue<int64_t>() == 1);
+        REQUIRE(duckdb_compat::ResultValue(*result, 0, 0).GetValue<int64_t>() == 1);
     }
 
     SECTION("graph_excel_worksheets function exists") {
         result = con.Query("SELECT count(*) FROM duckdb_functions() WHERE function_name = 'graph_excel_worksheets'");
         REQUIRE_FALSE(result->HasError());
-        REQUIRE(result->GetValue(0, 0).GetValue<int64_t>() == 1);
+        REQUIRE(duckdb_compat::ResultValue(*result, 0, 0).GetValue<int64_t>() == 1);
     }
 
     SECTION("graph_excel_range function exists") {
         result = con.Query("SELECT count(*) FROM duckdb_functions() WHERE function_name = 'graph_excel_range'");
         REQUIRE_FALSE(result->HasError());
-        REQUIRE(result->GetValue(0, 0).GetValue<int64_t>() == 1);
+        REQUIRE(duckdb_compat::ResultValue(*result, 0, 0).GetValue<int64_t>() == 1);
     }
 
     SECTION("graph_excel_read function exists") {
         result = con.Query("SELECT count(*) FROM duckdb_functions() WHERE function_name = 'graph_excel_read'");
         REQUIRE_FALSE(result->HasError());
-        REQUIRE(result->GetValue(0, 0).GetValue<int64_t>() == 1);
+        REQUIRE(duckdb_compat::ResultValue(*result, 0, 0).GetValue<int64_t>() == 1);
     }
 
     SECTION("graph_excel_delete_rows function exists with both overloads") {
         result = con.Query("SELECT count(*) FROM duckdb_functions() WHERE function_name = 'graph_excel_delete_rows'");
         REQUIRE_FALSE(result->HasError());
         // Registered as a set with an index-based and a name-based overload.
-        REQUIRE(result->GetValue(0, 0).GetValue<int64_t>() >= 1);
+        REQUIRE(duckdb_compat::ResultValue(*result, 0, 0).GetValue<int64_t>() >= 1);
     }
 }
 

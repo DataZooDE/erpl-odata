@@ -19,6 +19,8 @@
 // what is covered.
 
 #include "catch.hpp"
+#include "test_extension_load_sql.hpp"
+#include "duckdb_compat.hpp"
 #include "duckdb.hpp"
 
 #include "odata_test_server.hpp"
@@ -95,7 +97,7 @@ TEST_CASE("a bound odp_odata_read plan re-extracts in full when the service has 
     // state has to live in a real database file.
     odp_test::TempDatabase db("odp_reexec");
     auto &con = db.Conn();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     const auto url = server.Url(path);
     REQUIRE_FALSE(
@@ -107,7 +109,7 @@ TEST_CASE("a bound odp_odata_read plan re-extracts in full when the service has 
         INFO("execution " << execution);
         INFO((result->HasError() ? result->GetError() : std::string()));
         REQUIRE_FALSE(result->HasError());
-        REQUIRE(result->GetValue(0, 0).GetValue<int64_t>() ==
+        REQUIRE(duckdb_compat::ResultValue(*result, 0, 0).GetValue<int64_t>() ==
                 static_cast<int64_t>(ROW_COUNT));
     }
 }
@@ -129,7 +131,7 @@ TEST_CASE("a bound projecting odp_odata_read plan returns every row on each exec
 
     odp_test::TempDatabase db("odp_reexec_proj");
     auto &con = db.Conn();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     const auto url = server.Url(path);
     auto prep = con.Query(
@@ -142,7 +144,7 @@ TEST_CASE("a bound projecting odp_odata_read plan returns every row on each exec
         INFO("execution " << execution);
         INFO((result->HasError() ? result->GetError() : std::string()));
         REQUIRE_FALSE(result->HasError());
-        REQUIRE(result->GetValue(0, 0).GetValue<int64_t>() ==
+        REQUIRE(duckdb_compat::ResultValue(*result, 0, 0).GetValue<int64_t>() ==
                 static_cast<int64_t>(ROW_COUNT));
     }
 }
@@ -177,7 +179,7 @@ TEST_CASE("a bound odp_odata_read plan resumes from the committed delta token",
 
     odp_test::TempDatabase db("odp_reexec_delta");
     auto &con = db.Conn();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     const auto url = server.Url(path);
     REQUIRE_FALSE(
@@ -187,14 +189,14 @@ TEST_CASE("a bound odp_odata_read plan resumes from the committed delta token",
     auto initial = con.Query("EXECUTE p");
     INFO((initial->HasError() ? initial->GetError() : std::string()));
     REQUIRE_FALSE(initial->HasError());
-    REQUIRE(initial->GetValue(0, 0).GetValue<int64_t>() == static_cast<int64_t>(ROW_COUNT));
+    REQUIRE(duckdb_compat::ResultValue(*initial, 0, 0).GetValue<int64_t>() == static_cast<int64_t>(ROW_COUNT));
 
     // Execution 2 must reach the service WITH the token - not re-extract, and not return
     // nothing because a shared buffer was already drained.
     auto delta = con.Query("EXECUTE p");
     INFO((delta->HasError() ? delta->GetError() : std::string()));
     REQUIRE_FALSE(delta->HasError());
-    REQUIRE(delta->GetValue(0, 0).GetValue<int64_t>() == 0);
+    REQUIRE(duckdb_compat::ResultValue(*delta, 0, 0).GetValue<int64_t>() == 0);
 
     bool token_reached_the_wire = false;
     for (const auto &request : server.RequestsFor(path)) {
@@ -245,7 +247,7 @@ TEST_CASE("an imported delta token is consumed once, not re-imported every execu
 
     odp_test::TempDatabase db("odp_import_once");
     auto &con = db.Conn();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     const auto url = server.Url(path);
     auto prep = con.Query("PREPARE imp AS SELECT COUNT(*) FROM odp_odata_read('" + url +
@@ -256,14 +258,14 @@ TEST_CASE("an imported delta token is consumed once, not re-imported every execu
     auto first = con.Query("EXECUTE imp");
     INFO((first->HasError() ? first->GetError() : std::string()));
     REQUIRE_FALSE(first->HasError());
-    REQUIRE(first->GetValue(0, 0).GetValue<int64_t>() == 1);
+    REQUIRE(duckdb_compat::ResultValue(*first, 0, 0).GetValue<int64_t>() == 1);
 
     // Execution 2 must resume from the ADVANCED token. If the clone re-imported the
     // original, this would return 1 again, forever.
     auto second = con.Query("EXECUTE imp");
     INFO((second->HasError() ? second->GetError() : std::string()));
     REQUIRE_FALSE(second->HasError());
-    REQUIRE(second->GetValue(0, 0).GetValue<int64_t>() == 0);
+    REQUIRE(duckdb_compat::ResultValue(*second, 0, 0).GetValue<int64_t>() == 0);
 
     bool advanced_reached_the_wire = false;
     for (const auto &request : server.RequestsFor(path)) {

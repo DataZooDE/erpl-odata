@@ -1,4 +1,5 @@
 #include "business_central_catalog.hpp"
+#include "duckdb_compat.hpp"
 #include "odata_edm.hpp"
 #include "odata_read_functions.hpp"
 #include "odata_url_helpers.hpp"
@@ -71,8 +72,7 @@ void BcSchemaEntry::LoadTables() {
 
         for (const auto &entity_set : entity_sets) {
             duckdb::CreateTableInfo table_info;
-            table_info.table = entity_set.name;
-            table_info.schema = name;
+            duckdb_compat::SetQualifiedName(table_info, "", duckdb_compat::Str(name), entity_set.name);
 
             try {
                 auto type_variant = metadata.FindType(entity_set.entity_type_name);
@@ -80,7 +80,7 @@ void BcSchemaEntry::LoadTables() {
                     auto entity_type = std::get<EntityType>(type_variant);
                     for (const auto &property : entity_type.properties) {
                         auto logical_type = DuckTypeConverter::BuildLogicalTypeForProperty(property, metadata);
-                        table_info.columns.AddColumn(duckdb::ColumnDefinition(property.name, logical_type));
+                        table_info.columns.AddColumn(duckdb::ColumnDefinition(duckdb_compat::Ident(property.name), logical_type));
                     }
                 } else {
                     table_info.columns.AddColumn(duckdb::ColumnDefinition("id", duckdb::LogicalType::VARCHAR));
@@ -223,7 +223,7 @@ BcCatalog::BcCatalog(duckdb::AttachedDatabase &db,
       path_(base_url) {
 
     duckdb::CreateSchemaInfo schema_info;
-    schema_info.schema = "main";
+    duckdb_compat::SetSchema(schema_info, "main");
     main_schema_ = duckdb::make_uniq<BcSchemaEntry>(*this, schema_info);
 
     ERPL_TRACE_INFO("BC_CATALOG", "BcCatalog created: company_url=" + company_url + " metadata_url=" + metadata_url_);
@@ -249,8 +249,8 @@ bool BcCatalog::SupportsTimeTravel() const {
     return false;
 }
 
-duckdb::string BcCatalog::GetDefaultSchema() const {
-    return "main";
+duckdb_compat::DefaultSchemaName BcCatalog::GetDefaultSchema() const {
+    return duckdb_compat::Ident("main");
 }
 
 duckdb::DatabaseSize BcCatalog::GetDatabaseSize(duckdb::ClientContext &) {

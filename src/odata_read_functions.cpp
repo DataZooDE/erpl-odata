@@ -1,4 +1,5 @@
 #include "duckdb_argument_helper.hpp"
+#include "duckdb_compat.hpp"
 #include <optional>
 #include <limits>
 #include "duckdb/function/table_function.hpp"
@@ -136,8 +137,8 @@ std::string ExtractExpandClauseFromUrl(const std::string &url) {
 void ProcessNamedParameters(ODataReadBindData *bind_data,
                             const TableFunctionBindInput &input) {
   // Handle TOP parameter
-    if (input.named_parameters.find("top") != input.named_parameters.end()) {
-        auto limit_value = input.named_parameters["top"].GetValue<duckdb::idx_t>();
+    if (const auto *named_parameter = duckdb_compat::FindNamedParameter(input.named_parameters, "top")) {
+        auto limit_value = (*named_parameter).GetValue<duckdb::idx_t>();
     ERPL_TRACE_DEBUG("ODATA_BIND",
                      duckdb::StringUtil::Format(
                          "Named parameter 'top' set to: %d", limit_value));
@@ -145,9 +146,9 @@ void ProcessNamedParameters(ODataReadBindData *bind_data,
     }
     
   // Handle SKIP parameter
-    if (input.named_parameters.find("skip") != input.named_parameters.end()) {
+    if (const auto *named_parameter = duckdb_compat::FindNamedParameter(input.named_parameters, "skip")) {
     auto offset_value =
-        input.named_parameters["skip"].GetValue<duckdb::idx_t>();
+        (*named_parameter).GetValue<duckdb::idx_t>();
     ERPL_TRACE_DEBUG("ODATA_BIND",
                      duckdb::StringUtil::Format(
                          "Named parameter 'skip' set to: %d", offset_value));
@@ -155,9 +156,9 @@ void ProcessNamedParameters(ODataReadBindData *bind_data,
     }
     
   // Handle EXPAND parameter
-    if (input.named_parameters.find("expand") != input.named_parameters.end()) {
+    if (const auto *named_parameter = duckdb_compat::FindNamedParameter(input.named_parameters, "expand")) {
     auto expand_value =
-        input.named_parameters["expand"].GetValue<std::string>();
+        (*named_parameter).GetValue<std::string>();
     ERPL_TRACE_DEBUG("ODATA_BIND", duckdb::StringUtil::Format(
                                        "Named parameter 'expand' set to: %s",
                                        expand_value.c_str()));
@@ -165,10 +166,9 @@ void ProcessNamedParameters(ODataReadBindData *bind_data,
   }
 
   // Handle STRICT_TYPING parameter
-  if (input.named_parameters.find("strict_typing") !=
-      input.named_parameters.end()) {
+  if (const auto *named_parameter = duckdb_compat::FindNamedParameter(input.named_parameters, "strict_typing")) {
       auto strict_value =
-          input.named_parameters["strict_typing"].GetValue<bool>();
+          (*named_parameter).GetValue<bool>();
       ERPL_TRACE_DEBUG("ODATA_BIND",
                        duckdb::StringUtil::Format(
                            "Named parameter 'strict_typing' set to: %s",
@@ -177,12 +177,11 @@ void ProcessNamedParameters(ODataReadBindData *bind_data,
   }
 
   // Handle MAX_PAGE_SIZE parameter
-  if (input.named_parameters.find("max_page_size") !=
-      input.named_parameters.end()) {
+  if (const auto *named_parameter = duckdb_compat::FindNamedParameter(input.named_parameters, "max_page_size")) {
     // Validation is shared with odp_odata_read so the same parameter cannot behave
     // differently depending on which reader is asked (GitHub #185).
     const auto requested =
-        ValidateMaxPageSizeParameter(input.named_parameters["max_page_size"]);
+        ValidateMaxPageSizeParameter((*named_parameter));
     ERPL_TRACE_DEBUG("ODATA_BIND",
                      duckdb::StringUtil::Format(
                          "Named parameter 'max_page_size' set to: %d", requested));
@@ -190,9 +189,9 @@ void ProcessNamedParameters(ODataReadBindData *bind_data,
   }
 
   // Handle COUNT parameter
-  if (input.named_parameters.find("count") != input.named_parameters.end()) {
+  if (const auto *named_parameter = duckdb_compat::FindNamedParameter(input.named_parameters, "count")) {
       auto count_value =
-          input.named_parameters["count"].GetValue<bool>();
+          (*named_parameter).GetValue<bool>();
       ERPL_TRACE_DEBUG("ODATA_BIND",
                        duckdb::StringUtil::Format(
                            "Named parameter 'count' set to: %s",
@@ -206,7 +205,7 @@ void ProcessNamedParameters(ODataReadBindData *bind_data,
 void SetupSchemaFromProbeResult(
     const ODataClientFactory::ProbeResult &probe_result,
     ODataReadBindData *bind_data, vector<LogicalType> &return_types,
-    vector<string> &names) {
+    duckdb_compat::BindNames &names) {
   if (probe_result.is_service_root) {
     names = {"name", "kind", "url"};
     return_types = {duckdb::LogicalTypeId::VARCHAR, 
@@ -214,7 +213,7 @@ void SetupSchemaFromProbeResult(
                     duckdb::LogicalTypeId::VARCHAR};
   } else {
     // Use existing entity-set schema logic
-    names = bind_data->GetResultNames();
+    duckdb_compat::AssignBindNames(names, bind_data->GetResultNames());
     return_types = bind_data->GetResultTypes();
   }
 }
@@ -223,7 +222,7 @@ void SetupSchemaFromProbeResult(
 
 duckdb::unique_ptr<FunctionData>
 ODataReadBind(ClientContext &context, TableFunctionBindInput &input,
-              vector<LogicalType> &return_types, vector<string> &names) {
+              vector<LogicalType> &return_types, duckdb_compat::BindNames &names) {
   PostHogTelemetry::Instance().RecordFunctionCall("odata_read");
   auto auth_params = AuthParamsFromInput(context, input);
   auto url = input.inputs[0].GetValue<std::string>();
@@ -238,8 +237,8 @@ ODataReadBind(ClientContext &context, TableFunctionBindInput &input,
     // that buffer is never refetched. Applying the preference only afterwards left the
     // first page at the service's default size (GitHub #185).
     std::optional<uint32_t> max_page_size;
-    if (input.named_parameters.find("max_page_size") != input.named_parameters.end()) {
-      max_page_size = ValidateMaxPageSizeParameter(input.named_parameters["max_page_size"]);
+    if (const auto *named_parameter = duckdb_compat::FindNamedParameter(input.named_parameters, "max_page_size")) {
+      max_page_size = ValidateMaxPageSizeParameter((*named_parameter));
     }
 
     // Single probe to determine content type and version
@@ -285,7 +284,7 @@ ODataReadBind(ClientContext &context, TableFunctionBindInput &input,
     }
 
     // Update names and types after processing expand clauses
-    names = bind_data->GetResultNames();
+    duckdb_compat::AssignBindNames(names, bind_data->GetResultNames());
     return_types = bind_data->GetResultTypes();
   }
 
@@ -332,15 +331,15 @@ TableFunctionSet CreateODataReadFunction() {
     read_entity_set.table_scan_progress = ODataReadTableProgress;
     
     // Add named parameters for TOP, SKIP, EXPAND, and COUNT
-    read_entity_set.named_parameters["top"] = LogicalTypeId::UBIGINT;
-    read_entity_set.named_parameters["skip"] = LogicalTypeId::UBIGINT;
-    read_entity_set.named_parameters["expand"] = LogicalTypeId::VARCHAR;
-    read_entity_set.named_parameters["count"] = LogicalTypeId::BOOLEAN;
-    read_entity_set.named_parameters["max_page_size"] = LogicalTypeId::UBIGINT;
+    duckdb_compat::AddNamedParameter(read_entity_set, "top", LogicalTypeId::UBIGINT);
+    duckdb_compat::AddNamedParameter(read_entity_set, "skip", LogicalTypeId::UBIGINT);
+    duckdb_compat::AddNamedParameter(read_entity_set, "expand", LogicalTypeId::VARCHAR);
+    duckdb_compat::AddNamedParameter(read_entity_set, "count", LogicalTypeId::BOOLEAN);
+    duckdb_compat::AddNamedParameter(read_entity_set, "max_page_size", LogicalTypeId::UBIGINT);
     // Off by default: turning today's silently-wrong queries into hard
     // failures would be its own regression. On, a value we cannot convert
     // fails the query instead of arriving as an indistinguishable NULL.
-    read_entity_set.named_parameters["strict_typing"] = LogicalTypeId::BOOLEAN;
+    duckdb_compat::AddNamedParameter(read_entity_set, "strict_typing", LogicalTypeId::BOOLEAN);
 
     function_set.AddFunction(read_entity_set);
     return function_set;

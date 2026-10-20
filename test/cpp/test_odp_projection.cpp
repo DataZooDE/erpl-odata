@@ -10,6 +10,8 @@
 // only page two onwards was ever correct.
 
 #include "catch.hpp"
+#include "test_extension_load_sql.hpp"
+#include "duckdb_compat.hpp"
 #include "duckdb.hpp"
 
 #include "odata_test_server.hpp"
@@ -62,7 +64,7 @@ TEST_CASE("odp_odata_read projects the column the query asked for", "[odp_projec
     // ODP state is refused an in-memory catalog on purpose (GitHub #92).
     odp_test::TempDatabase db("odp_projection");
     auto &con = db.Conn();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
     const auto url = server.Url(ODP_PATH);
 
     // Every assertion here is on VALUES, not on nullness. The defect does not produce
@@ -78,7 +80,7 @@ TEST_CASE("odp_odata_read projects the column the query asked for", "[odp_projec
         REQUIRE_FALSE(result->HasError());
         REQUIRE(result->RowCount() == 3);
         for (duckdb::idx_t row = 0; row < result->RowCount(); row++) {
-            const auto value = result->GetValue(0, row).ToString();
+            const auto value = duckdb_compat::ResultValue(*result, 0, row).ToString();
             INFO("row " << row << " D_NW_DIV = " << value
                         << " (CM* would mean CALMONTH's data arrived instead)");
             REQUIRE(value == "DV" + std::to_string(row));
@@ -94,8 +96,8 @@ TEST_CASE("odp_odata_read projects the column the query asked for", "[odp_projec
         // which is exactly the drained-buffer shape these tests exist to catch.
         REQUIRE(result->RowCount() == 3);
         for (duckdb::idx_t row = 0; row < result->RowCount(); row++) {
-            INFO("row " << row << " = " << result->GetValue(0, row).ToString());
-            REQUIRE(result->GetValue(0, row).ToString() == "C");
+            INFO("row " << row << " = " << duckdb_compat::ResultValue(*result, 0, row).ToString());
+            REQUIRE(duckdb_compat::ResultValue(*result, 0, row).ToString() == "C");
         }
     }
 
@@ -106,10 +108,10 @@ TEST_CASE("odp_odata_read projects the column the query asked for", "[odp_projec
         REQUIRE_FALSE(result->HasError());
         REQUIRE(result->RowCount() == 3);
         for (duckdb::idx_t row = 0; row < result->RowCount(); row++) {
-            INFO("row " << row << ": D_NW_DIV=" << result->GetValue(0, row).ToString()
-                        << " ODQ_CHANGEMODE=" << result->GetValue(1, row).ToString());
-            REQUIRE(result->GetValue(0, row).ToString() == "DV" + std::to_string(row));
-            REQUIRE(result->GetValue(1, row).ToString() == "C");
+            INFO("row " << row << ": D_NW_DIV=" << duckdb_compat::ResultValue(*result, 0, row).ToString()
+                        << " ODQ_CHANGEMODE=" << duckdb_compat::ResultValue(*result, 1, row).ToString());
+            REQUIRE(duckdb_compat::ResultValue(*result, 0, row).ToString() == "DV" + std::to_string(row));
+            REQUIRE(duckdb_compat::ResultValue(*result, 1, row).ToString() == "C");
         }
     }
 
@@ -122,10 +124,10 @@ TEST_CASE("odp_odata_read projects the column the query asked for", "[odp_projec
         REQUIRE_FALSE(result->HasError());
         REQUIRE(result->RowCount() == 3);
         for (duckdb::idx_t row = 0; row < result->RowCount(); row++) {
-            INFO("row " << row << ": ODQ_CHANGEMODE=" << result->GetValue(0, row).ToString()
-                        << " CALMONTH=" << result->GetValue(1, row).ToString());
-            REQUIRE(result->GetValue(0, row).ToString() == "C");
-            REQUIRE(result->GetValue(1, row).ToString() == "CM" + std::to_string(row));
+            INFO("row " << row << ": ODQ_CHANGEMODE=" << duckdb_compat::ResultValue(*result, 0, row).ToString()
+                        << " CALMONTH=" << duckdb_compat::ResultValue(*result, 1, row).ToString());
+            REQUIRE(duckdb_compat::ResultValue(*result, 0, row).ToString() == "C");
+            REQUIRE(duckdb_compat::ResultValue(*result, 1, row).ToString() == "CM" + std::to_string(row));
         }
     }
 
@@ -137,8 +139,8 @@ TEST_CASE("odp_odata_read projects the column the query asked for", "[odp_projec
         REQUIRE_FALSE(result->HasError());
         REQUIRE(result->RowCount() == 3);
         for (duckdb::idx_t row = 0; row < result->RowCount(); row++) {
-            REQUIRE(result->GetValue(0, row).ToString() == "CM" + std::to_string(row));
-            REQUIRE(result->GetValue(1, row).ToString() == "DV" + std::to_string(row));
+            REQUIRE(duckdb_compat::ResultValue(*result, 0, row).ToString() == "CM" + std::to_string(row));
+            REQUIRE(duckdb_compat::ResultValue(*result, 1, row).ToString() == "DV" + std::to_string(row));
         }
     }
 }

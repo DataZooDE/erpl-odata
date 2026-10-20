@@ -15,3 +15,6 @@
 [submodule "datazoo-oauth2"]
 	path = datazoo-oauth2
 	url = https://github.com/DataZooDE/datazoo-oauth2.git
+[submodule "duckdb-compat"]
+	path = duckdb-compat
+	url = https://github.com/DataZooDE/duckdb-compat.git

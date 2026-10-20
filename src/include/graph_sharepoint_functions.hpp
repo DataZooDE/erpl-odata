@@ -1,6 +1,7 @@
 #pragma once
 
 #include "duckdb.hpp"
+#include "duckdb_compat.hpp"
 #include "duckdb/main/extension/extension_loader.hpp"
 
 namespace erpl_web {
@@ -16,7 +17,7 @@ private:
         duckdb::ClientContext &context,
         duckdb::TableFunctionBindInput &input,
         duckdb::vector<duckdb::LogicalType> &return_types,
-        duckdb::vector<std::string> &names);
+        duckdb_compat::BindNames &names);
 
     static void ShowSitesScan(
         duckdb::ClientContext &context,
@@ -28,7 +29,7 @@ private:
         duckdb::ClientContext &context,
         duckdb::TableFunctionBindInput &input,
         duckdb::vector<duckdb::LogicalType> &return_types,
-        duckdb::vector<std::string> &names);
+        duckdb_compat::BindNames &names);
 
     static void ShowDrivesScan(
         duckdb::ClientContext &context,
@@ -40,7 +41,7 @@ private:
         duckdb::ClientContext &context,
         duckdb::TableFunctionBindInput &input,
         duckdb::vector<duckdb::LogicalType> &return_types,
-        duckdb::vector<std::string> &names);
+        duckdb_compat::BindNames &names);
 
     static void ShowListsScan(
         duckdb::ClientContext &context,
@@ -52,7 +53,7 @@ private:
         duckdb::ClientContext &context,
         duckdb::TableFunctionBindInput &input,
         duckdb::vector<duckdb::LogicalType> &return_types,
-        duckdb::vector<std::string> &names);
+        duckdb_compat::BindNames &names);
 
     static void DescribeListScan(
         duckdb::ClientContext &context,
@@ -64,7 +65,7 @@ private:
         duckdb::ClientContext &context,
         duckdb::TableFunctionBindInput &input,
         duckdb::vector<duckdb::LogicalType> &return_types,
-        duckdb::vector<std::string> &names);
+        duckdb_compat::BindNames &names);
 
     static void ListItemsScan(
         duckdb::ClientContext &context,
@@ -76,7 +77,7 @@ private:
         duckdb::ClientContext &context,
         duckdb::TableFunctionBindInput &input,
         duckdb::vector<duckdb::LogicalType> &return_types,
-        duckdb::vector<std::string> &names);
+        duckdb_compat::BindNames &names);
 
     static void CreateItemScan(
         duckdb::ClientContext &context,

@@ -15,6 +15,8 @@
 // harvests the caller's bearer token.
 
 #include "catch.hpp"
+#include "test_extension_load_sql.hpp"
+#include "duckdb_compat.hpp"
 #include "duckdb.hpp"
 
 #include "odata_test_server.hpp"
@@ -54,7 +56,7 @@ TEST_CASE("a cross-origin next link never receives the caller's credentials",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     // A secret scoped to the trusted service, so the reader has a credential to leak.
     auto secret = con.Query("CREATE SECRET leaky (TYPE http_basic, USERNAME 'victim', "
@@ -70,7 +72,7 @@ TEST_CASE("a cross-origin next link never receives the caller's credentials",
     // never followed, the foreign-host loop below iterates zero times, and the #183 guard
     // goes untested while the test stays green.
     REQUIRE_FALSE(result->HasError());
-    REQUIRE(result->GetValue(0, 0).GetValue<int64_t>() == 2);
+    REQUIRE(duckdb_compat::ResultValue(*result, 0, 0).GetValue<int64_t>() == 2);
 
     // The trusted host must have been given the credential - otherwise this test would
     // pass for the wrong reason, having never authenticated at all.
@@ -120,7 +122,7 @@ TEST_CASE("the trusted origin survives a client rebuilt after paging",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     auto secret = con.Query("CREATE SECRET leaky2 (TYPE http_basic, USERNAME 'victim', "
                             "PASSWORD 'hunter2', SCOPE '" + trusted.BaseUrl() + "')");
@@ -178,7 +180,7 @@ TEST_CASE("an OData next link with control characters is refused, not followed",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     auto result = con.Query("SELECT COUNT(*) FROM odata_read('" + server.Url("/svc/Airlines") + "')");
     REQUIRE(result->HasError());
@@ -225,7 +227,7 @@ TEST_CASE("a caller's percent-encoded query value survives into every request",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     auto result = con.Query("SELECT COUNT(*) FROM odata_read('" + server.Url("/svc/Airlines") +
                             "?$orderby=Name%20desc')");
@@ -328,12 +330,12 @@ TEST_CASE("a transient metadata failure repeats the same request", "[odata_origi
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     auto result = con.Query("SELECT COUNT(*) FROM odata_read('" + server.Url("/svc/Airlines") + "')");
     INFO((result->HasError() ? result->GetError() : std::string()));
     REQUIRE_FALSE(result->HasError());
-    REQUIRE(result->GetValue(0, 0).GetValue<int64_t>() == 1);
+    REQUIRE(duckdb_compat::ResultValue(*result, 0, 0).GetValue<int64_t>() == 1);
 
     // The retry happened at all, and reached the same path.
     REQUIRE(server.RequestsFor("/svc/$metadata").size() >= 2);

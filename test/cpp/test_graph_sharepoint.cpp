@@ -1,4 +1,6 @@
 #include "catch.hpp"
+#include "test_extension_load_sql.hpp"
+#include "duckdb_compat.hpp"
 #include "odata_url_helpers.hpp"
 #include "duckdb.hpp"
 #include "graph_sharepoint_client.hpp"
@@ -102,31 +104,31 @@ TEST_CASE("Microsoft Graph SharePoint Functions Exist", "[graph_sharepoint][func
     duckdb::Connection con(db);
 
     // Load the extension
-    auto result = con.Query("LOAD erpl_odata");
+    auto result = con.Query(ErplOdataLoadSql());
     REQUIRE_FALSE(result->HasError());
 
     SECTION("graph_show_sites function exists") {
         result = con.Query("SELECT count(*) FROM duckdb_functions() WHERE function_name = 'graph_show_sites'");
         REQUIRE_FALSE(result->HasError());
-        REQUIRE(result->GetValue(0, 0).GetValue<int64_t>() == 1);
+        REQUIRE(duckdb_compat::ResultValue(*result, 0, 0).GetValue<int64_t>() == 1);
     }
 
     SECTION("graph_show_lists function exists") {
         result = con.Query("SELECT count(*) FROM duckdb_functions() WHERE function_name = 'graph_show_lists'");
         REQUIRE_FALSE(result->HasError());
-        REQUIRE(result->GetValue(0, 0).GetValue<int64_t>() == 1);
+        REQUIRE(duckdb_compat::ResultValue(*result, 0, 0).GetValue<int64_t>() == 1);
     }
 
     SECTION("graph_describe_list function exists") {
         result = con.Query("SELECT count(*) FROM duckdb_functions() WHERE function_name = 'graph_describe_list'");
         REQUIRE_FALSE(result->HasError());
-        REQUIRE(result->GetValue(0, 0).GetValue<int64_t>() == 1);
+        REQUIRE(duckdb_compat::ResultValue(*result, 0, 0).GetValue<int64_t>() == 1);
     }
 
     SECTION("graph_sharepoint_list_read function exists") {
         result = con.Query("SELECT count(*) FROM duckdb_functions() WHERE function_name = 'graph_sharepoint_list_read'");
         REQUIRE_FALSE(result->HasError());
-        REQUIRE(result->GetValue(0, 0).GetValue<int64_t>() == 1);
+        REQUIRE(duckdb_compat::ResultValue(*result, 0, 0).GetValue<int64_t>() == 1);
     }
 }
 
@@ -137,7 +139,7 @@ TEST_CASE("Microsoft Graph SharePoint uses Graph Secret Type", "[graph_sharepoin
     duckdb::Connection con(db);
 
     // Load the extension
-    auto result = con.Query("LOAD erpl_odata");
+    auto result = con.Query(ErplOdataLoadSql());
     REQUIRE_FALSE(result->HasError());
 
     SECTION("Graph secret type can be used for SharePoint") {
@@ -154,7 +156,7 @@ TEST_CASE("Microsoft Graph SharePoint uses Graph Secret Type", "[graph_sharepoin
         // Verify secret was created
         result = con.Query("SELECT count(*) FROM duckdb_secrets() WHERE name = 'test_sp_secret'");
         REQUIRE_FALSE(result->HasError());
-        REQUIRE(result->GetValue(0, 0).GetValue<int64_t>() == 1);
+        REQUIRE(duckdb_compat::ResultValue(*result, 0, 0).GetValue<int64_t>() == 1);
 
         // Cleanup
         con.Query("DROP SECRET test_sp_secret");

@@ -4,6 +4,8 @@
 // INTERNAL, and an unrelated `SELECT 42` still works afterwards.
 
 #include "catch.hpp"
+#include "test_extension_load_sql.hpp"
+#include "duckdb_compat.hpp"
 #include "duckdb.hpp"
 
 #include "odata_test_server.hpp"
@@ -28,7 +30,8 @@ using erpl_web::test_support::TestDatabase;
 namespace {
 
 // The error is an ordinary one, and the instance is still usable.
-void RequireOrdinaryError(duckdb::Connection &con, duckdb::MaterializedQueryResult &result)
+template <class RESULT>
+void RequireOrdinaryError(duckdb::Connection &con, RESULT &result)
 {
     REQUIRE(result.HasError());
     INFO(result.GetError());
@@ -37,7 +40,7 @@ void RequireOrdinaryError(duckdb::Connection &con, duckdb::MaterializedQueryResu
     auto alive = con.Query("SELECT 42");
     INFO((alive->HasError() ? alive->GetError() : std::string()));
     REQUIRE_FALSE(alive->HasError());
-    CHECK(alive->GetValue(0, 0).GetValue<int32_t>() == 42);
+    CHECK(duckdb_compat::ResultValue(*alive, 0, 0).GetValue<int32_t>() == 42);
 }
 
 const char *const ODP_PATH = "/sap/opu/odata/sap/Z_TEST_SRV/FactsOf0D_NW_C01";
@@ -53,7 +56,7 @@ TEST_CASE("a half-specified http_basic secret is bad input, not an internal erro
     ODataTestServer server;
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     // Accepted by CREATE SECRET: the password is not required there. The scope makes it the secret
     // that the URL-matched lookup finds for the test server.
@@ -102,7 +105,7 @@ TEST_CASE("a read-only attached database is not used as ODP state", "[internal_s
     SECTION("it is the only candidate: a clear error naming it") {
         TestDatabase database;
         duckdb::Connection &con = database.Con();
-        REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+        REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
         REQUIRE_FALSE(con.Query("ATTACH '" + read_only_file + "' AS ro_state (READ_ONLY)")->HasError());
 
         auto result = con.Query("SELECT * FROM odp_odata_list_subscriptions()");
@@ -114,7 +117,7 @@ TEST_CASE("a read-only attached database is not used as ODP state", "[internal_s
         const auto writable_file = MakeStateFile("erpl_251_state_rw.db");
         TestDatabase database;
         duckdb::Connection &con = database.Con();
-        REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+        REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
         // 'ro_state' sorts before 'rw_state', which is how the old code picked it.
         REQUIRE_FALSE(con.Query("ATTACH '" + read_only_file + "' AS ro_state (READ_ONLY)")->HasError());
         REQUIRE_FALSE(con.Query("ATTACH '" + writable_file + "' AS rw_state")->HasError());
@@ -122,7 +125,7 @@ TEST_CASE("a read-only attached database is not used as ODP state", "[internal_s
         auto result = con.Query("SELECT count(*) FROM odp_odata_list_subscriptions()");
         INFO((result->HasError() ? result->GetError() : std::string()));
         REQUIRE_FALSE(result->HasError());
-        CHECK(result->GetValue(0, 0).GetValue<int64_t>() == 0);
+        CHECK(duckdb_compat::ResultValue(*result, 0, 0).GetValue<int64_t>() == 0);
 
         std::filesystem::remove(writable_file);
         std::filesystem::remove(writable_file + ".wal");
@@ -143,7 +146,7 @@ TEST_CASE("concurrent first reads of one subscription all get the same subscript
 
     odp_test::TempDatabase database("odp_251_race");
     auto &setup_connection = database.Conn();
-    REQUIRE_FALSE(setup_connection.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(setup_connection.Query(ErplOdataLoadSql())->HasError());
     OdpSubscriptionRepository(database.Context()).EnsureSchemaExists();
     OdpSubscriptionRepository(database.Context()).EnsureTablesExist();
 
@@ -197,7 +200,7 @@ TEST_CASE("TransitionToError never throws, even when the subscription row is gon
           "[internal_seams][transition]") {
     odp_test::TempDatabase database("odp_251_transition");
     auto &con = database.Conn();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     OdpSubscriptionStateManager manager(database.Context(), "https://test.example/sap/opu/odata/sap/T_SRV/Facts",
                                         "Facts", "secret");
@@ -216,7 +219,7 @@ TEST_CASE("the audit row still records the fetch error when the status update fa
           "[internal_seams][transition]") {
     odp_test::TempDatabase database("odp_251_audit");
     auto &con = database.Conn();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     OdpSubscriptionStateManager manager(database.Context(), "https://test.example/sap/opu/odata/sap/A_SRV/Facts",
                                         "Facts", "secret");
@@ -230,7 +233,7 @@ TEST_CASE("the audit row still records the fetch error when the status update fa
     auto audit = con.Query("SELECT count(*) FROM erpl_web.odp_subscription_audit WHERE audit_id = " +
                            std::to_string(audit_id) + " AND error_message LIKE '%HTTP 500 on page 3%'");
     REQUIRE_FALSE(audit->HasError());
-    CHECK(audit->GetValue(0, 0).GetValue<int64_t>() == 1);
+    CHECK(duckdb_compat::ResultValue(*audit, 0, 0).GetValue<int64_t>() == 1);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -247,7 +250,7 @@ TEST_CASE("re-executing an ODP read after a failed fetch is an ordinary error",
 
     odp_test::TempDatabase database("odp_251_reexec");
     auto &con = database.Conn();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     REQUIRE_FALSE(con.Query("PREPARE p AS SELECT COUNT(*) FROM odp_odata_read('" + server.Url(ODP_PATH) + "')")
                       ->HasError());

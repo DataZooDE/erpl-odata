@@ -1,4 +1,5 @@
 #include "odp_pragma_functions.hpp"
+#include "duckdb_compat.hpp"
 #include <unordered_set>
 #include "odp_subscription_repository.hpp"
 #include "tracing.hpp"
@@ -17,7 +18,7 @@ using duckdb::PostHogTelemetry;
 duckdb::unique_ptr<duckdb::FunctionData> OdpListSubscriptionsBind(duckdb::ClientContext &context,
                                                                   duckdb::TableFunctionBindInput &input,
                                                                   duckdb::vector<duckdb::LogicalType> &return_types,
-                                                                  duckdb::vector<std::string> &names) {
+                                                                  duckdb_compat::BindNames &names) {
     PostHogTelemetry::Instance().RecordFunctionCall("odp_list_subscriptions");
     ERPL_TRACE_DEBUG("ODP_LIST_SUBSCRIPTIONS_BIND", "=== BINDING ODP_LIST_SUBSCRIPTIONS FUNCTION ===");
     
@@ -61,7 +62,7 @@ void OdpListSubscriptionsScan(duckdb::ClientContext &context, duckdb::TableFunct
         
         if (count == 0) {
             ERPL_TRACE_DEBUG("ODP_LIST_SUBSCRIPTIONS_SCAN", "No more subscriptions to return");
-            output.SetCardinality(0);
+            duckdb_compat::SetChildCardinality(output, 0);
             return;
         }
         
@@ -89,7 +90,7 @@ void OdpListSubscriptionsScan(duckdb::ClientContext &context, duckdb::TableFunct
             output.SetValue(8, i, duckdb::Value(subscription.preference_applied));
         }
         
-        output.SetCardinality(count);
+        duckdb_compat::SetChildCardinality(output, count);
         state.current_index = end_idx;
         
         ERPL_TRACE_INFO("ODP_LIST_SUBSCRIPTIONS_SCAN", duckdb::StringUtil::Format("Returned %zu subscriptions", count));

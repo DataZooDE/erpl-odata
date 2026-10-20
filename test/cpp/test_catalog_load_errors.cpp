@@ -4,6 +4,8 @@
 // after the cause was fixed. A failure must reach the user and must not be cached.
 
 #include "catch.hpp"
+#include "test_extension_load_sql.hpp"
+#include "duckdb_compat.hpp"
 #include "duckdb.hpp"
 
 #include "odata_test_server.hpp"
@@ -11,6 +13,8 @@
 
 #include <ctime>
 #include <string>
+#include <utility>
+#include <vector>
 
 using erpl_web::test_support::CannedResponse;
 using erpl_web::test_support::ODataTestServer;
@@ -26,6 +30,40 @@ std::string FarFutureEpoch()
 
 }  // namespace
 
+TEST_CASE("a Business Central catalog defaults to read-only attach", "[catalog_load_errors][bc][attach]") {
+    const std::string company = "11111111-2222-3333-4444-555555555555";
+    ODataTestServer server;
+    TestDatabase database;
+    auto &con = database.Con();
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
+    auto secret = con.Query(
+        "CREATE SECRET bc_default (TYPE business_central, PROVIDER config, "
+        "TENANT_ID 'loopback', CLIENT_ID 'id', CLIENT_SECRET 'sec', "
+        "ENVIRONMENT '" + server.BaseUrl() + "', ACCESS_TOKEN 'test-token', "
+        "EXPIRES_AT '4102444800')");
+    INFO((secret->HasError() ? secret->GetError() : std::string()));
+    REQUIRE_FALSE(secret->HasError());
+
+    auto attached = con.Query("ATTACH 'bc_default' AS bc_default_catalog "
+                              "(TYPE business_central, COMPANY '" + company + "')");
+    INFO((attached->HasError() ? attached->GetError() : std::string()));
+    REQUIRE_FALSE(attached->HasError());
+    const std::vector<std::pair<std::string, std::string>> read_only_options = {
+        {"bc_ro", "READ_ONLY"}, {"bc_readonly", "READONLY"},
+        {"bc_rw_false", "READ_WRITE false"}, {"bc_readwrite_false", "READWRITE false"}};
+    for (const auto &option : read_only_options) {
+        auto result = con.Query("ATTACH 'bc_default' AS " + option.first +
+                                " (TYPE business_central, COMPANY '" + company + "', " +
+                                option.second + ")");
+        INFO(option.second << ": " << (result->HasError() ? result->GetError() : std::string()));
+        REQUIRE_FALSE(result->HasError());
+    }
+    auto writable = con.Query("ATTACH 'bc_default' AS bc_writable_catalog "
+                              "(TYPE business_central, COMPANY '" + company + "', READ_WRITE)");
+    REQUIRE(writable->HasError());
+    REQUIRE(writable->GetError().find("read-only") != std::string::npos);
+}
+
 TEST_CASE("a Business Central catalog reports a metadata failure and does not cache it",
           "[catalog_load_errors][bc]") {
     // A GUID short-circuits ResolveCompanyId, which would otherwise GET <base>/companies.
@@ -40,7 +78,7 @@ TEST_CASE("a Business Central catalog reports a metadata failure and does not ca
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     auto secret = con.Query(
         "CREATE SECRET bc (TYPE business_central, PROVIDER config, "
@@ -67,5 +105,5 @@ TEST_CASE("a Business Central catalog reports a metadata failure and does not ca
     auto recovered = con.Query(list_tables);
     INFO("second listing: " << (recovered->HasError() ? recovered->GetError() : recovered->ToString()));
     REQUIRE_FALSE(recovered->HasError());
-    CHECK(recovered->GetValue(0, 0).GetValue<int64_t>() > 0);
+    CHECK(duckdb_compat::FetchRows(*recovered).at(0).at(0).GetValue<int64_t>() > 0);
 }

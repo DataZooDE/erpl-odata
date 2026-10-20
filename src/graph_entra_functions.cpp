@@ -1,4 +1,5 @@
 #include "graph_entra_functions.hpp"
+#include "duckdb_compat.hpp"
 #include "graph_client.hpp"
 #include "graph_entra_client.hpp"
 #include "graph_excel_secret.hpp"
@@ -73,14 +74,14 @@ unique_ptr<FunctionData> GraphEntraFunctions::UsersBind(
     ClientContext &context,
     TableFunctionBindInput &input,
     vector<LogicalType> &return_types,
-    vector<std::string> &names) {
+    duckdb_compat::BindNames &names) {
 
     auto bind_data = make_uniq<GraphUsersBindData>();
 
     // Get secret name from named parameter (optional - uses first microsoft_graph secret if not provided)
     std::string secret_name;
-    if (input.named_parameters.find("secret") != input.named_parameters.end()) {
-        secret_name = input.named_parameters.at("secret").GetValue<std::string>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "secret") != nullptr) {
+        secret_name = input.named_parameters.at(duckdb_compat::Ident("secret")).GetValue<std::string>();
     }
     bind_data->secret_name = secret_name;
 
@@ -118,8 +119,8 @@ unique_ptr<FunctionData> GraphEntraFunctions::UsersBind(
         yyjson_val *item;
         yyjson_arr_foreach(value_arr, idx, max, item) {
             bind_data->user_ids.push_back(GraphJsonGetString(item, "id"));
-            bind_data->display_names.push_back(GraphJsonGetString(item, "displayName"));
-            bind_data->user_principal_names.push_back(GraphJsonGetString(item, "userPrincipalName"));
+            bind_data->display_names.emplace_back(GraphJsonGetString(item, "displayName"));
+            bind_data->user_principal_names.emplace_back(GraphJsonGetString(item, "userPrincipalName"));
             bind_data->mail_addresses.push_back(GraphJsonGetString(item, "mail"));
             bind_data->job_titles.push_back(GraphJsonGetString(item, "jobTitle"));
             bind_data->departments.push_back(GraphJsonGetString(item, "department"));
@@ -140,7 +141,7 @@ void GraphEntraFunctions::UsersScan(
     auto &bind_data = data.bind_data->Cast<GraphUsersBindData>();
 
     if (state.finished) {
-        output.SetCardinality(0);
+        duckdb_compat::SetChildCardinality(output, 0);
         return;
     }
 
@@ -166,7 +167,7 @@ void GraphEntraFunctions::UsersScan(
         state.finished = true;
     }
 
-    output.SetCardinality(count);
+    duckdb_compat::SetChildCardinality(output, count);
 }
 
 // =============================================================================
@@ -177,14 +178,14 @@ unique_ptr<FunctionData> GraphEntraFunctions::GroupsBind(
     ClientContext &context,
     TableFunctionBindInput &input,
     vector<LogicalType> &return_types,
-    vector<std::string> &names) {
+    duckdb_compat::BindNames &names) {
 
     auto bind_data = make_uniq<GraphGroupsBindData>();
 
     // Get secret name from named parameter (optional)
     std::string secret_name;
-    if (input.named_parameters.find("secret") != input.named_parameters.end()) {
-        secret_name = input.named_parameters.at("secret").GetValue<std::string>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "secret") != nullptr) {
+        secret_name = input.named_parameters.at(duckdb_compat::Ident("secret")).GetValue<std::string>();
     }
     bind_data->secret_name = secret_name;
 
@@ -217,7 +218,7 @@ unique_ptr<FunctionData> GraphEntraFunctions::GroupsBind(
         yyjson_val *item;
         yyjson_arr_foreach(value_arr, idx, max, item) {
             bind_data->group_ids.push_back(GraphJsonGetString(item, "id"));
-            bind_data->display_names.push_back(GraphJsonGetString(item, "displayName"));
+            bind_data->display_names.emplace_back(GraphJsonGetString(item, "displayName"));
             bind_data->descriptions.push_back(GraphJsonGetString(item, "description"));
             bind_data->mail_addresses.push_back(GraphJsonGetString(item, "mail"));
             bind_data->mail_enabled.push_back(GraphJsonGetBool(item, "mailEnabled"));
@@ -238,7 +239,7 @@ void GraphEntraFunctions::GroupsScan(
     auto &bind_data = data.bind_data->Cast<GraphGroupsBindData>();
 
     if (state.finished) {
-        output.SetCardinality(0);
+        duckdb_compat::SetChildCardinality(output, 0);
         return;
     }
 
@@ -263,7 +264,7 @@ void GraphEntraFunctions::GroupsScan(
         state.finished = true;
     }
 
-    output.SetCardinality(count);
+    duckdb_compat::SetChildCardinality(output, count);
 }
 
 // =============================================================================
@@ -274,14 +275,14 @@ unique_ptr<FunctionData> GraphEntraFunctions::DevicesBind(
     ClientContext &context,
     TableFunctionBindInput &input,
     vector<LogicalType> &return_types,
-    vector<std::string> &names) {
+    duckdb_compat::BindNames &names) {
 
     auto bind_data = make_uniq<GraphDevicesBindData>();
 
     // Get secret name from named parameter (optional)
     std::string secret_name;
-    if (input.named_parameters.find("secret") != input.named_parameters.end()) {
-        secret_name = input.named_parameters.at("secret").GetValue<std::string>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "secret") != nullptr) {
+        secret_name = input.named_parameters.at(duckdb_compat::Ident("secret")).GetValue<std::string>();
     }
     bind_data->secret_name = secret_name;
 
@@ -314,7 +315,7 @@ unique_ptr<FunctionData> GraphEntraFunctions::DevicesBind(
         yyjson_val *item;
         yyjson_arr_foreach(value_arr, idx, max, item) {
             bind_data->device_ids.push_back(GraphJsonGetString(item, "id"));
-            bind_data->display_names.push_back(GraphJsonGetString(item, "displayName"));
+            bind_data->display_names.emplace_back(GraphJsonGetString(item, "displayName"));
             bind_data->operating_systems.push_back(GraphJsonGetString(item, "operatingSystem"));
             bind_data->os_versions.push_back(GraphJsonGetString(item, "operatingSystemVersion"));
             bind_data->trust_types.push_back(GraphJsonGetString(item, "trustType"));
@@ -335,7 +336,7 @@ void GraphEntraFunctions::DevicesScan(
     auto &bind_data = data.bind_data->Cast<GraphDevicesBindData>();
 
     if (state.finished) {
-        output.SetCardinality(0);
+        duckdb_compat::SetChildCardinality(output, 0);
         return;
     }
 
@@ -360,7 +361,7 @@ void GraphEntraFunctions::DevicesScan(
         state.finished = true;
     }
 
-    output.SetCardinality(count);
+    duckdb_compat::SetChildCardinality(output, count);
 }
 
 // =============================================================================
@@ -371,14 +372,14 @@ unique_ptr<FunctionData> GraphEntraFunctions::SignInLogsBind(
     ClientContext &context,
     TableFunctionBindInput &input,
     vector<LogicalType> &return_types,
-    vector<std::string> &names) {
+    duckdb_compat::BindNames &names) {
 
     auto bind_data = make_uniq<GraphSignInLogsBindData>();
 
     // Get secret name from named parameter (optional)
     std::string secret_name;
-    if (input.named_parameters.find("secret") != input.named_parameters.end()) {
-        secret_name = input.named_parameters.at("secret").GetValue<std::string>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "secret") != nullptr) {
+        secret_name = input.named_parameters.at(duckdb_compat::Ident("secret")).GetValue<std::string>();
     }
     bind_data->secret_name = secret_name;
 
@@ -412,9 +413,9 @@ unique_ptr<FunctionData> GraphEntraFunctions::SignInLogsBind(
         yyjson_val *item;
         yyjson_arr_foreach(value_arr, idx, max, item) {
             bind_data->log_ids.push_back(GraphJsonGetString(item, "id"));
-            bind_data->user_display_names.push_back(GraphJsonGetString(item, "userDisplayName"));
-            bind_data->user_principal_names.push_back(GraphJsonGetString(item, "userPrincipalName"));
-            bind_data->app_display_names.push_back(GraphJsonGetString(item, "appDisplayName"));
+            bind_data->user_display_names.emplace_back(GraphJsonGetString(item, "userDisplayName"));
+            bind_data->user_principal_names.emplace_back(GraphJsonGetString(item, "userPrincipalName"));
+            bind_data->app_display_names.emplace_back(GraphJsonGetString(item, "appDisplayName"));
             bind_data->ip_addresses.push_back(GraphJsonGetString(item, "ipAddress"));
             bind_data->created_datetimes.push_back(GraphJsonGetString(item, "createdDateTime"));
 
@@ -447,7 +448,7 @@ void GraphEntraFunctions::SignInLogsScan(
     auto &bind_data = data.bind_data->Cast<GraphSignInLogsBindData>();
 
     if (state.finished) {
-        output.SetCardinality(0);
+        duckdb_compat::SetChildCardinality(output, 0);
         return;
     }
 
@@ -473,7 +474,7 @@ void GraphEntraFunctions::SignInLogsScan(
         state.finished = true;
     }
 
-    output.SetCardinality(count);
+    duckdb_compat::SetChildCardinality(output, count);
 }
 
 // =============================================================================
@@ -483,7 +484,7 @@ void GraphEntraFunctions::SignInLogsScan(
 void GraphEntraFunctions::Register(ExtensionLoader &loader) {
     {
         TableFunction users_func("graph_users", {}, DATAZOO_GUARD(ERPL_ODATA_BANNER, UsersScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, UsersBind));
-        users_func.named_parameters["secret"] = LogicalType::VARCHAR;
+        duckdb_compat::AddNamedParameter(users_func, "secret", LogicalType::VARCHAR);
         users_func.init_global = ScanRowCursorState::Init;
         CreateTableFunctionInfo info(users_func);
         FunctionDescription desc;
@@ -493,11 +494,12 @@ void GraphEntraFunctions::Register(ExtensionLoader &loader) {
         desc.examples = {"SELECT * FROM graph_users(secret := 'ms_entra')"};
         desc.categories = {"microsoft", "graph", "entra"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
         TableFunction groups_func("graph_groups", {}, DATAZOO_GUARD(ERPL_ODATA_BANNER, GroupsScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, GroupsBind));
-        groups_func.named_parameters["secret"] = LogicalType::VARCHAR;
+        duckdb_compat::AddNamedParameter(groups_func, "secret", LogicalType::VARCHAR);
         groups_func.init_global = ScanRowCursorState::Init;
         CreateTableFunctionInfo info(groups_func);
         FunctionDescription desc;
@@ -507,11 +509,12 @@ void GraphEntraFunctions::Register(ExtensionLoader &loader) {
         desc.examples = {"SELECT * FROM graph_groups(secret := 'ms_entra')"};
         desc.categories = {"microsoft", "graph", "entra"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
         TableFunction devices_func("graph_devices", {}, DATAZOO_GUARD(ERPL_ODATA_BANNER, DevicesScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, DevicesBind));
-        devices_func.named_parameters["secret"] = LogicalType::VARCHAR;
+        duckdb_compat::AddNamedParameter(devices_func, "secret", LogicalType::VARCHAR);
         devices_func.init_global = ScanRowCursorState::Init;
         CreateTableFunctionInfo info(devices_func);
         FunctionDescription desc;
@@ -521,11 +524,12 @@ void GraphEntraFunctions::Register(ExtensionLoader &loader) {
         desc.examples = {"SELECT * FROM graph_devices(secret := 'ms_entra')"};
         desc.categories = {"microsoft", "graph", "entra"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
         TableFunction signin_logs_func("graph_signin_logs", {}, DATAZOO_GUARD(ERPL_ODATA_BANNER, SignInLogsScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, SignInLogsBind));
-        signin_logs_func.named_parameters["secret"] = LogicalType::VARCHAR;
+        duckdb_compat::AddNamedParameter(signin_logs_func, "secret", LogicalType::VARCHAR);
         signin_logs_func.init_global = ScanRowCursorState::Init;
         CreateTableFunctionInfo info(signin_logs_func);
         FunctionDescription desc;
@@ -535,6 +539,7 @@ void GraphEntraFunctions::Register(ExtensionLoader &loader) {
         desc.examples = {"SELECT * FROM graph_signin_logs(secret := 'ms_entra')"};
         desc.categories = {"microsoft", "graph", "entra"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
 }

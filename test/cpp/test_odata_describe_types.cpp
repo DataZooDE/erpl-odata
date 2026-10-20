@@ -7,6 +7,8 @@
 // this column be?" disagreed with the answer. (GitHub #254, follow-up)
 
 #include "catch.hpp"
+#include "test_extension_load_sql.hpp"
+#include "duckdb_compat.hpp"
 #include "duckdb.hpp"
 
 #include "odata_test_server.hpp"
@@ -59,7 +61,7 @@ std::string DescribedField(duckdb::Connection &con, const std::string &url,
     INFO((result->HasError() ? result->GetError() : std::string()));
     REQUIRE_FALSE(result->HasError());
     REQUIRE(result->RowCount() == 1);
-    auto value = result->GetValue(0, 0);
+    auto value = duckdb_compat::ResultValue(*result, 0, 0);
     return value.IsNull() ? std::string("NULL") : value.ToString();
 }
 
@@ -73,7 +75,7 @@ TEST_CASE("odata_describe reports the type the reader binds", "[odata_describe][
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
     const auto url = server.Url("/desc/Assets");
 
     SECTION("decimal facets decide the described type") {

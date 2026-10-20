@@ -4,6 +4,8 @@
 // locally (docs/ODP.md has always said so).
 
 #include "catch.hpp"
+#include "test_extension_load_sql.hpp"
+#include "duckdb_compat.hpp"
 #include "duckdb.hpp"
 
 #include "odp_subscription_repository.hpp"
@@ -23,7 +25,7 @@ int64_t Count(duckdb::Connection &con, const std::string &sql)
 {
     auto result = con.Query(sql);
     REQUIRE_FALSE(result->HasError());
-    return result->GetValue(0, 0).GetValue<int64_t>();
+    return duckdb_compat::ResultValue(*result, 0, 0).GetValue<int64_t>();
 }
 
 }  // namespace
@@ -31,7 +33,7 @@ int64_t Count(duckdb::Connection &con, const std::string &sql)
 TEST_CASE("removing an unknown subscription id is an error", "[odp_remove_subscription]") {
     odp_test::TempDatabase database;
     duckdb::Connection &con = database.Conn();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
     OdpSubscriptionRepository repository(database.Context());
     const auto known = CreateSubscription(repository, "Facts");
 
@@ -49,7 +51,7 @@ TEST_CASE("removing an unknown subscription id is an error", "[odp_remove_subscr
 TEST_CASE("removing a subscription forgets it locally and audits it honestly", "[odp_remove_subscription]") {
     odp_test::TempDatabase database;
     duckdb::Connection &con = database.Conn();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
     OdpSubscriptionRepository repository(database.Context());
     const auto id = CreateSubscription(repository, "Facts");
 
@@ -68,7 +70,7 @@ TEST_CASE("keep_local_data marks the subscription terminated instead of deleting
           "[odp_remove_subscription]") {
     odp_test::TempDatabase database;
     duckdb::Connection &con = database.Conn();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
     OdpSubscriptionRepository repository(database.Context());
     const auto id = CreateSubscription(repository, "Facts");
 
@@ -83,7 +85,7 @@ TEST_CASE("keep_local_data marks the subscription terminated instead of deleting
 TEST_CASE("a repeated subscription id is removed once", "[odp_remove_subscription]") {
     odp_test::TempDatabase database;
     duckdb::Connection &con = database.Conn();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
     OdpSubscriptionRepository repository(database.Context());
     const auto id = CreateSubscription(repository, "Facts");
 

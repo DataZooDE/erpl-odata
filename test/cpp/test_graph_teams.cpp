@@ -1,4 +1,5 @@
 #include "catch.hpp"
+#include "test_extension_load_sql.hpp"
 #include "graph_teams_client.hpp"
 #include "duckdb.hpp"
 
@@ -68,7 +69,7 @@ TEST_CASE("Graph Teams functions are registered in DuckDB", "[graph_teams][duckd
     Connection con(db);
 
     // Load extension
-    con.Query("LOAD erpl_odata");
+    con.Query(ErplOdataLoadSql());
 
     SECTION("graph_my_teams function exists") {
         auto result = con.Query("SELECT function_name FROM duckdb_functions() WHERE function_name = 'graph_my_teams'");
@@ -97,7 +98,7 @@ TEST_CASE("Graph Teams functions enforce required parameters", "[graph_teams][du
     DuckDB db(nullptr, &config);
     Connection con(db);
 
-    con.Query("LOAD erpl_odata");
+    con.Query(ErplOdataLoadSql());
 
     SECTION("graph_teams_channels requires team_id argument") {
         // Call with no args → binder rejects missing required positional arg

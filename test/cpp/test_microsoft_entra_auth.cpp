@@ -1,4 +1,5 @@
 #include "catch.hpp"
+#include "duckdb_compat.hpp"
 #include "test_helpers.hpp"
 #include "duckdb.hpp"
 #include "microsoft_entra_secret.hpp"
@@ -140,9 +141,9 @@ TEST_CASE("Test Microsoft Entra Secret Creation in DuckDB", "[microsoft_entra][i
     REQUIRE(chunk->size() == 1);
 
     // Verify values
-    REQUIRE(chunk->GetValue(0, 0).ToString() == "test_integration_secret");
-    REQUIRE(chunk->GetValue(1, 0).ToString() == "microsoft_entra");
-    REQUIRE(chunk->GetValue(2, 0).ToString() == "client_credentials");
+    REQUIRE(duckdb_compat::ResultValue(*chunk, 0, 0).ToString() == "test_integration_secret");
+    REQUIRE(duckdb_compat::ResultValue(*chunk, 1, 0).ToString() == "microsoft_entra");
+    REQUIRE(duckdb_compat::ResultValue(*chunk, 2, 0).ToString() == "client_credentials");
 
     // Cleanup
     con.Query("DROP SECRET IF EXISTS test_integration_secret");
@@ -184,7 +185,7 @@ TEST_CASE("Test Microsoft Entra Config Provider", "[microsoft_entra][integration
     REQUIRE(chunk);
     REQUIRE(chunk->size() == 1);
 
-    REQUIRE(chunk->GetValue(2, 0).ToString() == "config");
+    REQUIRE(duckdb_compat::ResultValue(*chunk, 2, 0).ToString() == "config");
 
     // Cleanup
     con.Query("DROP SECRET IF EXISTS test_config_secret");
@@ -359,7 +360,7 @@ TEST_CASE("Test GetMicrosoftEntraKeyValueSecret retrieval", "[microsoft_entra][i
     auto chunk = result->Fetch();
     REQUIRE(chunk);
     REQUIRE(chunk->size() == 1);
-    REQUIRE(chunk->GetValue(0, 0).ToString() == "retrieval_test_secret");
+    REQUIRE(duckdb_compat::ResultValue(*chunk, 0, 0).ToString() == "retrieval_test_secret");
 
     // Cleanup
     con.Query("DROP SECRET IF EXISTS retrieval_test_secret");
@@ -413,7 +414,7 @@ TEST_CASE("Test Microsoft Entra Secret Replacement", "[microsoft_entra][integrat
     REQUIRE(!result->HasError());
     auto chunk = result->Fetch();
     REQUIRE(chunk);
-    REQUIRE(chunk->GetValue(0, 0).GetValue<int64_t>() == 1);
+    REQUIRE(duckdb_compat::ResultValue(*chunk, 0, 0).GetValue<int64_t>() == 1);
 
     // Cleanup
     con.Query("DROP SECRET IF EXISTS replaceable_secret");
@@ -466,7 +467,7 @@ TEST_CASE("Test Multiple Tenants with Different Secrets", "[microsoft_entra][int
     REQUIRE(!result->HasError());
     auto chunk = result->Fetch();
     REQUIRE(chunk);
-    REQUIRE(chunk->GetValue(0, 0).GetValue<int64_t>() == 2);
+    REQUIRE(duckdb_compat::ResultValue(*chunk, 0, 0).GetValue<int64_t>() == 2);
 
     // Cleanup
     con.Query("DROP SECRET IF EXISTS tenant_a_secret");

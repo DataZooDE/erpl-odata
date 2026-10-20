@@ -53,7 +53,7 @@ TEST_CASE("OData catalog reports metadata failures instead of hiding tables", "[
     const std::string service_url = "http://127.0.0.1:1/unreachable.svc/";
 
     // ATTACH itself does not talk to the service, so it must still succeed
-    auto attach_result = con.Query("ATTACH '" + service_url + "' AS unreachable_odata (TYPE odata)");
+    auto attach_result = con.Query("ATTACH '" + service_url + "' AS unreachable_odata (TYPE odata, READ_ONLY)");
     REQUIRE(!attach_result->HasError());
 
     auto scan_result = con.Query("SELECT * FROM unreachable_odata.SomeEntitySet");

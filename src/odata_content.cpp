@@ -1,4 +1,5 @@
 #include "odata_content.hpp"
+#include "duckdb_compat.hpp"
 #include "tracing.hpp"
 
 #include "duckdb/common/types/blob.hpp"
@@ -1284,7 +1285,7 @@ duckdb::Value ODataJsonContentMixin::DeserializeJsonObject(yyjson_val* json_valu
 
     // Only materialize schema-declared fields; ignore unknown properties like '__metadata' or nested nav objects
     for (const auto &child_type_pair : child_types) {
-        const std::string &field_name = child_type_pair.first;
+        const std::string field_name = duckdb_compat::Str(child_type_pair.first);
         const duckdb::LogicalType &field_type = child_type_pair.second;
 
         yyjson_val *field_json = yyjson_obj_get(json_value, field_name.c_str());

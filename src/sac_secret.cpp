@@ -1,4 +1,5 @@
 #include "sac_secret.hpp"
+#include "duckdb_compat.hpp"
 #include "tracing.hpp"
 
 #include "duckdb/common/exception.hpp"
@@ -11,7 +12,7 @@ namespace {
 void CopyParameter(duckdb::CreateSecretInput &input, duckdb::KeyValueSecret &secret, const std::string &key) {
     auto value = input.options.find(key);
     if (value != input.options.end()) {
-        secret.secret_map[key] = value->second;
+        secret.secret_map[duckdb_compat::Ident(key)] = value->second;
         ERPL_TRACE_DEBUG("SAC_SECRET", "Set parameter: " + key);
     }
 }
@@ -39,7 +40,7 @@ void CreateSacSecretFunctions::Register(duckdb::ExtensionLoader &loader) {
     const std::string type = "sac";
 
     duckdb::SecretType secret_type;
-    secret_type.name = type;
+    secret_type.name = duckdb_compat::Ident(type);
     secret_type.deserializer = duckdb::KeyValueSecret::Deserialize<duckdb::KeyValueSecret>;
     secret_type.default_provider = "access_token";
 
@@ -47,14 +48,14 @@ void CreateSacSecretFunctions::Register(duckdb::ExtensionLoader &loader) {
     // provider that can currently produce a usable SAC secret - see the note on the
     // client_credentials gap in ResolveSacSecretData.
     duckdb::CreateSecretFunction access_token_function = {type, "access_token", CreateFromAccessToken, {}};
-    access_token_function.named_parameters["access_token"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
+    duckdb_compat::AddNamedParameter(access_token_function, "access_token", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
     RegisterCommonSecretParameters(access_token_function);
 
     duckdb::CreateSecretFunction config_function = {type, "config", CreateFromConfig, {}};
-    config_function.named_parameters["access_token"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
-    config_function.named_parameters["client_id"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
-    config_function.named_parameters["client_secret"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
-    config_function.named_parameters["scope"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
+    duckdb_compat::AddNamedParameter(config_function, "access_token", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
+    duckdb_compat::AddNamedParameter(config_function, "client_id", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
+    duckdb_compat::AddNamedParameter(config_function, "client_secret", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
+    duckdb_compat::AddNamedParameter(config_function, "scope", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
     RegisterCommonSecretParameters(config_function);
 
     loader.RegisterSecretType(secret_type);
@@ -65,13 +66,13 @@ void CreateSacSecretFunctions::Register(duckdb::ExtensionLoader &loader) {
 }
 
 void CreateSacSecretFunctions::RegisterCommonSecretParameters(duckdb::CreateSecretFunction &function) {
-    function.named_parameters["tenant_name"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
-    function.named_parameters["region"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
+    duckdb_compat::AddNamedParameter(function, "tenant_name", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
+    duckdb_compat::AddNamedParameter(function, "region", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
 
     // The loopback hatch, matching the one Datasphere already has: it is what makes an
     // end-to-end SAC test against a local server possible at all. Gated at use with
     // RequireGatedServiceUrl, so it cannot silently redirect a real tenant's token.
-    function.named_parameters["base_url"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
+    duckdb_compat::AddNamedParameter(function, "base_url", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
 }
 
 duckdb::unique_ptr<duckdb::BaseSecret> CreateSacSecretFunctions::CreateFromAccessToken(
@@ -87,7 +88,7 @@ duckdb::unique_ptr<duckdb::BaseSecret> CreateSacSecretFunctions::CreateFromAcces
     // base_url stands in for the tenant coordinates, and is the shape a local test server
     // takes, so it is accepted on its own.
     if (result->secret_map.find("base_url") == result->secret_map.end()) {
-        RequireTenantCoordinates(*result, input.provider);
+        RequireTenantCoordinates(*result, duckdb_compat::Str(input.provider));
     }
 
     if (result->secret_map.find("access_token") == result->secret_map.end()) {
@@ -112,7 +113,7 @@ duckdb::unique_ptr<duckdb::BaseSecret> CreateSacSecretFunctions::CreateFromConfi
     }
 
     if (result->secret_map.find("base_url") == result->secret_map.end()) {
-        RequireTenantCoordinates(*result, input.provider);
+        RequireTenantCoordinates(*result, duckdb_compat::Str(input.provider));
     }
 
     result->redact_keys.insert("access_token");

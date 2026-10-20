@@ -1,6 +1,7 @@
 #pragma once
 
 #include "duckdb.hpp"
+#include "duckdb_compat.hpp"
 
 namespace erpl_web {
 
@@ -19,7 +20,7 @@ namespace erpl_web {
 duckdb::unique_ptr<duckdb::FunctionData> OdpODataReadBind(duckdb::ClientContext &context, 
                                                           duckdb::TableFunctionBindInput &input,
                                                           duckdb::vector<duckdb::LogicalType> &return_types,
-                                                          duckdb::vector<std::string> &names);
+                                                          duckdb_compat::BindNames &names);
 
 /**
  * @brief Scan function for odp_odata_read table function

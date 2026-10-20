@@ -1,4 +1,5 @@
 #include "duckdb_argument_helper.hpp"
+#include "duckdb_compat.hpp"
 #include "odata_read_functions.hpp"
 #include "datazoo/oauth2/http_client.hpp"
 #include "odata_client.hpp"
@@ -222,7 +223,7 @@ static unique_ptr<FunctionData> ODataDescribeBind(
     ClientContext &context,
     TableFunctionBindInput &input,
     vector<LogicalType> &return_types,
-    vector<string> &names
+    duckdb_compat::BindNames &names
 ) {
     PostHogTelemetry::Instance().RecordFunctionCall("odata_describe");
     ERPL_TRACE_INFO("ODATA_DESCRIBE_BIND", "Starting OData describe bind");
@@ -510,10 +511,10 @@ static void ODataDescribeScan(
         for (idx_t i = 0; i < bind_data.result_row.size(); i++) {
             output.SetValue(i, 0, bind_data.result_row[i]);
         }
-        output.SetCardinality(1);
+        duckdb_compat::SetChildCardinality(output, 1);
         state.finished = true;  // The row is emitted once per EXECUTION, not once per bind
     } else {
-        output.SetCardinality(0);
+        duckdb_compat::SetChildCardinality(output, 0);
     }
 }
 
@@ -523,7 +524,7 @@ TableFunctionSet CreateODataDescribeFunction() {
     
     TableFunction describe_function({LogicalTypeId::VARCHAR}, DATAZOO_GUARD(ERPL_ODATA_BANNER, ODataDescribeScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, ODataDescribeBind));
     describe_function.init_global = ScanRowCursorState::Init;
-    describe_function.named_parameters["secret"] = LogicalTypeId::VARCHAR;
+    duckdb_compat::AddNamedParameter(describe_function, "secret", LogicalTypeId::VARCHAR);
     
     describe_func.AddFunction(describe_function);
     return describe_func;

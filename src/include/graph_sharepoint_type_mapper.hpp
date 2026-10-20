@@ -1,6 +1,7 @@
 #pragma once
 
 #include "duckdb/common/types.hpp"
+#include "duckdb_compat.hpp"
 #include "duckdb/common/types/vector.hpp"
 #include "duckdb/common/types/timestamp.hpp"
 #include "yyjson.hpp"
@@ -42,7 +43,7 @@ inline void WriteSharePointField(
     const duckdb::LogicalType &col_type)
 {
     if (!field_val || yyjson_is_null(field_val)) {
-        duckdb::FlatVector::Validity(vec).SetInvalid(row);
+        duckdb_compat::MutableValidity(vec).SetInvalid(row);
         return;
     }
 
@@ -50,24 +51,24 @@ inline void WriteSharePointField(
 
     case duckdb::LogicalTypeId::DOUBLE:
         if (yyjson_is_num(field_val)) {
-            duckdb::FlatVector::GetData<double>(vec)[row] = yyjson_get_num(field_val);
+            duckdb_compat::FlatData<double>(vec)[row] = yyjson_get_num(field_val);
         } else {
-            duckdb::FlatVector::Validity(vec).SetInvalid(row);
+            duckdb_compat::MutableValidity(vec).SetInvalid(row);
         }
         break;
 
     case duckdb::LogicalTypeId::BOOLEAN:
         if (yyjson_is_bool(field_val)) {
-            duckdb::FlatVector::GetData<bool>(vec)[row] = yyjson_get_bool(field_val);
+            duckdb_compat::FlatData<bool>(vec)[row] = yyjson_get_bool(field_val);
         } else {
-            duckdb::FlatVector::Validity(vec).SetInvalid(row);
+            duckdb_compat::MutableValidity(vec).SetInvalid(row);
         }
         break;
 
     case duckdb::LogicalTypeId::TIMESTAMP: {
         // SharePoint returns dateTime fields as ISO 8601 strings, e.g. "2026-05-04T00:00:00Z"
         if (!yyjson_is_str(field_val)) {
-            duckdb::FlatVector::Validity(vec).SetInvalid(row);
+            duckdb_compat::MutableValidity(vec).SetInvalid(row);
             break;
         }
         const char *s = yyjson_get_str(field_val);
@@ -76,34 +77,34 @@ inline void WriteSharePointField(
         // use_offset=true so the trailing 'Z' (UTC) is accepted
         auto rc = duckdb::Timestamp::TryConvertTimestamp(s, s_len, ts, true);
         if (rc == duckdb::TimestampCastResult::SUCCESS) {
-            duckdb::FlatVector::GetData<duckdb::timestamp_t>(vec)[row] = ts;
+            duckdb_compat::FlatData<duckdb::timestamp_t>(vec)[row] = ts;
         } else {
-            duckdb::FlatVector::Validity(vec).SetInvalid(row);
+            duckdb_compat::MutableValidity(vec).SetInvalid(row);
         }
         break;
     }
 
     default: { // VARCHAR — handles text, note, choice, lookup, personOrGroup, …
         if (yyjson_is_str(field_val)) {
-            duckdb::FlatVector::GetData<duckdb::string_t>(vec)[row] =
+            duckdb_compat::FlatData<duckdb::string_t>(vec)[row] =
                 duckdb::StringVector::AddString(vec, yyjson_get_str(field_val));
         } else if (yyjson_is_num(field_val)) {
             const std::string s = std::to_string(yyjson_get_num(field_val));
-            duckdb::FlatVector::GetData<duckdb::string_t>(vec)[row] =
+            duckdb_compat::FlatData<duckdb::string_t>(vec)[row] =
                 duckdb::StringVector::AddString(vec, s);
         } else if (yyjson_is_bool(field_val)) {
-            duckdb::FlatVector::GetData<duckdb::string_t>(vec)[row] =
+            duckdb_compat::FlatData<duckdb::string_t>(vec)[row] =
                 duckdb::StringVector::AddString(vec, yyjson_get_bool(field_val) ? "true" : "false");
         } else {
             // Complex value (array, object) — serialise as JSON string
             size_t json_len = 0;
             char *json_str = yyjson_val_write(field_val, 0, &json_len);
             if (json_str) {
-                duckdb::FlatVector::GetData<duckdb::string_t>(vec)[row] =
+                duckdb_compat::FlatData<duckdb::string_t>(vec)[row] =
                     duckdb::StringVector::AddString(vec, json_str, json_len);
                 free(json_str);
             } else {
-                duckdb::FlatVector::Validity(vec).SetInvalid(row);
+                duckdb_compat::MutableValidity(vec).SetInvalid(row);
             }
         }
         break;

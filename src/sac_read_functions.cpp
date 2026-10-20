@@ -1,4 +1,5 @@
 #include "sac_read_functions.hpp"
+#include "duckdb_compat.hpp"
 #include "odata_url_helpers.hpp"
 #include "duckdb_argument_helper.hpp"
 #include "sac_secret_helper.hpp"
@@ -25,7 +26,7 @@ static duckdb::unique_ptr<duckdb::FunctionData> SacReadPlanningDataBind(
     duckdb::ClientContext &context,
     duckdb::TableFunctionBindInput &input,
     duckdb::vector<duckdb::LogicalType> &return_types,
-    duckdb::vector<std::string> &names) {
+    duckdb_compat::BindNames &names) {
     PostHogTelemetry::Instance().RecordFunctionCall("sac_read_planning_data");
 
     if (input.inputs.empty()) {
@@ -36,8 +37,8 @@ static duckdb::unique_ptr<duckdb::FunctionData> SacReadPlanningDataBind(
 
     // Get secret name (default: "sac")
     std::string secret_name = "sac";
-    if (input.named_parameters.find("secret") != input.named_parameters.end()) {
-        secret_name = input.named_parameters.at("secret").GetValue<std::string>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "secret") != nullptr) {
+        secret_name = input.named_parameters.at(duckdb_compat::Ident("secret")).GetValue<std::string>();
     }
 
     // Resolve SAC credentials
@@ -50,18 +51,18 @@ static duckdb::unique_ptr<duckdb::FunctionData> SacReadPlanningDataBind(
     auto read_bind = ODataReadBindData::FromEntitySetRoot(url_str, secret_data.auth_params);
 
     // Handle optional named parameters for filtering and limiting
-    if (input.named_parameters.find("top") != input.named_parameters.end()) {
-        auto limit_value = input.named_parameters.at("top").GetValue<duckdb::idx_t>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "top") != nullptr) {
+        auto limit_value = input.named_parameters.at(duckdb_compat::Ident("top")).GetValue<duckdb::idx_t>();
         read_bind->PredicatePushdownHelper()->ConsumeLimit(limit_value);
     }
 
-    if (input.named_parameters.find("skip") != input.named_parameters.end()) {
-        auto skip_value = input.named_parameters.at("skip").GetValue<duckdb::idx_t>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "skip") != nullptr) {
+        auto skip_value = input.named_parameters.at(duckdb_compat::Ident("skip")).GetValue<duckdb::idx_t>();
         read_bind->PredicatePushdownHelper()->ConsumeOffset(skip_value);
     }
 
     // Get result schema from OData metadata
-    names = read_bind->GetResultNames(false);
+    duckdb_compat::AssignBindNames(names, read_bind->GetResultNames(false));
     return_types = read_bind->GetResultTypes(false);
 
     return std::move(read_bind);
@@ -78,13 +79,13 @@ duckdb::TableFunctionSet CreateSacReadPlanningDataFunction() {
     );
 
     // Add named parameters
-    function.named_parameters["secret"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
-    function.named_parameters["top"] = duckdb::LogicalType(duckdb::LogicalTypeId::UBIGINT);
-    function.named_parameters["skip"] = duckdb::LogicalType(duckdb::LogicalTypeId::UBIGINT);
-    function.named_parameters["params"] = duckdb::LogicalType::MAP(
+    duckdb_compat::AddNamedParameter(function, "secret", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
+    duckdb_compat::AddNamedParameter(function, "top", duckdb::LogicalType(duckdb::LogicalTypeId::UBIGINT));
+    duckdb_compat::AddNamedParameter(function, "skip", duckdb::LogicalType(duckdb::LogicalTypeId::UBIGINT));
+    duckdb_compat::AddNamedParameter(function, "params", duckdb::LogicalType::MAP(
         duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR),
         duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR)
-    );
+    ));
 
     // Progress tracking
     function.table_scan_progress = ODataReadTableProgress;
@@ -103,7 +104,7 @@ static duckdb::unique_ptr<duckdb::FunctionData> SacReadAnalyticalBind(
     duckdb::ClientContext &context,
     duckdb::TableFunctionBindInput &input,
     duckdb::vector<duckdb::LogicalType> &return_types,
-    duckdb::vector<std::string> &names) {
+    duckdb_compat::BindNames &names) {
     PostHogTelemetry::Instance().RecordFunctionCall("sac_read_analytical");
 
     if (input.inputs.empty()) {
@@ -113,8 +114,8 @@ static duckdb::unique_ptr<duckdb::FunctionData> SacReadAnalyticalBind(
     auto model_id = input.inputs[0].GetValue<std::string>();
 
     std::string secret_name = "sac";
-    if (input.named_parameters.find("secret") != input.named_parameters.end()) {
-        secret_name = input.named_parameters.at("secret").GetValue<std::string>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "secret") != nullptr) {
+        secret_name = input.named_parameters.at(duckdb_compat::Ident("secret")).GetValue<std::string>();
     }
 
     auto secret_data = ResolveSacSecretData(context, secret_name);
@@ -130,14 +131,14 @@ static duckdb::unique_ptr<duckdb::FunctionData> SacReadAnalyticalBind(
     // analytical bind does exactly what is done here (GitHub #243).
     std::string select_clause;
 
-    if (input.named_parameters.find("dimensions") != input.named_parameters.end()) {
-        auto dims = input.named_parameters.at("dimensions").GetValue<std::string>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "dimensions") != nullptr) {
+        auto dims = input.named_parameters.at(duckdb_compat::Ident("dimensions")).GetValue<std::string>();
         // Convert comma-separated list to OData $select format
         select_clause += dims;
     }
 
-    if (input.named_parameters.find("measures") != input.named_parameters.end()) {
-        auto measures = input.named_parameters.at("measures").GetValue<std::string>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "measures") != nullptr) {
+        auto measures = input.named_parameters.at(duckdb_compat::Ident("measures")).GetValue<std::string>();
         if (!select_clause.empty()) {
             select_clause += ",";
         }
@@ -155,25 +156,25 @@ static duckdb::unique_ptr<duckdb::FunctionData> SacReadAnalyticalBind(
 
     // `params` was registered on all three SAC readers and read by none of them, so
     // `params => MAP{...}` was accepted and dropped. Same plumbing as Datasphere.
-    if (input.named_parameters.find("params") != input.named_parameters.end()) {
-        auto input_params = ExtractInputParameters(input.named_parameters["params"], "SAC_READ");
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "params") != nullptr) {
+        auto input_params = ExtractInputParameters((*duckdb_compat::FindNamedParameter(input.named_parameters, "params")), "SAC_READ");
         if (!input_params.empty()) {
             read_bind->SetInputParameters(input_params);
         }
     }
 
     // Handle limit and offset
-    if (input.named_parameters.find("top") != input.named_parameters.end()) {
-        auto limit_value = input.named_parameters.at("top").GetValue<duckdb::idx_t>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "top") != nullptr) {
+        auto limit_value = input.named_parameters.at(duckdb_compat::Ident("top")).GetValue<duckdb::idx_t>();
         read_bind->PredicatePushdownHelper()->ConsumeLimit(limit_value);
     }
 
-    if (input.named_parameters.find("skip") != input.named_parameters.end()) {
-        auto skip_value = input.named_parameters.at("skip").GetValue<duckdb::idx_t>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "skip") != nullptr) {
+        auto skip_value = input.named_parameters.at(duckdb_compat::Ident("skip")).GetValue<duckdb::idx_t>();
         read_bind->PredicatePushdownHelper()->ConsumeOffset(skip_value);
     }
 
-    names = read_bind->GetResultNames(false);
+    duckdb_compat::AssignBindNames(names, read_bind->GetResultNames(false));
     return_types = read_bind->GetResultTypes(false);
 
     return std::move(read_bind);
@@ -189,15 +190,15 @@ duckdb::TableFunctionSet CreateSacReadAnalyticalFunction() {
         ODataReadTableInitGlobalState
     );
 
-    function.named_parameters["secret"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
-    function.named_parameters["top"] = duckdb::LogicalType(duckdb::LogicalTypeId::UBIGINT);
-    function.named_parameters["skip"] = duckdb::LogicalType(duckdb::LogicalTypeId::UBIGINT);
-    function.named_parameters["dimensions"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
-    function.named_parameters["measures"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
-    function.named_parameters["params"] = duckdb::LogicalType::MAP(
+    duckdb_compat::AddNamedParameter(function, "secret", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
+    duckdb_compat::AddNamedParameter(function, "top", duckdb::LogicalType(duckdb::LogicalTypeId::UBIGINT));
+    duckdb_compat::AddNamedParameter(function, "skip", duckdb::LogicalType(duckdb::LogicalTypeId::UBIGINT));
+    duckdb_compat::AddNamedParameter(function, "dimensions", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
+    duckdb_compat::AddNamedParameter(function, "measures", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
+    duckdb_compat::AddNamedParameter(function, "params", duckdb::LogicalType::MAP(
         duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR),
         duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR)
-    );
+    ));
 
     function.table_scan_progress = ODataReadTableProgress;
 
@@ -215,7 +216,7 @@ static duckdb::unique_ptr<duckdb::FunctionData> SacReadStoryDataBind(
     duckdb::ClientContext &context,
     duckdb::TableFunctionBindInput &input,
     duckdb::vector<duckdb::LogicalType> &return_types,
-    duckdb::vector<std::string> &names) {
+    duckdb_compat::BindNames &names) {
     PostHogTelemetry::Instance().RecordFunctionCall("sac_read_story_data");
 
     if (input.inputs.empty()) {
@@ -225,8 +226,8 @@ static duckdb::unique_ptr<duckdb::FunctionData> SacReadStoryDataBind(
     auto story_id = input.inputs[0].GetValue<std::string>();
 
     std::string secret_name = "sac";
-    if (input.named_parameters.find("secret") != input.named_parameters.end()) {
-        secret_name = input.named_parameters.at("secret").GetValue<std::string>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "secret") != nullptr) {
+        secret_name = input.named_parameters.at(duckdb_compat::Ident("secret")).GetValue<std::string>();
     }
 
     // Resolve SAC credentials
@@ -241,7 +242,7 @@ static duckdb::unique_ptr<duckdb::FunctionData> SacReadStoryDataBind(
 
     auto read_bind = ODataReadBindData::FromEntitySetRoot(story_url, secret_data.auth_params);
 
-    names = read_bind->GetResultNames(false);
+    duckdb_compat::AssignBindNames(names, read_bind->GetResultNames(false));
     return_types = read_bind->GetResultTypes(false);
 
     return std::move(read_bind);
@@ -257,7 +258,7 @@ duckdb::TableFunctionSet CreateSacReadStoryDataFunction() {
         ODataReadTableInitGlobalState
     );
 
-    function.named_parameters["secret"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
+    duckdb_compat::AddNamedParameter(function, "secret", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
     function.table_scan_progress = ODataReadTableProgress;
 
     set.AddFunction(function);

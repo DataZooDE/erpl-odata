@@ -1,4 +1,5 @@
 #include "duckdb_argument_helper.hpp"
+#include "duckdb_compat.hpp"
 #include "tracing.hpp"
 #include "duckdb/main/secret/secret_manager.hpp"
 #include "duckdb/catalog/catalog_transaction.hpp"
@@ -339,11 +340,11 @@ namespace erpl_web
     // ValueHelper ---------------------------------------------------------------
 
     bool HasParam(const named_parameter_map_t& named_params, const std::string& name) {
-        return named_params.find(name) != named_params.end();
+        return named_params.find(duckdb_compat::Ident(name)) != named_params.end();
     };
 
     Value ConvertBoolArgument(const named_parameter_map_t& named_params, const std::string& name, const bool default_value) {
-        auto value = HasParam(named_params, name) ? BooleanValue::Get(named_params.at(name)) : default_value;
+        auto value = HasParam(named_params, name) ? BooleanValue::Get(named_params.at(duckdb_compat::Ident(name))) : default_value;
 
         if (value == true) {
             return Value::CreateValue("X");
@@ -418,7 +419,7 @@ namespace erpl_web {
 
 std::string RequireSecretValue(const duckdb::KeyValueSecret &secret, const std::string &key,
                                const std::string &secret_name) {
-    auto value = secret.secret_map.find(key);
+    auto value = secret.secret_map.find(duckdb_compat::Ident(key));
     if (value == secret.secret_map.end() || value->second.IsNull()) {
         throw duckdb::InvalidInputException(
             "Secret '%s' is missing the required field '%s'. Add it to the CREATE SECRET "
@@ -437,15 +438,15 @@ std::shared_ptr<HttpAuthParams> ResolveHttpAuthFromSecrets(duckdb::ClientContext
     if (basic_match.HasMatch()) {
         const auto &secret = dynamic_cast<const duckdb::KeyValueSecret &>(basic_match.GetSecret());
         const auto secret_name = secret.GetName();
-        auth_params->basic_credentials = std::make_tuple(RequireSecretValue(secret, "username", secret_name),
-                                                         RequireSecretValue(secret, "password", secret_name));
+        auth_params->basic_credentials = std::make_tuple(RequireSecretValue(secret, "username", duckdb_compat::Str(secret_name)),
+                                                         RequireSecretValue(secret, "password", duckdb_compat::Str(secret_name)));
         return auth_params;
     }
 
     auto bearer_match = secret_manager.LookupSecret(transaction, url, "http_bearer");
     if (bearer_match.HasMatch()) {
         const auto &secret = dynamic_cast<const duckdb::KeyValueSecret &>(bearer_match.GetSecret());
-        auth_params->bearer_token = RequireSecretValue(secret, "token", secret.GetName());
+        auth_params->bearer_token = RequireSecretValue(secret, "token", duckdb_compat::Str(secret.GetName()));
     }
 
     return auth_params;

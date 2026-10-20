@@ -1,6 +1,7 @@
 #pragma once
 
 #include "duckdb.hpp"
+#include "duckdb_compat.hpp"
 #include "duckdb/common/exception.hpp"
 #include "duckdb/common/string_util.hpp"
 #include "duckdb/function/scalar_function.hpp"
@@ -564,7 +565,7 @@ namespace ODataReadBindHelpers {
     void SetupSchemaFromProbeResult(const ODataClientFactory::ProbeResult& probe_result, 
                                    ODataReadBindData* bind_data,
                                    vector<LogicalType>& return_types, 
-                                   vector<string>& names);
+                                   duckdb_compat::BindNames &names);
 }
 
 // ============================================================================
@@ -572,7 +573,7 @@ namespace ODataReadBindHelpers {
 // ============================================================================
 void ODataReadScan(ClientContext &context, TableFunctionInput &data, DataChunk &output);
 unique_ptr<GlobalTableFunctionState> ODataReadTableInitGlobalState(ClientContext &context, TableFunctionInitInput &input);
-unique_ptr<FunctionData> ODataReadBind(ClientContext &context, TableFunctionBindInput &input, vector<LogicalType> &return_types, vector<string> &names);
+unique_ptr<FunctionData> ODataReadBind(ClientContext &context, TableFunctionBindInput &input, vector<LogicalType> &return_types, duckdb_compat::BindNames &names);
 double ODataReadTableProgress(ClientContext &, const FunctionData *func_data, const GlobalTableFunctionState *);
 TableFunctionSet CreateODataReadFunction();
 

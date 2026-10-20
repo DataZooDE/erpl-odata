@@ -1,4 +1,5 @@
 #pragma once
+#include "duckdb_compat.hpp"
 
 #include "duckdb.hpp"
 #include "tracing.hpp"
@@ -2230,7 +2231,7 @@ class DuckTypeConverter
                     duck_type = duckdb::LogicalType::LIST(duck_type);
                 }
 
-                fields.push_back(std::make_pair(property.name, duck_type));
+                fields.emplace_back(duckdb_compat::Ident(property.name), duck_type);
             }
         }
 
@@ -2294,11 +2295,11 @@ class DuckTypeConverter
                         field_type = duckdb::LogicalType::LIST(field_type);
                     }
 
-                    fields.push_back(std::make_pair(nav_prop.name, field_type));
+                    fields.emplace_back(duckdb_compat::Ident(nav_prop.name), field_type);
                 } catch (const std::exception& e) {
                     // If anything goes wrong, fall back to VARCHAR
                     ERPL_TRACE_DEBUG("EDM_TYPE_CONVERSION", "Error processing navigation property '" + nav_prop.name + "', using VARCHAR fallback: " + e.what());
-                    fields.push_back(std::make_pair(nav_prop.name, duckdb::LogicalTypeId::VARCHAR));
+                    fields.emplace_back(duckdb_compat::Ident(nav_prop.name), duckdb::LogicalTypeId::VARCHAR);
                 }
             }
         }

@@ -6,6 +6,8 @@
 // re-extracted everything on the next read.
 
 #include "catch.hpp"
+#include "test_extension_load_sql.hpp"
+#include "duckdb_compat.hpp"
 #include "duckdb.hpp"
 
 #include "odata_test_server.hpp"
@@ -74,19 +76,19 @@ TEST_CASE("a multi-page initial load recovers its delta token from DeltaLinksOf"
 
     odp_test::TempDatabase database("odp_250_multipage");
     auto &con = database.Conn();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
     const std::string url = server.Url(SERVICE + "/" + ENTITY_SET);
 
     auto read = con.Query("SELECT COUNT(*) FROM odp_odata_read('" + url + "')");
     INFO((read->HasError() ? read->GetError() : std::string()));
     REQUIRE_FALSE(read->HasError());
-    REQUIRE(read->GetValue(0, 0).GetValue<int64_t>() == 4);
+    REQUIRE(duckdb_compat::ResultValue(*read, 0, 0).GetValue<int64_t>() == 4);
 
     auto state = con.Query("SELECT delta_token FROM erpl_web.odp_subscriptions");
     REQUIRE_FALSE(state->HasError());
     REQUIRE(state->RowCount() == 1);
-    INFO("stored delta token: '" << state->GetValue(0, 0).ToString() << "'");
-    CHECK(state->GetValue(0, 0).ToString() == "D_RECOVERED_MULTI");
+    INFO("stored delta token: '" << duckdb_compat::ResultValue(*state, 0, 0).ToString() << "'");
+    CHECK(duckdb_compat::ResultValue(*state, 0, 0).ToString() == "D_RECOVERED_MULTI");
 }
 
 TEST_CASE("the read after a multi-page initial load is a delta, not a second full extraction",
@@ -96,7 +98,7 @@ TEST_CASE("the read after a multi-page initial load is a delta, not a second ful
 
     odp_test::TempDatabase database("odp_250_followup");
     auto &con = database.Conn();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
     const std::string url = server.Url(SERVICE + "/" + ENTITY_SET);
 
     REQUIRE_FALSE(con.Query("SELECT COUNT(*) FROM odp_odata_read('" + url + "')")->HasError());
@@ -112,7 +114,7 @@ TEST_CASE("the read after a multi-page initial load is a delta, not a second ful
     }
     INFO("without a recovered token the second read re-extracts everything");
     CHECK(sent_token);
-    CHECK(second->GetValue(0, 0).GetValue<int64_t>() == 0);
+    CHECK(duckdb_compat::ResultValue(*second, 0, 0).GetValue<int64_t>() == 0);
 }
 
 // The recovery runs on the LAST page, whose URL is a server-supplied __next link and may point at
@@ -140,7 +142,7 @@ TEST_CASE("token recovery after a cross-origin last page does not send credentia
 
     odp_test::TempDatabase database("odp_250_origin");
     auto &con = database.Conn();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
     REQUIRE_FALSE(con.Query("CREATE SECRET svc (TYPE http_basic, USERNAME 'u', PASSWORD 'p', SCOPE '" +
                             service.BaseUrl() + "')")
                       ->HasError());
@@ -148,7 +150,7 @@ TEST_CASE("token recovery after a cross-origin last page does not send credentia
     auto read = con.Query("SELECT COUNT(*) FROM odp_odata_read('" + service.Url(entity_path) + "')");
     INFO((read->HasError() ? read->GetError() : std::string()));
     REQUIRE_FALSE(read->HasError());
-    REQUIRE(read->GetValue(0, 0).GetValue<int64_t>() == 4);
+    REQUIRE(duckdb_compat::ResultValue(*read, 0, 0).GetValue<int64_t>() == 4);
 
     for (const auto &request : foreign.Requests()) {
         INFO("the foreign origin received: " << request.method << " " << request.target);
@@ -160,5 +162,5 @@ TEST_CASE("token recovery after a cross-origin last page does not send credentia
     auto state = con.Query("SELECT delta_token FROM erpl_web.odp_subscriptions");
     REQUIRE_FALSE(state->HasError());
     REQUIRE(state->RowCount() == 1);
-    CHECK(state->GetValue(0, 0).ToString() == "D_FROM_SERVICE");
+    CHECK(duckdb_compat::ResultValue(*state, 0, 0).ToString() == "D_FROM_SERVICE");
 }

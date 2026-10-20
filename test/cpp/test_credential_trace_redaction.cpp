@@ -1,4 +1,5 @@
 #include "catch.hpp"
+#include "test_extension_load_sql.hpp"
 
 #include "tracing.hpp"
 #include "odata_test_server.hpp"
@@ -102,7 +103,7 @@ TEST_CASE("a bearer token passed to http_get never reaches the trace file",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     auto result = con.Query("SELECT status FROM http_get('" + server.Url("/echo") +
                             "', auth := '" + SECRET_TOKEN + "', auth_type := 'BEARER')");
@@ -133,7 +134,7 @@ TEST_CASE("a colonless auth value is not traced either - auth_type defaults to B
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     auto result = con.Query("SELECT status FROM http_get('" + server.Url("/echo") +
                             "', auth := '" + SECRET_TOKEN + "')");
@@ -160,7 +161,7 @@ TEST_CASE("the Datasphere token_url is gated before the client secret is posted 
     // caller-supplied URL for exactly this reason; this one did not.
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     auto created = con.Query(
         "CREATE SECRET ds_hostile (TYPE datasphere, PROVIDER oauth2, "

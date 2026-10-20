@@ -1,6 +1,7 @@
 #pragma once
 
 #include "duckdb/planner/table_filter.hpp"
+#include "duckdb_compat/filter.hpp"
 #include "duckdb/planner/filter/conjunction_filter.hpp"
 #include "duckdb/planner/filter/constant_filter.hpp"
 #include "duckdb/planner/filter/optional_filter.hpp"
@@ -107,10 +108,10 @@ private:
     
     // Filter translation methods
     std::string TranslateFilter(const duckdb::TableFilter &filter, const std::string &column_name) const;
-    std::string TranslateConstantComparison(const duckdb::ConstantFilter &filter, const std::string &column_name) const;
-    std::string TranslateInFilter(const duckdb::InFilter &filter, const std::string &column_name) const;
-    std::string TranslateConjunction(const duckdb::ConjunctionAndFilter &filter, const std::string &column_name) const;
-    std::string TranslateConjunction(const duckdb::ConjunctionOrFilter &filter, const std::string &column_name) const;
+    std::string TranslateConstantComparison(const duckdb::Value &constant, duckdb::ExpressionType comparison_type, const std::string &column_name) const;
+    std::string TranslateInFilter(const duckdb_compat::InFilter &filter, const std::string &column_name) const;
+    std::string TranslateConjunction(const duckdb_compat::ConjunctionAndFilter &filter, const std::string &column_name) const;
+    std::string TranslateConjunction(const duckdb_compat::ConjunctionOrFilter &filter, const std::string &column_name) const;
     
     // True when the column at the given full-schema index maps to a nested
     // DuckDB type (LIST/STRUCT/MAP/ARRAY/UNION). Such columns come from OData

@@ -1,4 +1,5 @@
 #include "graph_sharepoint_catalog.hpp"
+#include "duckdb_compat.hpp"
 #include "graph_sharepoint_client.hpp"
 #include "graph_sharepoint_type_mapper.hpp"
 #include "graph_write_helpers.hpp"
@@ -48,9 +49,24 @@ struct SharePointListScanLocalState : public duckdb::LocalTableFunctionState {
 	std::vector<duckdb::column_t> column_ids;
 };
 
-static duckdb::BindInfo SharePointListScanGetBindInfo(const duckdb::optional_ptr<duckdb::FunctionData> bind_data_p) {
+static duckdb::BindInfo SharePointListScanGetBindInfo(duckdb_compat::GetBindInfoInput input) {
+	auto bind_data_p = duckdb_compat::GetBindData(input);
+	if (!bind_data_p) {
+		return duckdb::BindInfo(duckdb::ScanType::TABLE);
+	}
 	auto &bind_data = bind_data_p->Cast<SharePointListScanBindData>();
-	return duckdb::BindInfo(*bind_data.table_entry);
+	if (!bind_data.table_entry) {
+		return duckdb::BindInfo(duckdb::ScanType::TABLE);
+	}
+	return duckdb_compat::MakeTableBindInfo(*bind_data.table_entry);
+}
+
+static duckdb::optional_ptr<duckdb::TableCatalogEntry>
+SharePointListScanGetTableEntry(duckdb::optional_ptr<const duckdb::FunctionData> bind_data) {
+    if (!bind_data) {
+        return nullptr;
+    }
+    return bind_data->Cast<SharePointListScanBindData>().table_entry;
 }
 
 static duckdb::unique_ptr<duckdb::LocalTableFunctionState> SharePointListScanInitLocal(
@@ -70,7 +86,7 @@ static void SharePointListScan(duckdb::ClientContext &context,
 	auto &state = data.global_state->Cast<GraphJsonArrayScanState>();
 
 	if (state.done) {
-		output.SetCardinality(0);
+		duckdb_compat::SetChildCardinality(output, 0);
 		return;
 	}
 
@@ -84,7 +100,7 @@ static void SharePointListScan(duckdb::ClientContext &context,
 	if (!state.parsed_doc) {
 		if (!state.InitIterator()) {
 			state.done = true;
-			output.SetCardinality(0);
+			duckdb_compat::SetChildCardinality(output, 0);
 			return;
 		}
 	}
@@ -125,7 +141,7 @@ static void SharePointListScan(duckdb::ClientContext &context,
 	}
 
 	if (row < STANDARD_VECTOR_SIZE) { state.done = true; }
-	output.SetCardinality(row);
+	duckdb_compat::SetChildCardinality(output, row);
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -199,7 +215,7 @@ public:
 	                         OperatorSourceInput &input) const override {
 #endif
 		auto &g = sink_state->Cast<SharePointWriteGlobalState>();
-		chunk.SetCardinality(1);
+		duckdb_compat::SetChildCardinality(chunk, 1);
 		chunk.SetValue(0, 0, Value::BIGINT(NumericCast<int64_t>(g.affected_count)));
 		return SourceResultType::FINISHED;
 	}
@@ -267,7 +283,7 @@ public:
 	                         OperatorSourceInput &input) const override {
 #endif
 		auto &g = sink_state->Cast<SharePointWriteGlobalState>();
-		chunk.SetCardinality(1);
+		duckdb_compat::SetChildCardinality(chunk, 1);
 		chunk.SetValue(0, 0, Value::BIGINT(NumericCast<int64_t>(g.affected_count)));
 		return SourceResultType::FINISHED;
 	}
@@ -370,7 +386,7 @@ public:
 	                         OperatorSourceInput &input) const override {
 #endif
 		auto &g = sink_state->Cast<SharePointWriteGlobalState>();
-		chunk.SetCardinality(1);
+		duckdb_compat::SetChildCardinality(chunk, 1);
 		chunk.SetValue(0, 0, Value::BIGINT(NumericCast<int64_t>(g.affected_count)));
 		return SourceResultType::FINISHED;
 	}
@@ -562,8 +578,7 @@ void SharePointSchemaEntry::LoadTables() {
 			yyjson_val *cols_arr = yyjson_obj_get(cols_root, "value");
 
 			duckdb::CreateTableInfo table_info;
-			table_info.table = table_key;
-			table_info.schema = name;
+			duckdb_compat::SetQualifiedName(table_info, "", duckdb_compat::Str(name), table_key);
 
 			// Always include id as first column
 			table_info.columns.AddColumn(duckdb::ColumnDefinition("id", duckdb::LogicalType::VARCHAR));
@@ -595,7 +610,7 @@ void SharePointSchemaEntry::LoadTables() {
 					if (!seen_names.insert(lower_name).second) { continue; }
 
 					const duckdb::LogicalType col_type = SharePointColumnToDuckDBType(col);
-					table_info.columns.AddColumn(duckdb::ColumnDefinition(col_name, col_type));
+					table_info.columns.AddColumn(duckdb::ColumnDefinition(duckdb_compat::Ident(col_name), col_type));
 					column_names.push_back(col_name);
 				}
 			}
@@ -628,17 +643,28 @@ SharePointTableEntry::SharePointTableEntry(duckdb::Catalog &catalog,
                                            const std::string &list_id,
                                            const std::string &secret_name,
                                            std::shared_ptr<HttpAuthParams> auth_params)
+    : SharePointTableEntry(catalog, schema, info, site_id, list_id, secret_name,
+                           auth_params, info.columns.Copy())
+{
+}
+
+SharePointTableEntry::SharePointTableEntry(duckdb::Catalog &catalog,
+                                           duckdb::SchemaCatalogEntry &schema,
+                                           duckdb::CreateTableInfo &info,
+                                           const std::string &site_id,
+                                           const std::string &list_id,
+                                           const std::string &secret_name,
+                                           std::shared_ptr<HttpAuthParams> auth_params,
+                                           duckdb::ColumnList columns)
     : duckdb::TableCatalogEntry(catalog, schema, info),
+      entry_columns_(std::move(columns)),
       site_id_(site_id),
       list_id_(list_id),
       secret_name_(secret_name),
       auth_params_(auth_params)
 {
-	// Populate column_names and column_types from the inherited columns member.
-	// NOTE: TableCatalogEntry's constructor moves info.columns, so info.columns is
-	// empty here; use this->columns (the base class member) instead.
-	for (const auto &col : columns.Logical()) {
-		column_names_.push_back(col.Name());
+	for (const auto &col : entry_columns_.Logical()) {
+		column_names_.push_back(duckdb_compat::Str(col.Name()));
 		column_types_.push_back(col.Type());
 	}
 }
@@ -662,6 +688,7 @@ duckdb::TableFunction SharePointTableEntry::GetScanFunction(duckdb::ClientContex
 	                                     nullptr, GraphJsonArrayScanState::Init, SharePointListScanInitLocal);
 	table_function.projection_pushdown = true;
 	table_function.get_bind_info = SharePointListScanGetBindInfo;
+	duckdb_compat::SetTableEntryGetter(table_function, SharePointListScanGetTableEntry);
 	return table_function;
 }
 
@@ -693,7 +720,7 @@ SharePointCatalog::SharePointCatalog(duckdb::AttachedDatabase &db,
 	site_id_ = sp_client.ResolveSiteId(site_name_or_id);
 
 	duckdb::CreateSchemaInfo schema_info;
-	schema_info.schema = "main";
+	duckdb_compat::SetSchema(schema_info, "main");
 	main_schema_ = duckdb::make_uniq<SharePointSchemaEntry>(*this, schema_info);
 }
 
@@ -725,8 +752,8 @@ bool SharePointCatalog::SupportsTimeTravel() const {
 	return false;
 }
 
-duckdb::string SharePointCatalog::GetDefaultSchema() const {
-	return "main";
+duckdb_compat::DefaultSchemaName SharePointCatalog::GetDefaultSchema() const {
+	return duckdb_compat::Ident("main");
 }
 
 duckdb::DatabaseSize SharePointCatalog::GetDatabaseSize(duckdb::ClientContext &context) {
@@ -788,7 +815,7 @@ duckdb::PhysicalOperator &SharePointCatalog::PlanInsert(duckdb::ClientContext &c
 	// Collect column names in physical order
 	std::vector<std::string> col_names;
 	for (const auto &col : op.table.GetColumns().Physical()) {
-		col_names.push_back(col.Name());
+		col_names.push_back(duckdb_compat::Str(col.Name()));
 	}
 
 	auto &insert_op = planner.Make<PhysicalSharePointInsert>(
@@ -812,7 +839,7 @@ duckdb::PhysicalOperator &SharePointCatalog::PlanDelete(duckdb::ClientContext &c
 	idx_t id_col_idx = 0;
 	if (!op.expressions.empty()) {
 		auto &id_expr = op.expressions[0]->Cast<duckdb::BoundReferenceExpression>();
-		id_col_idx = id_expr.index;
+		id_col_idx = duckdb_compat::ReferenceIndex(id_expr);
 	}
 
 	auto &del_op = planner.Make<PhysicalSharePointDelete>(
@@ -833,7 +860,7 @@ duckdb::PhysicalOperator &SharePointCatalog::PlanUpdate(duckdb::ClientContext &c
 	std::vector<std::string> col_names;
 	col_names.reserve(num_table_cols);
 	for (const auto &col : op.table.GetColumns().Physical()) {
-		col_names.push_back(col.Name());
+		col_names.push_back(duckdb_compat::Str(col.Name()));
 	}
 
 	// Collect physical indices of updated columns (op.columns is a vector<PhysicalIndex>)

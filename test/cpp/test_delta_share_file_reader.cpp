@@ -13,6 +13,7 @@
 // passed it. test_delta_share_scan_data.cpp covers the policy itself.
 
 #include "catch.hpp"
+#include "duckdb_compat.hpp"
 #include "duckdb.hpp"
 
 #include "delta_share_scan.hpp"
@@ -86,7 +87,7 @@ DrainResult Drain(erpl_web::DeltaShareFileReader &reader)
     while (auto *chunk = reader.NextChunk()) {
         drained.chunks++;
         for (duckdb::idx_t row = 0; row < chunk->size(); row++) {
-            drained.first_column.push_back(chunk->GetValue(0, row).ToString());
+            drained.first_column.push_back(duckdb_compat::ResultValue(*chunk, 0, row).ToString());
         }
     }
     return drained;
@@ -159,8 +160,8 @@ TEST_CASE("DeltaShareFileReader aligns columns by name, not position",
     REQUIRE(chunk != nullptr);
     REQUIRE(chunk->size() == 5);
     // Column 0 is 'id' because the schema says so, whatever order the file used.
-    REQUIRE(chunk->GetValue(0, 0).ToString() == "0");
-    REQUIRE(chunk->GetValue(1, 0).ToString() == "row-0");
+    REQUIRE(duckdb_compat::ResultValue(*chunk, 0, 0).ToString() == "0");
+    REQUIRE(duckdb_compat::ResultValue(*chunk, 1, 0).ToString() == "row-0");
     REQUIRE(chunk->data[0].GetType() == duckdb::LogicalType(duckdb::LogicalTypeId::INTEGER));
 }
 
@@ -178,8 +179,8 @@ TEST_CASE("DeltaShareFileReader fills NULL for a column absent from the file",
     auto *chunk = reader.NextChunk();
     REQUIRE(chunk != nullptr);
     REQUIRE(chunk->size() == 4);
-    REQUIRE(chunk->GetValue(0, 0).ToString() == "0");
-    REQUIRE(chunk->GetValue(1, 0).IsNull());
+    REQUIRE(duckdb_compat::ResultValue(*chunk, 0, 0).ToString() == "0");
+    REQUIRE(duckdb_compat::ResultValue(*chunk, 1, 0).IsNull());
 }
 
 // The file's types need not match the declared schema; the share server supplies both.
@@ -197,7 +198,7 @@ TEST_CASE("DeltaShareFileReader casts the file's types to the declared schema",
     auto *chunk = reader.NextChunk();
     REQUIRE(chunk != nullptr);
     REQUIRE(chunk->data[0].GetType() == duckdb::LogicalType(duckdb::LogicalTypeId::INTEGER));
-    REQUIRE(chunk->GetValue(0, 2).ToString() == "2");
+    REQUIRE(duckdb_compat::ResultValue(*chunk, 0, 2).ToString() == "2");
 }
 
 // Case-insensitive fallback: a file differing only in capitalisation still lines up rather
@@ -213,8 +214,8 @@ TEST_CASE("DeltaShareFileReader matches column names case-insensitively",
 
     auto *chunk = reader.NextChunk();
     REQUIRE(chunk != nullptr);
-    REQUIRE_FALSE(chunk->GetValue(0, 0).IsNull());
-    REQUIRE(chunk->GetValue(1, 0).ToString() == "row-0");
+    REQUIRE_FALSE(duckdb_compat::ResultValue(*chunk, 0, 0).IsNull());
+    REQUIRE(duckdb_compat::ResultValue(*chunk, 1, 0).ToString() == "row-0");
 }
 
 // In Delta, a partition column's value is NOT stored in the data file - it is carried per
@@ -244,8 +245,8 @@ TEST_CASE("DeltaShareFileReader takes partition columns from the file's partitio
     REQUIRE(chunk->data[2].GetType() == duckdb::LogicalType(duckdb::LogicalTypeId::DATE));
     for (duckdb::idx_t row = 0; row < chunk->size(); row++) {
         INFO("row " << row);
-        REQUIRE_FALSE(chunk->GetValue(2, row).IsNull());
-        REQUIRE(chunk->GetValue(2, row).ToString() == "2024-03-01");
+        REQUIRE_FALSE(duckdb_compat::ResultValue(*chunk, 2, row).IsNull());
+        REQUIRE(duckdb_compat::ResultValue(*chunk, 2, row).ToString() == "2024-03-01");
     }
 }
 
@@ -266,8 +267,8 @@ TEST_CASE("DeltaShareFileReader still NULLs a column in neither the file nor the
 
     auto *chunk = reader.NextChunk();
     REQUIRE(chunk != nullptr);
-    REQUIRE(chunk->GetValue(2, 0).ToString() == "2024-03-01");  // partition
-    REQUIRE(chunk->GetValue(1, 0).IsNull());                    // genuinely absent
+    REQUIRE(duckdb_compat::ResultValue(*chunk, 2, 0).ToString() == "2024-03-01");  // partition
+    REQUIRE(duckdb_compat::ResultValue(*chunk, 1, 0).IsNull());                    // genuinely absent
 }
 
 // Delta Sharing PROTOCOL.md, Partition Value Serialization: "An empty string for any type
@@ -293,8 +294,8 @@ TEST_CASE("DeltaShareFileReader reads an empty partition value as NULL",
     auto *chunk = reader.NextChunk();
     REQUIRE(chunk != nullptr);
     REQUIRE(chunk->size() == 2);
-    REQUIRE(chunk->GetValue(1, 0).IsNull());
-    REQUIRE(chunk->GetValue(2, 0).IsNull());
+    REQUIRE(duckdb_compat::ResultValue(*chunk, 1, 0).IsNull());
+    REQUIRE(duckdb_compat::ResultValue(*chunk, 2, 0).IsNull());
 }
 
 // The file-column lookup beside it is case-insensitive; having the two disagree would mean
@@ -315,7 +316,7 @@ TEST_CASE("DeltaShareFileReader matches partition names case-insensitively",
 
     auto *chunk = reader.NextChunk();
     REQUIRE(chunk != nullptr);
-    REQUIRE(chunk->GetValue(1, 0).ToString() == "2024-03-01");
+    REQUIRE(duckdb_compat::ResultValue(*chunk, 1, 0).ToString() == "2024-03-01");
 }
 
 // #207 defect 4: a file that cannot be read must fail loudly. Swallowing it into an empty

@@ -1,3 +1,4 @@
+#include "duckdb/parser/parsed_data/attach_info.hpp"
 #include "graph_sharepoint_storage.hpp"
 #include "graph_sharepoint_catalog.hpp"
 #include "graph_excel_secret.hpp"

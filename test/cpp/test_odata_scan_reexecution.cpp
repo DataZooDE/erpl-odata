@@ -11,6 +11,8 @@
 // scans including the GitHub #132 row-id cases, and a service that dies mid-response.
 
 #include "catch.hpp"
+#include "test_extension_load_sql.hpp"
+#include "duckdb_compat.hpp"
 #include "duckdb.hpp"
 
 #include "odata_test_server.hpp"
@@ -53,9 +55,10 @@ void ServeTwoPageAirlines(ODataTestServer &server, const std::string &prefix)
                                                   entity_url + "?$format=json&$skiptoken=2")));
 }
 
-int64_t ScalarOf(duckdb::unique_ptr<duckdb::MaterializedQueryResult> &result)
+template <class RESULT>
+int64_t ScalarOf(RESULT &result)
 {
-    return result->GetValue(0, 0).GetValue<int64_t>();
+    return duckdb_compat::ResultValue(*result, 0, 0).template GetValue<int64_t>();
 }
 
 }  // namespace
@@ -75,7 +78,7 @@ TEST_CASE("a bound projecting plan returns every row on each execution",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     REQUIRE_FALSE(
         con.Query("PREPARE counted AS SELECT COUNT(*) FROM odata_read('" + entity_url + "')")
@@ -110,7 +113,7 @@ TEST_CASE("two scans of one call join, cross-join and union independently",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     SECTION("cross join sees every pair") {
         auto result = con.Query("SELECT COUNT(*) FROM " + read + " a, " + read + " b");
@@ -152,11 +155,16 @@ TEST_CASE("an ATTACHed OData table re-executes and self-joins", "[odata_reexec][
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     auto attach = con.Query("ATTACH '" + server.Url("/attached/") + "' AS svc (TYPE odata)");
     INFO((attach->HasError() ? attach->GetError() : std::string()));
     REQUIRE_FALSE(attach->HasError());
+
+    auto writable = con.Query("ATTACH '" + server.Url("/attached/") +
+                              "' AS writable_svc (TYPE odata, READ_WRITE)");
+    REQUIRE(writable->HasError());
+    REQUIRE(writable->GetError().find("does not support write access") != std::string::npos);
 
     SECTION("self-join over a projected column sees the whole table on both sides") {
         auto result = con.Query(
@@ -197,8 +205,8 @@ TEST_CASE("an ATTACHed OData table re-executes and self-joins", "[odata_reexec][
             "SELECT COUNT(*), COUNT(DISTINCT AirlineCode) FROM svc.Airlines");
         INFO((result->HasError() ? result->GetError() : std::string()));
         REQUIRE_FALSE(result->HasError());
-        REQUIRE(result->GetValue(0, 0).GetValue<int64_t>() == 4);
-        REQUIRE(result->GetValue(1, 0).GetValue<int64_t>() == 4);
+        REQUIRE(duckdb_compat::ResultValue(*result, 0, 0).GetValue<int64_t>() == 4);
+        REQUIRE(duckdb_compat::ResultValue(*result, 1, 0).GetValue<int64_t>() == 4);
     }
 }
 
@@ -231,9 +239,9 @@ TEST_CASE("COUNT(*) over an ATTACHed table coexists with a pushed-down filter",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
-    auto attach = con.Query("ATTACH '" + server.Url("/filtered/") + "' AS svc (TYPE odata)");
+    auto attach = con.Query("ATTACH '" + server.Url("/filtered/") + "' AS svc (TYPE odata, READ_ONLY)");
     INFO((attach->HasError() ? attach->GetError() : std::string()));
     REQUIRE_FALSE(attach->HasError());
 
@@ -272,7 +280,7 @@ TEST_CASE("a body truncated mid-stream fails cleanly and spares the database",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     auto result = con.Query("SELECT COUNT(*) FROM odata_read('" + entity_url + "')");
     INFO("truncated read reported: "
@@ -296,7 +304,7 @@ TEST_CASE("a body truncated mid-stream fails cleanly and spares the database",
     auto after = con.Query("SELECT 42");
     INFO((after->HasError() ? after->GetError() : std::string()));
     REQUIRE_FALSE(after->HasError());
-    REQUIRE(after->GetValue(0, 0).GetValue<int32_t>() == 42);
+    REQUIRE(duckdb_compat::ResultValue(*after, 0, 0).GetValue<int32_t>() == 42);
 }
 
 // The same for metadata, which is parsed by a different (XML) path and happens before any
@@ -315,7 +323,7 @@ TEST_CASE("a truncated $metadata document fails cleanly and spares the database"
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     // The reader does not fail here, and that is deliberate rather than accidental:
     // ODataReadBindData::MetadataColumnNames() catches an unavailable EDM and falls back
@@ -337,7 +345,7 @@ TEST_CASE("a truncated $metadata document fails cleanly and spares the database"
     auto after = con.Query("SELECT 42");
     INFO((after->HasError() ? after->GetError() : std::string()));
     REQUIRE_FALSE(after->HasError());
-    REQUIRE(after->GetValue(0, 0).GetValue<int32_t>() == 42);
+    REQUIRE(duckdb_compat::ResultValue(*after, 0, 0).GetValue<int32_t>() == 42);
 }
 
 // ----------------------------------------------------------------------
@@ -363,7 +371,7 @@ TEST_CASE("a filter on a late schema column names that column in $filter",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     // LastName is the third property; UserName the first. Projecting UserName alone while
     // filtering on LastName makes the output index (0) and the schema index (2) disagree.

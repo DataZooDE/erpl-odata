@@ -1,4 +1,5 @@
 #include "business_central_functions.hpp"
+#include "duckdb_compat.hpp"
 #include "business_central_secret.hpp"
 #include "business_central_client.hpp"
 #include "odata_read_functions.hpp"
@@ -45,12 +46,12 @@ static unique_ptr<FunctionData> BcShowCompaniesBind(
     ClientContext &context,
     TableFunctionBindInput &input,
     vector<LogicalType> &return_types,
-    vector<string> &names) {
+    duckdb_compat::BindNames &names) {
 
     ERPL_TRACE_DEBUG("BC_FUNC", "Binding bc_show_companies");
 
     // Get secret parameter
-    auto secret_name = input.named_parameters.at("secret").GetValue<string>();
+    auto secret_name = input.named_parameters.at(duckdb_compat::Ident("secret")).GetValue<string>();
 
     // Resolve auth
     auto auth_info = ResolveBusinessCentralAuth(context, secret_name);
@@ -67,7 +68,7 @@ static unique_ptr<FunctionData> BcShowCompaniesBind(
     bind_data->odata_bind_data = ODataReadBindData::FromEntitySetClient(client);
 
     // Get schema from OData
-    names = bind_data->odata_bind_data->GetResultNames();
+    duckdb_compat::AssignBindNames(names, bind_data->odata_bind_data->GetResultNames());
     return_types = bind_data->odata_bind_data->GetResultTypes();
 
     ERPL_TRACE_INFO("BC_FUNC", "bc_show_companies bound with " + std::to_string(names.size()) + " columns");
@@ -91,7 +92,7 @@ TableFunctionSet CreateBcShowCompaniesFunction() {
     TableFunctionSet set("bc_show_companies");
 
     TableFunction func({}, DATAZOO_GUARD(ERPL_ODATA_BANNER, BcShowCompaniesScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, BcShowCompaniesBind), BcShowCompaniesInitGlobalState);
-    func.named_parameters["secret"] = LogicalType::VARCHAR;
+    duckdb_compat::AddNamedParameter(func, "secret", LogicalType::VARCHAR);
 
     set.AddFunction(func);
     return set;
@@ -129,12 +130,12 @@ static unique_ptr<FunctionData> BcShowEntitiesBind(
     ClientContext &context,
     TableFunctionBindInput &input,
     vector<LogicalType> &return_types,
-    vector<string> &names) {
+    duckdb_compat::BindNames &names) {
 
     ERPL_TRACE_DEBUG("BC_FUNC", "Binding bc_show_entities");
 
     // Get secret parameter
-    auto secret_name = input.named_parameters.at("secret").GetValue<string>();
+    auto secret_name = input.named_parameters.at(duckdb_compat::Ident("secret")).GetValue<string>();
 
     // Resolve auth
     auto auth_info = ResolveBusinessCentralAuth(context, secret_name);
@@ -151,7 +152,7 @@ static unique_ptr<FunctionData> BcShowEntitiesBind(
     bind_data->odata_bind_data = ODataReadBindData::FromServiceClient(client);
 
     // Get schema
-    names = bind_data->odata_bind_data->GetResultNames();
+    duckdb_compat::AssignBindNames(names, bind_data->odata_bind_data->GetResultNames());
     return_types = bind_data->odata_bind_data->GetResultTypes();
 
     ERPL_TRACE_INFO("BC_FUNC", "bc_show_entities bound");
@@ -175,7 +176,7 @@ TableFunctionSet CreateBcShowEntitiesFunction() {
     TableFunctionSet set("bc_show_entities");
 
     TableFunction func({}, DATAZOO_GUARD(ERPL_ODATA_BANNER, BcShowEntitiesScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, BcShowEntitiesBind), BcShowEntitiesInitGlobalState);
-    func.named_parameters["secret"] = LogicalType::VARCHAR;
+    duckdb_compat::AddNamedParameter(func, "secret", LogicalType::VARCHAR);
 
     set.AddFunction(func);
     return set;
@@ -209,7 +210,7 @@ static unique_ptr<FunctionData> BcDescribeBind(
     ClientContext &context,
     TableFunctionBindInput &input,
     vector<LogicalType> &return_types,
-    vector<string> &names) {
+    duckdb_compat::BindNames &names) {
 
     ERPL_TRACE_DEBUG("BC_FUNC", "Binding bc_describe");
 
@@ -217,7 +218,7 @@ static unique_ptr<FunctionData> BcDescribeBind(
     auto entity_name = input.inputs[0].GetValue<string>();
 
     // Get secret parameter
-    auto secret_name = input.named_parameters.at("secret").GetValue<string>();
+    auto secret_name = input.named_parameters.at(duckdb_compat::Ident("secret")).GetValue<string>();
 
     // Optional company parameter is accepted for API symmetry; metadata lookup stays at the service root.
 
@@ -254,7 +255,7 @@ static unique_ptr<FunctionData> BcDescribeBind(
 
                     // Collect properties
                     for (const auto &prop : entity_type->properties) {
-                        bind_data->property_names.push_back(prop.name);
+                        bind_data->property_names.emplace_back(prop.name);
                         bind_data->property_types.push_back(prop.type_name);
                         bind_data->is_nullable.push_back(prop.nullable);
                         bind_data->is_key.push_back(key_props.count(prop.name) > 0);
@@ -294,15 +295,15 @@ static void BcDescribeScan(ClientContext &context, TableFunctionInput &data, Dat
         count++;
     }
 
-    output.SetCardinality(count);
+    duckdb_compat::SetChildCardinality(output, count);
 }
 
 TableFunctionSet CreateBcDescribeFunction() {
     TableFunctionSet set("bc_describe");
 
     TableFunction func({LogicalType::VARCHAR}, DATAZOO_GUARD(ERPL_ODATA_BANNER, BcDescribeScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, BcDescribeBind), BcDescribeInitGlobalState);
-    func.named_parameters["secret"] = LogicalType::VARCHAR;
-    func.named_parameters["company"] = LogicalType::VARCHAR;
+    duckdb_compat::AddNamedParameter(func, "secret", LogicalType::VARCHAR);
+    duckdb_compat::AddNamedParameter(func, "company", LogicalType::VARCHAR);
 
     set.AddFunction(func);
     return set;
@@ -337,7 +338,7 @@ static unique_ptr<FunctionData> BcReadBind(
     ClientContext &context,
     TableFunctionBindInput &input,
     vector<LogicalType> &return_types,
-    vector<string> &names) {
+    duckdb_compat::BindNames &names) {
 
     ERPL_TRACE_DEBUG("BC_FUNC", "Binding bc_read");
 
@@ -345,12 +346,12 @@ static unique_ptr<FunctionData> BcReadBind(
     auto entity_name = input.inputs[0].GetValue<string>();
 
     // Get secret parameter
-    auto secret_name = input.named_parameters.at("secret").GetValue<string>();
+    auto secret_name = input.named_parameters.at(duckdb_compat::Ident("secret")).GetValue<string>();
 
     // Get company parameter (name or GUID, resolved below)
     string company_param;
-    if (input.named_parameters.count("company")) {
-        company_param = input.named_parameters.at("company").GetValue<string>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "company") != nullptr) {
+        company_param = input.named_parameters.at(duckdb_compat::Ident("company")).GetValue<string>();
     }
 
     // Resolve auth
@@ -386,13 +387,13 @@ static unique_ptr<FunctionData> BcReadBind(
     // Handle expand parameter — must call ProcessExpandClause (not just SetExpandClause)
     // so that ConsumeExpand feeds $expand into the predicate pushdown helper URL builder
     // and the expanded data schema paths are set up for column extraction.
-    if (input.named_parameters.count("expand")) {
-        auto expand_clause = input.named_parameters.at("expand").GetValue<string>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "expand") != nullptr) {
+        auto expand_clause = input.named_parameters.at(duckdb_compat::Ident("expand")).GetValue<string>();
         ODataReadBindHelpers::ProcessExpandClause(bind_data->odata_bind_data.get(), expand_clause);
     }
 
     // Get schema from OData (includes expanded columns if expand was set)
-    names = bind_data->odata_bind_data->GetResultNames();
+    duckdb_compat::AssignBindNames(names, bind_data->odata_bind_data->GetResultNames());
     return_types = bind_data->odata_bind_data->GetResultTypes();
 
     ERPL_TRACE_INFO("BC_FUNC", "bc_read bound for entity: " + entity_name + " with " + std::to_string(names.size()) + " columns");
@@ -452,9 +453,9 @@ TableFunctionSet CreateBcReadFunction() {
     TableFunctionSet set("bc_read");
 
     TableFunction func({LogicalType::VARCHAR}, DATAZOO_GUARD(ERPL_ODATA_BANNER, BcReadScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, BcReadBind), BcReadInitGlobalState);
-    func.named_parameters["secret"] = LogicalType::VARCHAR;
-    func.named_parameters["company"] = LogicalType::VARCHAR;
-    func.named_parameters["expand"] = LogicalType::VARCHAR;
+    duckdb_compat::AddNamedParameter(func, "secret", LogicalType::VARCHAR);
+    duckdb_compat::AddNamedParameter(func, "company", LogicalType::VARCHAR);
+    duckdb_compat::AddNamedParameter(func, "expand", LogicalType::VARCHAR);
 
     // Enable pushdown features
     func.filter_pushdown = true;

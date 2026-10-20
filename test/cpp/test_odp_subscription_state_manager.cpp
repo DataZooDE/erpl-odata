@@ -1,4 +1,5 @@
 #include "catch.hpp"
+#include "duckdb_compat.hpp"
 #include "odp_subscription_state_manager.hpp"
 #include "odp_test_db.hpp"
 #include "duckdb.hpp"
@@ -181,11 +182,11 @@ TEST_CASE("OdpSubscriptionStateManager - writing totals preserves the delta toke
     REQUIRE_FALSE(row->HasError());
     REQUIRE(row->RowCount() == 1);
 
-    CHECK(row->GetValue(0, 0).GetValue<int64_t>() == 3000);
-    CHECK(row->GetValue(1, 0).GetValue<int64_t>() == 24000);
+    CHECK(duckdb_compat::ResultValue(*row, 0, 0).GetValue<int64_t>() == 3000);
+    CHECK(duckdb_compat::ResultValue(*row, 1, 0).GetValue<int64_t>() == 24000);
     // The token and status must survive the totals write.
-    CHECK(row->GetValue(2, 0).ToString() == "TOKEN_FOR_PACKAGE");
-    CHECK(row->GetValue(3, 0).GetValue<int32_t>() == 200);
+    CHECK(duckdb_compat::ResultValue(*row, 2, 0).ToString() == "TOKEN_FOR_PACKAGE");
+    CHECK(duckdb_compat::ResultValue(*row, 3, 0).GetValue<int32_t>() == 200);
 }
 
 TEST_CASE("OdpSubscriptionStateManager - Audit Operations", "[odp_audit]") {

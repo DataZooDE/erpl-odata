@@ -1,4 +1,5 @@
 #include "graph_sharepoint_copy.hpp"
+#include "duckdb_compat.hpp"
 #include "graph_sharepoint_client.hpp"
 #include "graph_excel_secret.hpp"
 #include "graph_write_helpers.hpp"
@@ -65,9 +66,9 @@ struct SharePointListCopyGlobalState : public GlobalFunctionData {
 // Helper: extract a single string option from COPY options map
 // ------------------------------------------------------------------
 
-static std::string GetCopyOpt(const duckdb::case_insensitive_map_t<duckdb::vector<Value>> &opts,
+static std::string GetCopyOpt(const duckdb_compat::CopyOptions &opts,
                                const std::string &key) {
-    auto it = opts.find(key);
+    auto it = opts.find(duckdb_compat::Ident(key));
     if (it == opts.end() || it->second.empty()) { return ""; }
     return it->second[0].ToString();
 }
@@ -79,11 +80,11 @@ static std::string GetCopyOpt(const duckdb::case_insensitive_map_t<duckdb::vecto
 static unique_ptr<FunctionData> SharePointListCopyBind(
     ClientContext &context,
     CopyFunctionBindInput &input,
-    const duckdb::vector<std::string> &names,
+    const duckdb_compat::CopyBindNames &names,
     const duckdb::vector<LogicalType> & /*sql_types*/)
 {
     auto bind = make_uniq<SharePointListCopyBindData>();
-    bind->column_names = std::vector<std::string>(names.begin(), names.end());
+    bind->column_names = duckdb_compat::Strs(names);
 
     const auto &opts   = input.info.options;
     bind->secret_name  = GetCopyOpt(opts, "secret");
@@ -150,6 +151,15 @@ static void SharePointListCopySink(
     gstate.row_count += rows_written;
 }
 
+static void SharePointListCopyCombine(
+    ExecutionContext & /*context*/,
+    FunctionData & /*bind_data*/,
+    GlobalFunctionData & /*gstate*/,
+    LocalFunctionData & /*lstate*/)
+{
+    // Sink sends each row and updates the synchronized global count directly.
+}
+
 static void SharePointListCopyFinalize(
     ClientContext & /*context*/,
     FunctionData &bind_data_p,
@@ -172,6 +182,9 @@ void RegisterSharePointListCopyFunction(duckdb::ExtensionLoader &loader) {
     fn.copy_to_initialize_global = SharePointListCopyInitializeGlobal;
     fn.copy_to_initialize_local  = SharePointListCopyInitializeLocal;
     fn.copy_to_sink              = SharePointListCopySink;
+    // DuckDB 2.0 requires a combine callback for parallel COPY even though
+    // this writer accumulates no thread-local state to combine.
+    fn.copy_to_combine           = SharePointListCopyCombine;
     fn.copy_to_finalize          = SharePointListCopyFinalize;
 
     loader.RegisterFunction(std::move(fn));

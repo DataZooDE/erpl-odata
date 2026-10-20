@@ -33,6 +33,8 @@
 // Restoring the data-path tests needs httpfs in the test build - see the follow-up issue.
 
 #include "catch.hpp"
+#include "test_extension_load_sql.hpp"
+#include "duckdb_compat.hpp"
 #include "duckdb.hpp"
 
 #include "delta_share_client.hpp"
@@ -126,9 +128,10 @@ private:
     std::string path;
 };
 
-int64_t ScalarOf(duckdb::unique_ptr<duckdb::MaterializedQueryResult> &result)
+template <class RESULT>
+int64_t ScalarOf(RESULT &result)
 {
-    return result->GetValue(0, 0).GetValue<int64_t>();
+    return duckdb_compat::ResultValue(*result, 0, 0).template GetValue<int64_t>();
 }
 
 std::string ScanSql(const ProfileFile &profile)
@@ -144,7 +147,7 @@ std::string ScanSql(const ProfileFile &profile)
 TEST_CASE("delta_share_scan refuses a file URL that is not https", "[delta_share][scan][security]") {
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     const std::string malicious =
         "/tmp/x.parquet'); CREATE TABLE pwned AS SELECT 1; SELECT * FROM parquet_scan('/tmp/x.parquet";
@@ -170,7 +173,7 @@ TEST_CASE("delta_share_scan refuses file:// and bare paths from the share server
           "[delta_share][scan][security]") {
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     // Each would otherwise be resolved by parquet_scan against the local filesystem.
     const std::vector<std::string> rejected = {
@@ -207,7 +210,7 @@ TEST_CASE("delta_share_scan refuses file:// and bare paths from the share server
 TEST_CASE("delta_share_scan accepts an https file URL", "[delta_share][scan]") {
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     ODataTestServer server;
     ServeShare(server, {"https://example.invalid/data.parquet"});
@@ -226,7 +229,7 @@ TEST_CASE("delta_share_scan accepts an https file URL", "[delta_share][scan]") {
 TEST_CASE("delta_share_scan refuses a column type it cannot map", "[delta_share][scan]") {
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     ODataTestServer server;
     const std::string table_path = "/shares/s/schemas/sc/tables/t";
@@ -254,7 +257,7 @@ TEST_CASE("a file entry with a non-string url is refused, not dereferenced",
           "[delta_share][scan][security]") {
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     const std::vector<std::string> malformed = {
         R"({"file":{"id":"f0","size":1,"url":null}})",
@@ -289,7 +292,7 @@ TEST_CASE("a Delta Sharing profile endpoint must not be plain http off loopback"
           "[delta_share][scan][security]") {
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     ProfileFile insecure("http://share.example.com/delta-sharing");
     auto result = con.Query("SELECT COUNT(*) FROM delta_share_show_shares('" + insecure.Path() + "')");
@@ -318,7 +321,7 @@ TEST_CASE("a Delta Sharing profile endpoint must be an absolute URL",
           "[delta_share][scan][security]") {
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     // Schemeless input: RequireSecureOrLoopbackUrl returns for these, so only the new
     // precondition can reject them.
@@ -344,7 +347,7 @@ TEST_CASE("a share listing with non-string fields does not crash the parser",
           "[delta_share][scan][security]") {
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     ODataTestServer server;
     server.OnPath("/shares",
@@ -367,7 +370,7 @@ TEST_CASE("a schema listing with non-string fields does not crash the parser",
           "[delta_share][scan][security]") {
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     ODataTestServer server;
     server.OnPath("/shares/alpha/schemas",
@@ -385,7 +388,7 @@ TEST_CASE("a table listing with non-string fields does not crash the parser",
           "[delta_share][scan][security]") {
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     ODataTestServer server;
     server.OnPath("/shares/alpha/schemas/sales/tables",
@@ -405,7 +408,7 @@ TEST_CASE("a Delta Sharing profile endpoint may be https or loopback http",
           "[delta_share][scan][security]") {
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     ODataTestServer server;  // binds 127.0.0.1
     server.OnPath("/shares", CannedResponse::Json(R"({"shares":[{"name":"alpha","id":"1"}]})"));
@@ -414,7 +417,7 @@ TEST_CASE("a Delta Sharing profile endpoint may be https or loopback http",
     auto result = con.Query("SELECT COUNT(*) FROM delta_share_show_shares('" + loopback.Path() + "')");
     INFO((result->HasError() ? result->GetError() : std::string()));
     REQUIRE_FALSE(result->HasError());
-    REQUIRE(result->GetValue(0, 0).GetValue<int64_t>() == 1);
+    REQUIRE(duckdb_compat::ResultValue(*result, 0, 0).GetValue<int64_t>() == 1);
 }
 
 // The projection now takes partition columns from the file's partition values, but that
@@ -430,7 +433,7 @@ TEST_CASE("the share server's partitionValues reach the parsed file reference",
           "[delta_share][scan]") {
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     ODataTestServer server;
     const std::string table_path = "/shares/s/schemas/sc/tables/t";

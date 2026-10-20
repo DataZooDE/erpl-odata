@@ -17,6 +17,8 @@
 // the local server instead of a Datasphere tenant.
 
 #include "catch.hpp"
+#include "test_extension_load_sql.hpp"
+#include "duckdb_compat.hpp"
 #include "duckdb.hpp"
 
 #include "odata_test_server.hpp"
@@ -78,9 +80,10 @@ void CreateLoopbackSecret(duckdb::Connection &con, const std::string &name,
     REQUIRE_FALSE(created->HasError());
 }
 
-int64_t ScalarOf(duckdb::unique_ptr<duckdb::MaterializedQueryResult> &result)
+template <class RESULT>
+int64_t ScalarOf(RESULT &result)
 {
-    return result->GetValue(0, 0).GetValue<int64_t>();
+    return duckdb_compat::ResultValue(*result, 0, 0).template GetValue<int64_t>();
 }
 
 }  // namespace
@@ -94,7 +97,7 @@ TEST_CASE("a bound datasphere_read_relational plan returns every row on each exe
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
     CreateLoopbackSecret(con, "ds", server);
 
     REQUIRE_FALSE(con.Query("PREPARE p AS SELECT * FROM " + read)->HasError());
@@ -117,7 +120,7 @@ TEST_CASE("two datasphere_read_relational scans of one call each see every row",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
     CreateLoopbackSecret(con, "ds", server);
 
     auto result = con.Query("SELECT COUNT(*) FROM " + read + " a, " + read + " b");
@@ -135,7 +138,7 @@ TEST_CASE("a bound datasphere_read_analytical plan returns every row on each exe
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
     CreateLoopbackSecret(con, "ds", server);
 
     REQUIRE_FALSE(con.Query("PREPARE q AS SELECT * FROM " + read)->HasError());
@@ -158,7 +161,7 @@ TEST_CASE("two datasphere_read_analytical scans of one call each see every row",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
     CreateLoopbackSecret(con, "ds", server);
 
     auto result = con.Query("SELECT COUNT(*) FROM " + read + " a, " + read + " b");
@@ -222,7 +225,7 @@ TEST_CASE("a Datasphere dual-URL asset re-executes correctly",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
     CreateLoopbackSecret(con, "ds", server);
 
     const std::string read =
@@ -289,7 +292,7 @@ TEST_CASE("the Datasphere space_id hatch refuses plain http off loopback",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
     CreateLoopbackSecret(con, "dssec", server);
 
     auto result = con.Query(

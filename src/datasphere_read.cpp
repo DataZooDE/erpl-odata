@@ -1,4 +1,5 @@
 #include "odata_url_helpers.hpp"
+#include "duckdb_compat.hpp"
 #include "datasphere_read.hpp"
 #include "datasphere_client.hpp"
 #include "odata_read_functions.hpp"
@@ -92,14 +93,14 @@ namespace {
     void ApplyNamedParameters(ODataReadBindData* read_bind, 
                             const duckdb::TableFunctionBindInput& input) {
         // Handle LIMIT and OFFSET
-        if (input.named_parameters.find("top") != input.named_parameters.end()) {
-            auto limit_value = input.named_parameters["top"].GetValue<duckdb::idx_t>();
+        if (const auto *named_parameter = duckdb_compat::FindNamedParameter(input.named_parameters, "top")) {
+            auto limit_value = (*named_parameter).GetValue<duckdb::idx_t>();
             read_bind->PredicatePushdownHelper()->ConsumeLimit(limit_value);
             ERPL_TRACE_DEBUG("DATASPHERE_RELATIONAL_BIND", "Set limit to: " + std::to_string(limit_value));
         }
         
-        if (input.named_parameters.find("skip") != input.named_parameters.end()) {
-            auto offset_value = input.named_parameters["skip"].GetValue<duckdb::idx_t>();
+        if (const auto *named_parameter = duckdb_compat::FindNamedParameter(input.named_parameters, "skip")) {
+            auto offset_value = (*named_parameter).GetValue<duckdb::idx_t>();
             read_bind->PredicatePushdownHelper()->ConsumeOffset(offset_value);
             ERPL_TRACE_DEBUG("DATASPHERE_RELATIONAL_BIND", "Set offset to: " + std::to_string(offset_value));
         }
@@ -115,7 +116,7 @@ void EnsureAssetSegmentPattern(std::string &url, const std::string &asset_id) {
 static duckdb::unique_ptr<duckdb::FunctionData> DatasphereReadRelationalBind(duckdb::ClientContext &context,
                                                                            duckdb::TableFunctionBindInput &input,
                                                                            duckdb::vector<duckdb::LogicalType> &return_types,
-                                                                           duckdb::vector<std::string> &names) {
+                                                                           duckdb_compat::BindNames &names) {
     PostHogTelemetry::Instance().RecordFunctionCall("datasphere_read_relational");
     ERPL_TRACE_DEBUG("DATASPHERE_RELATIONAL_BIND", "=== DATASPHERE_RELATIONAL_BIND CALLED ===");
     
@@ -127,8 +128,8 @@ static duckdb::unique_ptr<duckdb::FunctionData> DatasphereReadRelationalBind(duc
     std::string secret_name = "datasphere";
     if (input.inputs.size() > 2) {
         secret_name = input.inputs[2].GetValue<std::string>();
-    } else if (input.named_parameters.find("secret") != input.named_parameters.end()) {
-        secret_name = input.named_parameters["secret"].GetValue<std::string>();
+    } else if (const auto *named_parameter = duckdb_compat::FindNamedParameter(input.named_parameters, "secret")) {
+        secret_name = (*named_parameter).GetValue<std::string>();
     }
     
     // Resolve authentication
@@ -145,8 +146,8 @@ static duckdb::unique_ptr<duckdb::FunctionData> DatasphereReadRelationalBind(duc
     auto read_bind = ODataReadBindData::FromEntitySetRoot(data_url, auth.auth_params);
     
     // Extract and apply input parameters BEFORE metadata extraction
-    if (input.named_parameters.find("params") != input.named_parameters.end()) {
-        auto input_params = ExtractInputParameters(input.named_parameters["params"], "DATASPHERE_BIND");
+    if (const auto *named_parameter = duckdb_compat::FindNamedParameter(input.named_parameters, "params")) {
+        auto input_params = ExtractInputParameters((*named_parameter), "DATASPHERE_BIND");
         
         if (!input_params.empty()) {
             // Store parameters in bind data
@@ -168,7 +169,7 @@ static duckdb::unique_ptr<duckdb::FunctionData> DatasphereReadRelationalBind(duc
     ApplyNamedParameters(read_bind.get(), input);
     
     // Get result schema
-    names = read_bind->GetResultNames(false);
+    duckdb_compat::AssignBindNames(names, read_bind->GetResultNames(false));
     return_types = read_bind->GetResultTypes(false);
     
     ERPL_TRACE_DEBUG("DATASPHERE_RELATIONAL_BIND", "=== DATASPHERE_RELATIONAL_BIND COMPLETED ===");
@@ -227,11 +228,11 @@ duckdb::TableFunctionSet CreateDatasphereReadRelationalFunction() {
     relational_function_2_params.filter_pushdown = true;
     relational_function_2_params.projection_pushdown = true;
     relational_function_2_params.table_scan_progress = ODataReadTableProgress;
-    relational_function_2_params.named_parameters["top"] = duckdb::LogicalType(duckdb::LogicalTypeId::UBIGINT);
-    relational_function_2_params.named_parameters["skip"] = duckdb::LogicalType(duckdb::LogicalTypeId::UBIGINT);
-    relational_function_2_params.named_parameters["params"] = duckdb::LogicalType::MAP(duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR), 
-                                                                                    duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
-    relational_function_2_params.named_parameters["secret"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
+    duckdb_compat::AddNamedParameter(relational_function_2_params, "top", duckdb::LogicalType(duckdb::LogicalTypeId::UBIGINT));
+    duckdb_compat::AddNamedParameter(relational_function_2_params, "skip", duckdb::LogicalType(duckdb::LogicalTypeId::UBIGINT));
+    duckdb_compat::AddNamedParameter(relational_function_2_params, "params", duckdb::LogicalType::MAP(duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR),
+                                                                                    duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR)));
+    duckdb_compat::AddNamedParameter(relational_function_2_params, "secret", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
     set.AddFunction(relational_function_2_params);
     
     // 3-parameter version (space_id, asset_id, secret_name)
@@ -243,10 +244,10 @@ duckdb::TableFunctionSet CreateDatasphereReadRelationalFunction() {
     relational_function_3_params.filter_pushdown = true;
     relational_function_3_params.projection_pushdown = true;
     relational_function_3_params.table_scan_progress = ODataReadTableProgress;
-    relational_function_3_params.named_parameters["top"] = duckdb::LogicalType(duckdb::LogicalTypeId::UBIGINT);
-    relational_function_3_params.named_parameters["skip"] = duckdb::LogicalType(duckdb::LogicalTypeId::UBIGINT);
-    relational_function_3_params.named_parameters["params"] = duckdb::LogicalType::MAP(duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR), 
-                                                                                    duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
+    duckdb_compat::AddNamedParameter(relational_function_3_params, "top", duckdb::LogicalType(duckdb::LogicalTypeId::UBIGINT));
+    duckdb_compat::AddNamedParameter(relational_function_3_params, "skip", duckdb::LogicalType(duckdb::LogicalTypeId::UBIGINT));
+    duckdb_compat::AddNamedParameter(relational_function_3_params, "params", duckdb::LogicalType::MAP(duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR),
+                                                                                    duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR)));
     set.AddFunction(relational_function_3_params);
     
     ERPL_TRACE_DEBUG("DATASPHERE_FUNCTION_REGISTRATION", "=== DATASPHERE_RELATIONAL FUNCTION REGISTRATION COMPLETED ===");
@@ -262,7 +263,7 @@ namespace { }
 static duckdb::unique_ptr<duckdb::FunctionData> DatasphereReadAnalyticalBind(duckdb::ClientContext &context,
                                                                              duckdb::TableFunctionBindInput &input,
                                                                              duckdb::vector<duckdb::LogicalType> &return_types,
-                                                                             duckdb::vector<std::string> &names) {
+                                                                             duckdb_compat::BindNames &names) {
     PostHogTelemetry::Instance().RecordFunctionCall("datasphere_read_analytical");
     ERPL_TRACE_DEBUG("DATASPHERE_ANALYTICAL_BIND", "=== DATASPHERE_ANALYTICAL_BIND CALLED ===");
 
@@ -274,8 +275,8 @@ static duckdb::unique_ptr<duckdb::FunctionData> DatasphereReadAnalyticalBind(duc
     std::string secret_name = "datasphere";
     if (input.inputs.size() > 2) {
         secret_name = input.inputs[2].GetValue<std::string>();
-    } else if (input.named_parameters.find("secret") != input.named_parameters.end()) {
-        secret_name = input.named_parameters["secret"].GetValue<std::string>();
+    } else if (const auto *named_parameter = duckdb_compat::FindNamedParameter(input.named_parameters, "secret")) {
+        secret_name = (*named_parameter).GetValue<std::string>();
     }
 
     // Resolve authentication
@@ -289,12 +290,12 @@ static duckdb::unique_ptr<duckdb::FunctionData> DatasphereReadAnalyticalBind(duc
 
     // Parse metrics and dimensions named parameters and translate to $select
     std::vector<std::string> select_fields;
-    if (input.named_parameters.find("dimensions") != input.named_parameters.end()) {
-        auto dims = erpl_web::GetStringList(input.named_parameters["dimensions"]);
+    if (const auto *named_parameter = duckdb_compat::FindNamedParameter(input.named_parameters, "dimensions")) {
+        auto dims = erpl_web::GetStringList((*named_parameter));
         select_fields.insert(select_fields.end(), dims.begin(), dims.end());
     }
-    if (input.named_parameters.find("metrics") != input.named_parameters.end()) {
-        auto mets = erpl_web::GetStringList(input.named_parameters["metrics"]);
+    if (const auto *named_parameter = duckdb_compat::FindNamedParameter(input.named_parameters, "metrics")) {
+        auto mets = erpl_web::GetStringList((*named_parameter));
         select_fields.insert(select_fields.end(), mets.begin(), mets.end());
     }
     if (!select_fields.empty()) {
@@ -319,8 +320,8 @@ static duckdb::unique_ptr<duckdb::FunctionData> DatasphereReadAnalyticalBind(duc
     auto read_bind = ODataReadBindData::FromEntitySetRoot(data_url, auth.auth_params);
 
     // Extract and apply input parameters BEFORE metadata extraction
-    if (input.named_parameters.find("params") != input.named_parameters.end()) {
-        auto input_params = ExtractInputParameters(input.named_parameters["params"], "DATASPHERE_BIND");
+    if (const auto *named_parameter = duckdb_compat::FindNamedParameter(input.named_parameters, "params")) {
+        auto input_params = ExtractInputParameters((*named_parameter), "DATASPHERE_BIND");
         if (!input_params.empty()) {
             read_bind->SetInputParameters(input_params);
             auto odata_client = read_bind->GetODataClient();
@@ -337,7 +338,7 @@ static duckdb::unique_ptr<duckdb::FunctionData> DatasphereReadAnalyticalBind(duc
     ApplyNamedParameters(read_bind.get(), input);
 
     // Get result schema
-    names = read_bind->GetResultNames(false);
+    duckdb_compat::AssignBindNames(names, read_bind->GetResultNames(false));
     return_types = read_bind->GetResultTypes(false);
 
     ERPL_TRACE_DEBUG("DATASPHERE_ANALYTICAL_BIND", "=== DATASPHERE_ANALYTICAL_BIND COMPLETED ===");
@@ -386,13 +387,13 @@ duckdb::TableFunctionSet CreateDatasphereReadAnalyticalFunction() {
     analytical_function_2_params.filter_pushdown = true;
     analytical_function_2_params.projection_pushdown = true;
     analytical_function_2_params.table_scan_progress = ODataReadTableProgress;
-    analytical_function_2_params.named_parameters["top"] = duckdb::LogicalType(duckdb::LogicalTypeId::UBIGINT);
-    analytical_function_2_params.named_parameters["skip"] = duckdb::LogicalType(duckdb::LogicalTypeId::UBIGINT);
-    analytical_function_2_params.named_parameters["params"] = duckdb::LogicalType::MAP(duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR), 
-                                                                                         duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
-    analytical_function_2_params.named_parameters["secret"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
-    analytical_function_2_params.named_parameters["metrics"] = duckdb::LogicalType::LIST(duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
-    analytical_function_2_params.named_parameters["dimensions"] = duckdb::LogicalType::LIST(duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
+    duckdb_compat::AddNamedParameter(analytical_function_2_params, "top", duckdb::LogicalType(duckdb::LogicalTypeId::UBIGINT));
+    duckdb_compat::AddNamedParameter(analytical_function_2_params, "skip", duckdb::LogicalType(duckdb::LogicalTypeId::UBIGINT));
+    duckdb_compat::AddNamedParameter(analytical_function_2_params, "params", duckdb::LogicalType::MAP(duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR),
+                                                                                         duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR)));
+    duckdb_compat::AddNamedParameter(analytical_function_2_params, "secret", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
+    duckdb_compat::AddNamedParameter(analytical_function_2_params, "metrics", duckdb::LogicalType::LIST(duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR)));
+    duckdb_compat::AddNamedParameter(analytical_function_2_params, "dimensions", duckdb::LogicalType::LIST(duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR)));
     set.AddFunction(analytical_function_2_params);
 
     // 3-parameter version (space_id, asset_id, secret_name)
@@ -404,12 +405,12 @@ duckdb::TableFunctionSet CreateDatasphereReadAnalyticalFunction() {
     analytical_function_3_params.filter_pushdown = true;
     analytical_function_3_params.projection_pushdown = true;
     analytical_function_3_params.table_scan_progress = ODataReadTableProgress;
-    analytical_function_3_params.named_parameters["top"] = duckdb::LogicalType(duckdb::LogicalTypeId::UBIGINT);
-    analytical_function_3_params.named_parameters["skip"] = duckdb::LogicalType(duckdb::LogicalTypeId::UBIGINT);
-    analytical_function_3_params.named_parameters["params"] = duckdb::LogicalType::MAP(duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR), 
-                                                                                         duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
-    analytical_function_3_params.named_parameters["metrics"] = duckdb::LogicalType::LIST(duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
-    analytical_function_3_params.named_parameters["dimensions"] = duckdb::LogicalType::LIST(duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
+    duckdb_compat::AddNamedParameter(analytical_function_3_params, "top", duckdb::LogicalType(duckdb::LogicalTypeId::UBIGINT));
+    duckdb_compat::AddNamedParameter(analytical_function_3_params, "skip", duckdb::LogicalType(duckdb::LogicalTypeId::UBIGINT));
+    duckdb_compat::AddNamedParameter(analytical_function_3_params, "params", duckdb::LogicalType::MAP(duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR),
+                                                                                         duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR)));
+    duckdb_compat::AddNamedParameter(analytical_function_3_params, "metrics", duckdb::LogicalType::LIST(duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR)));
+    duckdb_compat::AddNamedParameter(analytical_function_3_params, "dimensions", duckdb::LogicalType::LIST(duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR)));
     set.AddFunction(analytical_function_3_params);
 
     ERPL_TRACE_DEBUG("DATASPHERE_FUNCTION_REGISTRATION", "=== DATASPHERE_ANALYTICAL FUNCTION REGISTRATION COMPLETED ===");

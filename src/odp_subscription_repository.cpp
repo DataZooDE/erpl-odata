@@ -1,4 +1,5 @@
 #include "odp_subscription_repository.hpp"
+#include "duckdb_compat.hpp"
 #include "tracing.hpp"
 
 #include "duckdb/catalog/catalog.hpp"
@@ -152,17 +153,17 @@ void OdpSubscriptionRepository::ResolveStateCatalog() {
 
     // Prefer the catalog that is currently default, so an explicit USE keeps
     // working -- but only when it can actually hold the state durably.
-    default_name = duckdb::DatabaseManager::GetDefaultDatabase(context);
-    auto default_database = database_manager.GetDatabase(context, default_name);
+    default_name = duckdb_compat::Str(duckdb::DatabaseManager::GetDefaultDatabase(context));
+    auto default_database = database_manager.GetDatabase(context, duckdb_compat::Ident(default_name));
     if (default_database && IsUsableStateCatalog(*default_database)) {
-        state_catalog = default_database->GetName();
+        state_catalog = duckdb_compat::Str(default_database->GetName());
     } else {
         // Otherwise take the first persistent DuckDB catalog, by name, so the
         // choice does not depend on hash-map iteration order.
         std::vector<std::string> candidates;
         for (auto& database : database_manager.GetDatabases(context)) {
             if (database && IsUsableStateCatalog(*database)) {
-                candidates.push_back(database->GetName());
+                candidates.push_back(duckdb_compat::Str(database->GetName()));
             }
         }
         std::sort(candidates.begin(), candidates.end());
@@ -175,7 +176,7 @@ void OdpSubscriptionRepository::ResolveStateCatalog() {
     for (auto& database : database_manager.GetDatabases(context)) {
         if (database && database->IsReadOnly() && !database->IsSystem() && !database->IsTemporary() &&
             database->GetCatalog().IsDuckCatalog() && !database->GetCatalog().InMemory()) {
-            read_only_catalogs.push_back(database->GetName());
+            read_only_catalogs.push_back(duckdb_compat::Str(database->GetName()));
         }
     }
     std::sort(read_only_catalogs.begin(), read_only_catalogs.end());
@@ -837,7 +838,7 @@ void OdpSubscriptionRepository::VerifySchemaVersion() {
     }
 }
 
-duckdb::unique_ptr<duckdb::MaterializedQueryResult> OdpSubscriptionRepository::Execute(
+duckdb::unique_ptr<OdpSubscriptionRepository::MaterializedRows> OdpSubscriptionRepository::Execute(
     const std::string& sql, duckdb::vector<duckdb::Value> params) {
     // Only the statement label is traced: the SQL carries no caller data now
     // that every value is bound, and the values themselves may be credentials.
@@ -857,7 +858,7 @@ duckdb::unique_ptr<duckdb::MaterializedQueryResult> OdpSubscriptionRepository::E
                                         (prepared ? prepared->GetError() : std::string("no statement returned")));
     }
 
-    auto result = prepared->Execute(params, false);
+    auto result = prepared->Execute(params);
     if (!result) {
         throw duckdb::IOException("Failed to execute ODP state statement: no result returned");
     }
@@ -865,15 +866,10 @@ duckdb::unique_ptr<duckdb::MaterializedQueryResult> OdpSubscriptionRepository::E
         throw duckdb::IOException("Failed to execute ODP state statement: " + result->GetError());
     }
 
-    auto* materialized = dynamic_cast<duckdb::MaterializedQueryResult*>(result.get());
-    if (!materialized) {
-        throw duckdb::IOException("Failed to execute ODP state statement: non-materialized result returned");
-    }
-    result.release();
-    return duckdb::unique_ptr<duckdb::MaterializedQueryResult>(materialized);
+    return duckdb::make_uniq<MaterializedRows>(duckdb_compat::FetchRows(*result));
 }
 
-int64_t OdpSubscriptionRepository::RowsChanged(duckdb::MaterializedQueryResult& result) {
+int64_t OdpSubscriptionRepository::RowsChanged(MaterializedRows& result) {
     if (result.RowCount() == 0 || result.ColumnCount() == 0) {
         return 0;
     }
@@ -897,7 +893,7 @@ std::chrono::system_clock::time_point OdpSubscriptionRepository::ValueToTimePoin
     return std::chrono::system_clock::time_point(std::chrono::microseconds(timestamp.value));
 }
 
-OdpSubscription OdpSubscriptionRepository::RowToSubscription(duckdb::MaterializedQueryResult& result,
+OdpSubscription OdpSubscriptionRepository::RowToSubscription(MaterializedRows& result,
                                                              duckdb::idx_t row) {
     const int32_t row_version = result.GetValue(COL_SCHEMA_VERSION, row).GetValue<int32_t>();
     if (row_version != SCHEMA_VERSION) {

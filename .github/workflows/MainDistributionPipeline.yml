@@ -58,6 +58,24 @@ jobs:
       ci_tools_version: v1.5-variegata
       vcpkg_commit: 84bab45d415d22042bd0b9081aea57f362da3f35
       exclude_archs: 'windows_amd64_rtools;windows_amd64_mingw;wasm_mvp;wasm_eh;wasm_threads;'
+      extra_extension_config: |
+        if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+          set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-gnu-unique")
+        endif()
+
+  duckdb-next-build:
+    name: Build extension binaries (v2.0 pre-release)
+    uses: duckdb/extension-ci-tools/.github/workflows/_extension_distribution.yml@v2.0-cyanoptera
+    with:
+      duckdb_version: b15358c371daf10dad799a43b6167f6ccdce84d8
+      extension_name: erpl_odata
+      ci_tools_version: v2.0-cyanoptera
+      vcpkg_commit: 84bab45d415d22042bd0b9081aea57f362da3f35
+      exclude_archs: 'windows_amd64_rtools;windows_amd64_mingw;wasm_mvp;wasm_eh;wasm_threads;'
+      extra_extension_config: |
+        if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+          set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-gnu-unique")
+        endif()
 
   duckdb-v155-smoke-test:
     name: Smoke test (v1.5.6)
@@ -104,6 +122,10 @@ jobs:
       ci_tools_version: v1.4-andium
       vcpkg_commit: ce613c41372b23b1f51333815feb3edd87ef8a8b
       exclude_archs: 'windows_amd64;windows_amd64_rtools;windows_amd64_mingw;wasm_mvp;wasm_eh;wasm_threads;'
+      extra_extension_config: |
+        if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+          set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-gnu-unique")
+        endif()
 
   duckdb-v145-smoke-test:
     name: Smoke test (v1.4.5)

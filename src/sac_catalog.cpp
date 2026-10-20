@@ -1,4 +1,5 @@
 #include "sac_catalog.hpp"
+#include "duckdb_compat.hpp"
 #include "sac_secret_helper.hpp"
 #include "sac_catalog_bind_helper.hpp"
 #include "sac_client.hpp"
@@ -118,7 +119,7 @@ static void SacShowModelsScan(duckdb::ClientContext &context, duckdb::TableFunct
     }
 
     state.finished = (state.current_index >= bind_data.items.size());
-    output.SetCardinality(count);
+    duckdb_compat::SetChildCardinality(output, count);
 }
 
 // Bind function for sac_list_models
@@ -126,7 +127,7 @@ static duckdb::unique_ptr<duckdb::FunctionData> SacShowModelsBind(
     duckdb::ClientContext &context,
     duckdb::TableFunctionBindInput &input,
     duckdb::vector<duckdb::LogicalType> &return_types,
-    duckdb::vector<std::string> &names) {
+    duckdb_compat::BindNames &names) {
     PostHogTelemetry::Instance().RecordFunctionCall("sac_show_models");
 
     // Extract and resolve credentials
@@ -158,7 +159,7 @@ duckdb::TableFunctionSet CreateSacShowModelsFunction() {
     );
 
     // Add optional named parameter for secret name
-    func.named_parameters["secret"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
+    duckdb_compat::AddNamedParameter(func, "secret", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
 
     func.init_global = ScanRowCursorState::Init;
 
@@ -193,14 +194,14 @@ static void SacShowStoriesScan(duckdb::ClientContext &context, duckdb::TableFunc
     }
 
     state.finished = (state.current_index >= bind_data.items.size());
-    output.SetCardinality(count);
+    duckdb_compat::SetChildCardinality(output, count);
 }
 
 static duckdb::unique_ptr<duckdb::FunctionData> SacShowStoriesBind(
     duckdb::ClientContext &context,
     duckdb::TableFunctionBindInput &input,
     duckdb::vector<duckdb::LogicalType> &return_types,
-    duckdb::vector<std::string> &names) {
+    duckdb_compat::BindNames &names) {
     PostHogTelemetry::Instance().RecordFunctionCall("sac_show_stories");
 
     // Extract and resolve credentials
@@ -231,7 +232,7 @@ duckdb::TableFunctionSet CreateSacShowStoriesFunction() {
         SacShowStoriesBind
     );
 
-    func.named_parameters["secret"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
+    duckdb_compat::AddNamedParameter(func, "secret", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
 
     func.init_global = ScanRowCursorState::Init;
 
@@ -250,7 +251,7 @@ static void SacGetModelInfoScan(duckdb::ClientContext &context, duckdb::TableFun
     auto &bind_data = data_p.bind_data->Cast<SacGetModelInfoBindData>();
 
     if (!bind_data.item_found) {
-        output.SetCardinality(0);
+        duckdb_compat::SetChildCardinality(output, 0);
         state.finished = true;
         return;
     }
@@ -278,14 +279,14 @@ static void SacGetModelInfoScan(duckdb::ClientContext &context, duckdb::TableFun
     }
 
     state.finished = true;
-    output.SetCardinality(count);
+    duckdb_compat::SetChildCardinality(output, count);
 }
 
 static duckdb::unique_ptr<duckdb::FunctionData> SacGetModelInfoBind(
     duckdb::ClientContext &context,
     duckdb::TableFunctionBindInput &input,
     duckdb::vector<duckdb::LogicalType> &return_types,
-    duckdb::vector<std::string> &names) {
+    duckdb_compat::BindNames &names) {
     PostHogTelemetry::Instance().RecordFunctionCall("sac_describe_model");
 
     // Extract and validate parameters
@@ -325,7 +326,7 @@ duckdb::TableFunctionSet CreateSacGetModelInfoFunction() {
         SacGetModelInfoBind
     );
 
-    func.named_parameters["secret"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
+    duckdb_compat::AddNamedParameter(func, "secret", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
 
     func.init_global = ScanRowCursorState::Init;
 
@@ -344,7 +345,7 @@ static void SacGetStoryInfoScan(duckdb::ClientContext &context, duckdb::TableFun
     auto &bind_data = data_p.bind_data->Cast<SacGetStoryInfoBindData>();
 
     if (!bind_data.item_found) {
-        output.SetCardinality(0);
+        duckdb_compat::SetChildCardinality(output, 0);
         state.finished = true;
         return;
     }
@@ -365,14 +366,14 @@ static void SacGetStoryInfoScan(duckdb::ClientContext &context, duckdb::TableFun
     }
 
     state.finished = true;
-    output.SetCardinality(count);
+    duckdb_compat::SetChildCardinality(output, count);
 }
 
 static duckdb::unique_ptr<duckdb::FunctionData> SacGetStoryInfoBind(
     duckdb::ClientContext &context,
     duckdb::TableFunctionBindInput &input,
     duckdb::vector<duckdb::LogicalType> &return_types,
-    duckdb::vector<std::string> &names) {
+    duckdb_compat::BindNames &names) {
     PostHogTelemetry::Instance().RecordFunctionCall("sac_describe_story");
 
     // Extract and validate parameters
@@ -411,7 +412,7 @@ duckdb::TableFunctionSet CreateSacGetStoryInfoFunction() {
         SacGetStoryInfoBind
     );
 
-    func.named_parameters["secret"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
+    duckdb_compat::AddNamedParameter(func, "secret", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
 
     func.init_global = ScanRowCursorState::Init;
 

@@ -18,7 +18,7 @@ include_directories(./include
 # On DuckDB v1.4.x, these functions are already fully implemented in libduckdb_static.a
 # using the generated loader; including our file would cause duplicate symbol errors.
 set(TEST_SOURCES "")
-if(EXISTS "${CMAKE_SOURCE_DIR}/src/include/duckdb/main/extension_callback_manager.hpp")
+if(DUCKDB_MAJOR_VERSION LESS 2 AND EXISTS "${CMAKE_SOURCE_DIR}/src/include/duckdb/main/extension_callback_manager.hpp")
     list(APPEND TEST_SOURCES erpl_odata_extension_loader.cpp)
 endif()
 
@@ -32,6 +32,9 @@ file(GLOB ERPL_ODATA_TEST_FILES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/t
 
 # The harness support file is not a test_*.cpp, so it is named explicitly.
 list(APPEND TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/odata_test_server.cpp)
+# The test executable supplies a test-only GraphClient object; the shipped static
+# and loadable extension targets compile graph_client.cpp without this define.
+list(APPEND TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/../../src/graph_client.cpp)
 
 if(NOT ERPL_ODATA_TEST_FILES)
     message(FATAL_ERROR "No test_*.cpp files found in ${CMAKE_CURRENT_SOURCE_DIR} - the test glob is broken")
@@ -40,11 +43,26 @@ endif()
 list(APPEND TEST_SOURCES ${ERPL_ODATA_TEST_FILES})
 
 add_executable(erpl_odata_tests ${TEST_SOURCES})
+if(ERPL_AUDIT_DEPRECATIONS AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(erpl_odata_tests PRIVATE -Wdeprecated-declarations)
+endif()
+add_dependencies(erpl_odata_tests ${LOADABLE_EXTENSION_NAME})
+if(DUCKDB_MAJOR_VERSION GREATER_EQUAL 2)
+    target_link_libraries(erpl_odata_tests duckdb_loadable_extensions)
+    set_source_files_properties(test_main.cpp PROPERTIES COMPILE_DEFINITIONS ODATA_TEST_HAS_LOADABLE_LIBRARY=1)
+endif()
+target_compile_definitions(erpl_odata_tests PRIVATE ODATA_TEST_STATIC_ERPL=1)
+target_compile_definitions(erpl_odata_tests PRIVATE ERPL_ODATA_TEST_SEAMS=1)
+if(EXISTS "${CMAKE_SOURCE_DIR}/src/include/duckdb/planner/filter/bloom_filter.hpp")
+    target_compile_definitions(erpl_odata_tests PRIVATE ERPL_TEST_BLOOM_FILTER=1)
+endif()
+if(DUCKDB_MAJOR_VERSION LESS 2 AND EXISTS "${CMAKE_SOURCE_DIR}/src/include/duckdb/main/extension_callback_manager.hpp")
+    target_compile_definitions(erpl_odata_tests PRIVATE ERPL_TEST_HAS_LOADED_EXTENSION_TEST_PATHS=1)
+endif()
 if(EXISTS "${CMAKE_SOURCE_DIR}/src/include/duckdb/main/extension_callback_manager.hpp")
     # DuckDB v1.5+: link extension libraries explicitly (custom loader calls their Load fns)
     target_link_libraries(erpl_odata_tests
                           ${EXTENSION_NAME}
-                          test_helpers
                           core_functions_extension
                           json_extension
                           parquet_extension
@@ -54,7 +72,6 @@ else()
     # DuckDB v1.4.x: generated loader handles extensions; no explicit extension libs needed
     target_link_libraries(erpl_odata_tests
                           ${EXTENSION_NAME}
-                          test_helpers
                           OpenSSL::SSL OpenSSL::Crypto
                           tinyxml2::tinyxml2)
 endif()

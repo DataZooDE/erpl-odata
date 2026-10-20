@@ -1,6 +1,7 @@
 #pragma once
 
 #include "duckdb.hpp"
+#include "duckdb_compat.hpp"
 #include "duckdb/main/extension/extension_loader.hpp"
 
 namespace erpl_web {
@@ -15,7 +16,7 @@ private:
         duckdb::ClientContext &context,
         duckdb::TableFunctionBindInput &input,
         duckdb::vector<duckdb::LogicalType> &return_types,
-        duckdb::vector<std::string> &names);
+        duckdb_compat::BindNames &names);
     static void CalendarsScan(
         duckdb::ClientContext &context,
         duckdb::TableFunctionInput &data,
@@ -26,7 +27,7 @@ private:
         duckdb::ClientContext &context,
         duckdb::TableFunctionBindInput &input,
         duckdb::vector<duckdb::LogicalType> &return_types,
-        duckdb::vector<std::string> &names);
+        duckdb_compat::BindNames &names);
     static void CalendarEventsScan(
         duckdb::ClientContext &context,
         duckdb::TableFunctionInput &data,
@@ -37,7 +38,7 @@ private:
         duckdb::ClientContext &context,
         duckdb::TableFunctionBindInput &input,
         duckdb::vector<duckdb::LogicalType> &return_types,
-        duckdb::vector<std::string> &names);
+        duckdb_compat::BindNames &names);
     static void ContactsScan(
         duckdb::ClientContext &context,
         duckdb::TableFunctionInput &data,
@@ -48,7 +49,7 @@ private:
         duckdb::ClientContext &context,
         duckdb::TableFunctionBindInput &input,
         duckdb::vector<duckdb::LogicalType> &return_types,
-        duckdb::vector<std::string> &names);
+        duckdb_compat::BindNames &names);
     static void MailFoldersScan(
         duckdb::ClientContext &context,
         duckdb::TableFunctionInput &data,
@@ -59,7 +60,7 @@ private:
         duckdb::ClientContext &context,
         duckdb::TableFunctionBindInput &input,
         duckdb::vector<duckdb::LogicalType> &return_types,
-        duckdb::vector<std::string> &names);
+        duckdb_compat::BindNames &names);
     static void MessagesScan(
         duckdb::ClientContext &context,
         duckdb::TableFunctionInput &data,

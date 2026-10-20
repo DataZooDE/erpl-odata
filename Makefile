@@ -160,11 +160,24 @@ test_oauth2:
 	@test -x ${OAUTH2_BUILD_DIR}/test/datazoo_oauth2_unit_tests || 		(echo "ERROR: datazoo_oauth2_unit_tests was not built. Catch2 3 was probably not found, which is exactly the silent skip this target exists to prevent."; exit 1)
 	${OAUTH2_BUILD_DIR}/test/datazoo_oauth2_unit_tests
 
-# Run C++ unit tests. ASAN_OPTIONS=detect_odr_violation=0 suppresses a false-positive ODR
-# warning that arises from DuckDB being compiled into both the static test binary and
-# libduckdb.so. The duplicate symbol (LOOKUP_TABLE in nested_to_varchar_cast.cpp) is
-# benign—both copies are identical—but ASAN fires anyway due to debug linking strategy.
+# Run the statically linked C++ harness with an isolated writable HOME. DuckDB
+# 1.x needs httpfs installed there for a few tests; the target does that once.
+# ASAN_OPTIONS avoids a duplicate-symbol report from DuckDB's static test link.
+TEST_CPP_BUILD_DIR ?= build/release
+TEST_CPP_CONFIG ?= Release
+AUDIT_TMPDIR ?= ${PROJ_DIR}tmp/audit_deprecations
+.PHONY: audit_deprecations
+audit_deprecations:
+	mkdir -p '${AUDIT_TMPDIR}'
+	cmake -S duckdb -B build/debug -DERPL_AUDIT_DEPRECATIONS=ON
+	TMPDIR='${AUDIT_TMPDIR}' $(MAKE) debug
+
 test_cpp: ${EXTENSION_CONFIG_STEP}
-	cmake --build build/debug --config Debug --parallel --target erpl_odata_tests
-	ASAN_OPTIONS=detect_odr_violation=0 ./build/debug/extension/erpl_odata/test/cpp/erpl_odata_tests
+	cmake --build ${TEST_CPP_BUILD_DIR} --config ${TEST_CPP_CONFIG} --parallel 8 --target erpl_odata_tests
+	mkdir -p '${PROJ_DIR}${TEST_CPP_BUILD_DIR}/test_home'
+	@if [ ! -f '${PROJ_DIR}duckdb/src/include/duckdb/common/types/size.hpp' ]; then \
+		cmake --build ${TEST_CPP_BUILD_DIR} --config ${TEST_CPP_CONFIG} --parallel 8 --target shell && \
+		HOME='${PROJ_DIR}${TEST_CPP_BUILD_DIR}/test_home' ./${TEST_CPP_BUILD_DIR}/duckdb -c "INSTALL httpfs"; \
+	fi
+	HOME='${PROJ_DIR}${TEST_CPP_BUILD_DIR}/test_home' ASAN_OPTIONS=detect_odr_violation=0 ./${TEST_CPP_BUILD_DIR}/extension/erpl_odata/test/cpp/erpl_odata_tests
 

@@ -1,4 +1,7 @@
 #include "graph_client.hpp"
+#ifdef ERPL_ODATA_TEST_SEAMS
+#include <mutex>
+#endif
 #include "odata_url_helpers.hpp"
 #include "duckdb/common/exception.hpp"
 #include "tracing.hpp"
@@ -6,6 +9,7 @@
 #include <cstdlib>
 #include <iomanip>
 #include <sstream>
+#include <stdexcept>
 #include <utility>
 
 using namespace duckdb_yyjson;
@@ -41,8 +45,37 @@ GraphClient::GraphClient(std::shared_ptr<HttpAuthParams> auth_params, std::strin
       trace_component(std::move(trace_component)) {
 }
 
+namespace {
+#ifdef ERPL_ODATA_TEST_SEAMS
+std::mutex graph_base_url_mutex;
+std::string graph_loopback_base_url;
+#endif
+}
+
+#ifdef ERPL_ODATA_TEST_SEAMS
+void GraphClient::SetLoopbackBaseUrlForTest(const std::string &url) {
+    if (!url.empty()) {
+        const HttpUrl parsed(url);
+        const auto port = parsed.Port();
+        if (parsed.Scheme() != "http" || parsed.Host() != "127.0.0.1" || port.empty() ||
+            parsed.Path() != "/v1.0" || !parsed.Username().empty() || !parsed.Password().empty() ||
+            !parsed.Query().empty() || !parsed.Fragment().empty() || !parsed.IsWireSafeTarget() ||
+            std::stoul(port) == 0 || std::stoul(port) > 65535) {
+            throw std::invalid_argument("Graph test base URL must be a 127.0.0.1 HTTP endpoint with a port");
+        }
+    }
+    std::lock_guard<std::mutex> guard(graph_base_url_mutex);
+    graph_loopback_base_url = url;
+}
+#endif
+
 std::string GraphClient::BaseUrl() {
+#ifdef ERPL_ODATA_TEST_SEAMS
+    std::lock_guard<std::mutex> guard(graph_base_url_mutex);
+    return graph_loopback_base_url.empty() ? "https://graph.microsoft.com/v1.0" : graph_loopback_base_url;
+#else
     return "https://graph.microsoft.com/v1.0";
+#endif
 }
 
 std::string GraphClient::UrlEncode(const std::string &value, bool preserve_slashes) {

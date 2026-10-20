@@ -132,6 +132,14 @@ public:
     static std::string TruncateForAudit(const std::string& message);
 
 private:
+    struct MaterializedRows {
+        explicit MaterializedRows(std::vector<std::vector<duckdb::Value>> rows_p)
+            : rows(std::move(rows_p)) {}
+        duckdb::idx_t RowCount() const { return rows.size(); }
+        duckdb::idx_t ColumnCount() const { return rows.empty() ? 0 : rows.front().size(); }
+        duckdb::Value GetValue(duckdb::idx_t col, duckdb::idx_t row) const { return rows.at(row).at(col); }
+        std::vector<std::vector<duckdb::Value>> rows;
+    };
     duckdb::ClientContext& context;
     std::string state_catalog;
     std::string qualified_schema; // "catalog"."erpl_web"
@@ -150,12 +158,12 @@ private:
 
     // Executes a statement with bound parameters. Throws on any failure; the
     // SQL text is a fixed template so it carries no caller data.
-    duckdb::unique_ptr<duckdb::MaterializedQueryResult> Execute(const std::string& sql,
+    duckdb::unique_ptr<MaterializedRows> Execute(const std::string& sql,
                                                                 duckdb::vector<duckdb::Value> params);
-    static int64_t RowsChanged(duckdb::MaterializedQueryResult& result);
+    static int64_t RowsChanged(MaterializedRows& result);
     static duckdb::Value TimePointToValue(const std::chrono::system_clock::time_point& tp);
     static std::chrono::system_clock::time_point ValueToTimePoint(const duckdb::Value& value);
-    static OdpSubscription RowToSubscription(duckdb::MaterializedQueryResult& result, duckdb::idx_t row);
+    static OdpSubscription RowToSubscription(MaterializedRows& result, duckdb::idx_t row);
 };
 
 } // namespace erpl_web

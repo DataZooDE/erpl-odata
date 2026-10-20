@@ -23,6 +23,8 @@
 // `companies` the bind fails before the scan can be reached at all.
 
 #include "catch.hpp"
+#include "test_extension_load_sql.hpp"
+#include "duckdb_compat.hpp"
 #include "duckdb.hpp"
 
 #include "odata_test_server.hpp"
@@ -78,9 +80,10 @@ std::string FarFutureEpoch()
     return std::to_string(static_cast<long long>(std::time(nullptr)) + 86400);
 }
 
-int64_t ScalarOf(duckdb::unique_ptr<duckdb::MaterializedQueryResult> &result)
+template <class RESULT>
+int64_t ScalarOf(RESULT &result)
 {
-    return result->GetValue(0, 0).GetValue<int64_t>();
+    return duckdb_compat::ResultValue(*result, 0, 0).template GetValue<int64_t>();
 }
 
 }  // namespace
@@ -92,7 +95,7 @@ TEST_CASE("a bound crm_read plan returns every row on each execution", "[ms_reex
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     auto secret = con.Query(
         "CREATE SECRET crm (TYPE dataverse, PROVIDER config, "
@@ -139,7 +142,7 @@ TEST_CASE("a bound bc_read plan returns every row on each execution", "[ms_reexe
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     auto secret = con.Query(
         "CREATE SECRET bc (TYPE business_central, PROVIDER config, "
@@ -367,7 +370,7 @@ TEST_CASE("a bound bc_show_companies plan returns every row on each execution",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     auto secret = con.Query(
         "CREATE SECRET bccat (TYPE business_central, PROVIDER config, "
@@ -401,7 +404,7 @@ TEST_CASE("a bound bc_describe plan returns every row on each execution",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     auto secret = con.Query(
         "CREATE SECRET bcdesc (TYPE business_central, PROVIDER config, "
@@ -445,7 +448,7 @@ TEST_CASE("the remaining catalog functions return every row on each execution",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     auto secret = con.Query(
         "CREATE SECRET bcrest (TYPE business_central, PROVIDER config, "
@@ -503,7 +506,7 @@ TEST_CASE("wiring conversion reporting into the bc_read scan does not break the 
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     auto secret = con.Query(
         "CREATE SECRET bcconv (TYPE business_central, PROVIDER config, "
@@ -551,7 +554,7 @@ TEST_CASE("a bound crm_show_entities plan returns every row on each execution",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     auto secret = con.Query(
         "CREATE SECRET crmcat (TYPE dataverse, PROVIDER config, "

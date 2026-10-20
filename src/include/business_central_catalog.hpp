@@ -1,6 +1,7 @@
 #pragma once
 
 #include "duckdb.hpp"
+#include "duckdb_compat.hpp"
 #include "duckdb/catalog/catalog.hpp"
 #include "duckdb/catalog/catalog_entry/schema_catalog_entry.hpp"
 #include "duckdb/catalog/catalog_entry/table_catalog_entry.hpp"
@@ -110,7 +111,7 @@ public:
     duckdb::string GetDBPath() override;
     bool InMemory() override;
     bool SupportsTimeTravel() const override;
-    duckdb::string GetDefaultSchema() const override;
+    duckdb_compat::DefaultSchemaName GetDefaultSchema() const override;
     duckdb::DatabaseSize GetDatabaseSize(duckdb::ClientContext &context) override;
     duckdb::vector<duckdb::MetadataBlockInfo> GetMetadataInfo(duckdb::ClientContext &context) override;
 

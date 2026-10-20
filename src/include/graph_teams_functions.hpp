@@ -1,6 +1,7 @@
 #pragma once
 
 #include "duckdb.hpp"
+#include "duckdb_compat.hpp"
 #include "duckdb/main/extension/extension_loader.hpp"
 
 namespace erpl_web {
@@ -16,7 +17,7 @@ private:
         duckdb::ClientContext &context,
         duckdb::TableFunctionBindInput &input,
         duckdb::vector<duckdb::LogicalType> &return_types,
-        duckdb::vector<std::string> &names);
+        duckdb_compat::BindNames &names);
 
     static void MyTeamsScan(
         duckdb::ClientContext &context,
@@ -28,7 +29,7 @@ private:
         duckdb::ClientContext &context,
         duckdb::TableFunctionBindInput &input,
         duckdb::vector<duckdb::LogicalType> &return_types,
-        duckdb::vector<std::string> &names);
+        duckdb_compat::BindNames &names);
 
     static void TeamChannelsScan(
         duckdb::ClientContext &context,
@@ -40,7 +41,7 @@ private:
         duckdb::ClientContext &context,
         duckdb::TableFunctionBindInput &input,
         duckdb::vector<duckdb::LogicalType> &return_types,
-        duckdb::vector<std::string> &names);
+        duckdb_compat::BindNames &names);
 
     static void TeamMembersScan(
         duckdb::ClientContext &context,
@@ -52,7 +53,7 @@ private:
         duckdb::ClientContext &context,
         duckdb::TableFunctionBindInput &input,
         duckdb::vector<duckdb::LogicalType> &return_types,
-        duckdb::vector<std::string> &names);
+        duckdb_compat::BindNames &names);
 
     static void ChannelMessagesScan(
         duckdb::ClientContext &context,
