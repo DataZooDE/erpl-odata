@@ -68,6 +68,7 @@ If `build/debug` was configured under a different checkout path (the repo was re
 | `make dev` | Normal iterative development — fastest, skips unnecessary reconfigure |
 | `make debug` | First-time setup or after adding a new vcpkg dependency |
 | `GEN=ninja make debug` | Force full reconfigure with Ninja (e.g. CI-like clean build) |
+| `make audit_deprecations` | Rebuild debug with visible DuckDB deprecation warnings; uses workspace TMPDIR |
 
 ### Standard Build Commands
 
@@ -84,7 +85,7 @@ make release    # Full reconfigure + release build
 **Full test suites:**
 - `make test_debug` - Run all SQL tests (SQLLogicTests)
 - `make test` - Run all tests (release mode)
-- `make test_cpp` - Run C++ unit tests (**always use this**, not the binary directly — see note below)
+- `make test_cpp` - Run C++ unit tests with a writable, isolated HOME under build/release/test_home. The binary loads the statically linked erpl_odata once.
 - `make test_debug_sap` - Run SAP-specific tests against the local A4H sandbox. The ODP
   cases need a **provisioned ODP service**, which a stock system does not have, so they
   are gated on `ERPL_SAP_ODP_SERVICE` / `ERPL_SAP_ODP_ENTITY_SET` and skip with a stated
@@ -129,11 +130,10 @@ make release    # Full reconfigure + release build
 - `ASAN_OPTIONS=detect_odr_violation=0 ./build/debug/extension/erpl_odata/test/cpp/erpl_odata_tests -l` - List all tests
 - `ASAN_OPTIONS=detect_odr_violation=0 ./build/debug/extension/erpl_odata/test/cpp/erpl_odata_tests TEST_NAME` - Run single test
 
-**Why `ASAN_OPTIONS=detect_odr_violation=0` is required for C++ tests:**
-The debug build statically links DuckDB into the test binary AND loads `libduckdb.so`, causing
-AddressSanitizer to report a false-positive ODR violation on `LOOKUP_TABLE` in
-`nested_to_varchar_cast.cpp`. Both copies are identical — this is a structural artefact of
-the debug linking strategy, not a real bug. The `make test_cpp` target sets this flag automatically.
+**C++ test linking:** `make test_cpp` uses the statically linked extension and a workspace
+HOME, with no ODATA_TEST_HOME override needed. The test target does not link test_helpers,
+which pulled a second `libduckdb.so` into the 1.4 binary and caused a teardown double free.
+`ASAN_OPTIONS=detect_odr_violation=0` remains in the target for sanitizer builds.
 
 **Why C++ tests must set `allocator_background_threads = true` in `DBConfig`:**
 Any test that creates a bare `DuckDB db(nullptr)` and runs queries will crash in DEBUG+jemalloc
@@ -304,26 +304,20 @@ The project structure consists of:
   - Pros: Single binary, no loader needed, easier to debug
   - Cons: Larger binary size
 
-- **Release builds** (`make release`): Extension is **dynamically loaded** (NOT statically linked)
-  - Binary: `./build/release/duckdb` (DuckDB shell)
-  - Extension: `./build/release/extension/erpl_odata/erpl_odata.duckdb_extension` (loadable module)
-  - Configured via `DONT_LINK` flag in `extension_config.cmake`
-  - Pros: Smaller binary, distributable extension artifact, standard for production
-  - Cons: Requires extension loading at runtime: `LOAD 'path/to/erpl_odata.duckdb_extension'`
-
-**See extension_config.cmake:**
-```cmake
-if(CMAKE_BUILD_TYPE STREQUAL "Release")
-    duckdb_extension_load(erpl_odata
-        SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}
-        LOAD_TESTS
-        DONT_LINK)              # <-- Release: loadable extension
-else()
-    duckdb_extension_load(erpl_odata
-        SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}
-        LOAD_TESTS)             # <-- Debug: statically linked
-endif()
-```
+- **Release builds** (`make release`): erpl_odata is statically linked into DuckDB's
+  `unittest` binary so the SQL suite runs `require erpl_odata` instead of skipping.
+  The same build also produces `build/release/extension/erpl_odata/erpl_odata.duckdb_extension`
+  for distribution; CI smoke tests that loadable artifact.
+- `extension_config.cmake` uses `duckdb_extension_load(... LOAD_TESTS)` on all supported
+  DuckDB lines. Do not restore `DONT_LINK`: DuckDB 2.0 removed it, and it skipped
+  every SQL test in earlier release CI runs.
+- `make test_cpp` uses `build/release/test_home` for HOME and the statically linked
+  erpl_odata. Do not point `ODATA_TEST_EXTENSION_PATH` at the same extension in
+  this binary; that creates two copies of extension state.
+- `make audit_deprecations` enables `ERPL_AUDIT_DEPRECATIONS` for both extension
+  targets and the C++ test target. Indexed `DataChunk::SetValue` calls are
+  intentional when they write below the chunk size; the producer must also
+  size child vectors with `duckdb_compat::SetChildCardinality`.
 
 ### Dependency Management with VCPKG
 
@@ -1097,7 +1091,7 @@ This project currently targets **DuckDB v1.4.5 and v1.5.6** (check `.github/work
 - **odata_transaction_manager.cpp/hpp** - Transaction handling for OData operations
 
 ### Configuration & Extension Loading
-- **extension_config.cmake** - Specifies extension loading, test loading, and linking behavior (DONT_LINK for release)
+- **extension_config.cmake** - Enables extension loading, SQL tests and static linking on every build line
 - **CMakeLists.txt** - C++ build configuration with OpenSSL, tinyxml2, cpptrace dependencies
 - External dependencies managed via VCPKG
 

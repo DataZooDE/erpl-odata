@@ -1,4 +1,5 @@
 #include "graph_excel_functions.hpp"
+#include "duckdb_compat.hpp"
 #include "graph_client.hpp"
 #include "graph_excel_client.hpp"
 #include "graph_sharepoint_client.hpp"
@@ -163,15 +164,15 @@ static duckdb::Value ExtractCellValue(yyjson_val *cell_val, yyjson_val *cell_typ
 static std::string ResolveGraphDriveId(ClientContext &context,
                                        const std::string &secret_name,
                                        const TableFunctionBindInput &input) {
-    const bool has_drive = input.named_parameters.find("drive") != input.named_parameters.end();
-    const bool has_site  = input.named_parameters.find("site")  != input.named_parameters.end();
+    const bool has_drive = duckdb_compat::FindNamedParameter(input.named_parameters, "drive") != nullptr;
+    const bool has_site  = duckdb_compat::FindNamedParameter(input.named_parameters, "site") != nullptr;
 
     if (!has_drive && !has_site) {
         return "";
     }
 
     if (has_drive) {
-        const std::string drive_param = input.named_parameters.at("drive").GetValue<std::string>();
+        const std::string drive_param = input.named_parameters.at(duckdb_compat::Ident("drive")).GetValue<std::string>();
 
         // Raw drive ID (b!...) — use directly, no API call needed
         if (GraphSharePointClient::LooksLikeDriveId(drive_param)) {
@@ -196,9 +197,9 @@ static std::string ResolveGraphDriveId(ClientContext &context,
     // Name-based or auto-select: resolve site first, then drive within it
     auto auth_info = ResolveGraphAuth(context, secret_name);
     GraphSharePointClient sp_client(auth_info.auth_params);
-    const std::string site_param  = input.named_parameters.at("site").GetValue<std::string>();
+    const std::string site_param  = input.named_parameters.at(duckdb_compat::Ident("site")).GetValue<std::string>();
     const std::string drive_param = has_drive
-        ? input.named_parameters.at("drive").GetValue<std::string>()
+        ? input.named_parameters.at(duckdb_compat::Ident("drive")).GetValue<std::string>()
         : "";
     const std::string site_id = sp_client.ResolveSiteId(site_param);
     return sp_client.ResolveDriveId(site_id, drive_param);
@@ -212,7 +213,7 @@ unique_ptr<FunctionData> GraphExcelFunctions::ListFilesBind(
     ClientContext &context,
     TableFunctionBindInput &input,
     vector<LogicalType> &return_types,
-    vector<std::string> &names) {
+    duckdb_compat::BindNames &names) {
 
     auto bind_data = make_uniq<ListFilesBindData>();
 
@@ -221,8 +222,8 @@ unique_ptr<FunctionData> GraphExcelFunctions::ListFilesBind(
         bind_data->folder_path = input.inputs[0].GetValue<std::string>();
     }
 
-    if (input.named_parameters.find("secret") != input.named_parameters.end()) {
-        bind_data->secret_name = input.named_parameters.at("secret").GetValue<std::string>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "secret") != nullptr) {
+        bind_data->secret_name = input.named_parameters.at(duckdb_compat::Ident("secret")).GetValue<std::string>();
     }
     bind_data->drive_id = ResolveGraphDriveId(context, bind_data->secret_name, input);
 
@@ -249,7 +250,7 @@ void GraphExcelFunctions::ListFilesScan(
 
     auto &bind_data = data.bind_data->CastNoConst<ListFilesBindData>();
     auto &state = data.global_state->Cast<GraphJsonArrayScanState>();
-    if (state.done) { output.SetCardinality(0); return; }
+    if (state.done) { duckdb_compat::SetChildCardinality(output, 0); return; }
 
     if (!state.parsed_doc) {
         if (state.json_response.empty()) {
@@ -259,7 +260,7 @@ void GraphExcelFunctions::ListFilesScan(
         }
         if (!state.InitIterator()) {
             state.done = true;
-            output.SetCardinality(0);
+            duckdb_compat::SetChildCardinality(output, 0);
             return;
         }
     }
@@ -280,7 +281,7 @@ void GraphExcelFunctions::ListFilesScan(
     }
 
     if (row < STANDARD_VECTOR_SIZE) { state.done = true; }
-    output.SetCardinality(row);
+    duckdb_compat::SetChildCardinality(output, row);
 }
 
 // ============================================================================
@@ -291,7 +292,7 @@ unique_ptr<FunctionData> GraphExcelFunctions::ExcelTablesBind(
     ClientContext &context,
     TableFunctionBindInput &input,
     vector<LogicalType> &return_types,
-    vector<std::string> &names) {
+    duckdb_compat::BindNames &names) {
 
     auto bind_data = make_uniq<ExcelTablesBindData>();
 
@@ -301,8 +302,8 @@ unique_ptr<FunctionData> GraphExcelFunctions::ExcelTablesBind(
     }
     bind_data->file_path = input.inputs[0].GetValue<std::string>();
 
-    if (input.named_parameters.find("secret") != input.named_parameters.end()) {
-        bind_data->secret_name = input.named_parameters.at("secret").GetValue<std::string>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "secret") != nullptr) {
+        bind_data->secret_name = input.named_parameters.at(duckdb_compat::Ident("secret")).GetValue<std::string>();
     }
     bind_data->drive_id = ResolveGraphDriveId(context, bind_data->secret_name, input);
 
@@ -325,7 +326,7 @@ void GraphExcelFunctions::ExcelTablesScan(
 
     auto &bind_data = data.bind_data->CastNoConst<ExcelTablesBindData>();
     auto &state = data.global_state->Cast<GraphJsonArrayScanState>();
-    if (state.done) { output.SetCardinality(0); return; }
+    if (state.done) { duckdb_compat::SetChildCardinality(output, 0); return; }
 
     if (!state.parsed_doc) {
         if (state.json_response.empty()) {
@@ -335,7 +336,7 @@ void GraphExcelFunctions::ExcelTablesScan(
         }
         if (!state.InitIterator()) {
             state.done = true;
-            output.SetCardinality(0);
+            duckdb_compat::SetChildCardinality(output, 0);
             return;
         }
     }
@@ -351,7 +352,7 @@ void GraphExcelFunctions::ExcelTablesScan(
     }
 
     if (row < STANDARD_VECTOR_SIZE) { state.done = true; }
-    output.SetCardinality(row);
+    duckdb_compat::SetChildCardinality(output, row);
 }
 
 // ============================================================================
@@ -362,7 +363,7 @@ unique_ptr<FunctionData> GraphExcelFunctions::ExcelWorksheetsBind(
     ClientContext &context,
     TableFunctionBindInput &input,
     vector<LogicalType> &return_types,
-    vector<std::string> &names) {
+    duckdb_compat::BindNames &names) {
 
     auto bind_data = make_uniq<ExcelWorksheetsBindData>();
 
@@ -372,8 +373,8 @@ unique_ptr<FunctionData> GraphExcelFunctions::ExcelWorksheetsBind(
     }
     bind_data->file_path = input.inputs[0].GetValue<std::string>();
 
-    if (input.named_parameters.find("secret") != input.named_parameters.end()) {
-        bind_data->secret_name = input.named_parameters.at("secret").GetValue<std::string>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "secret") != nullptr) {
+        bind_data->secret_name = input.named_parameters.at(duckdb_compat::Ident("secret")).GetValue<std::string>();
     }
     bind_data->drive_id = ResolveGraphDriveId(context, bind_data->secret_name, input);
 
@@ -396,7 +397,7 @@ void GraphExcelFunctions::ExcelWorksheetsScan(
 
     auto &bind_data = data.bind_data->CastNoConst<ExcelWorksheetsBindData>();
     auto &state = data.global_state->Cast<GraphJsonArrayScanState>();
-    if (state.done) { output.SetCardinality(0); return; }
+    if (state.done) { duckdb_compat::SetChildCardinality(output, 0); return; }
 
     if (!state.parsed_doc) {
         if (state.json_response.empty()) {
@@ -406,7 +407,7 @@ void GraphExcelFunctions::ExcelWorksheetsScan(
         }
         if (!state.InitIterator()) {
             state.done = true;
-            output.SetCardinality(0);
+            duckdb_compat::SetChildCardinality(output, 0);
             return;
         }
     }
@@ -422,7 +423,7 @@ void GraphExcelFunctions::ExcelWorksheetsScan(
     }
 
     if (row < STANDARD_VECTOR_SIZE) { state.done = true; }
-    output.SetCardinality(row);
+    duckdb_compat::SetChildCardinality(output, row);
 }
 
 // ============================================================================
@@ -433,7 +434,7 @@ unique_ptr<FunctionData> GraphExcelFunctions::ExcelRangeBind(
     ClientContext &context,
     TableFunctionBindInput &input,
     vector<LogicalType> &return_types,
-    vector<std::string> &names) {
+    duckdb_compat::BindNames &names) {
 
     auto bind_data = make_uniq<ExcelRangeBindData>();
 
@@ -449,8 +450,8 @@ unique_ptr<FunctionData> GraphExcelFunctions::ExcelRangeBind(
         bind_data->range = input.inputs[2].GetValue<std::string>();
     }
 
-    if (input.named_parameters.find("secret") != input.named_parameters.end()) {
-        bind_data->secret_name = input.named_parameters.at("secret").GetValue<std::string>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "secret") != nullptr) {
+        bind_data->secret_name = input.named_parameters.at(duckdb_compat::Ident("secret")).GetValue<std::string>();
     }
     bind_data->drive_id = ResolveGraphDriveId(context, bind_data->secret_name, input);
 
@@ -575,9 +576,9 @@ unique_ptr<FunctionData> GraphExcelFunctions::ExcelRangeBind(
 
     for (size_t i = 0; i < col_count; i++) {
         if (i < headers.size() && !headers[i].empty()) {
-            names.push_back(headers[i]);
+            names.emplace_back(headers[i]);
         } else {
-            names.push_back("column_" + std::to_string(i));
+            names.emplace_back("column_" + std::to_string(i));
         }
 
         LogicalType col_type = LogicalType::VARCHAR;
@@ -605,7 +606,7 @@ void GraphExcelFunctions::ExcelRangeScan(
     auto &state = data.global_state->Cast<ExcelRangeScanState>();
 
     if (state.done) {
-        output.SetCardinality(0);
+        duckdb_compat::SetChildCardinality(output, 0);
         return;
     }
 
@@ -625,7 +626,7 @@ void GraphExcelFunctions::ExcelRangeScan(
         if (!values_arr || !yyjson_is_arr(values_arr)) {
             yyjson_doc_free(doc);
             state.done = true;
-            output.SetCardinality(0);
+            duckdb_compat::SetChildCardinality(output, 0);
             return;
         }
 
@@ -681,7 +682,7 @@ void GraphExcelFunctions::ExcelRangeScan(
     const size_t data_rows = std::min(remaining, static_cast<size_t>(STANDARD_VECTOR_SIZE));
     const size_t col_count = output.ColumnCount();
 
-    output.SetCardinality(data_rows);
+    duckdb_compat::SetChildCardinality(output, data_rows);
     for (size_t row_idx = 0; row_idx < data_rows; row_idx++) {
         const auto &row = state.cached_rows[start + row_idx];
         for (size_t col = 0; col < col_count; col++) {
@@ -707,7 +708,7 @@ unique_ptr<FunctionData> GraphExcelFunctions::ExcelTableDataBind(
     ClientContext &context,
     TableFunctionBindInput &input,
     vector<LogicalType> &return_types,
-    vector<std::string> &names) {
+    duckdb_compat::BindNames &names) {
 
     auto bind_data = make_uniq<ExcelTableDataBindData>();
 
@@ -718,8 +719,8 @@ unique_ptr<FunctionData> GraphExcelFunctions::ExcelTableDataBind(
     bind_data->file_path = input.inputs[0].GetValue<std::string>();
     bind_data->table_name = input.inputs[1].GetValue<std::string>();
 
-    if (input.named_parameters.find("secret") != input.named_parameters.end()) {
-        bind_data->secret_name = input.named_parameters.at("secret").GetValue<std::string>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "secret") != nullptr) {
+        bind_data->secret_name = input.named_parameters.at(duckdb_compat::Ident("secret")).GetValue<std::string>();
     }
     bind_data->drive_id = ResolveGraphDriveId(context, bind_data->secret_name, input);
 
@@ -766,7 +767,7 @@ unique_ptr<FunctionData> GraphExcelFunctions::ExcelTableDataBind(
 
     // Generate column names (table rows don't include headers, so use generic names)
     for (size_t i = 0; i < col_count; i++) {
-        names.push_back("column_" + std::to_string(i));
+        names.emplace_back("column_" + std::to_string(i));
         return_types.push_back(LogicalType::VARCHAR);
     }
 
@@ -781,7 +782,7 @@ void GraphExcelFunctions::ExcelTableDataScan(
 
     auto &bind_data = data.bind_data->CastNoConst<ExcelTableDataBindData>();
     auto &state = data.global_state->Cast<GraphJsonArrayScanState>();
-    if (state.done) { output.SetCardinality(0); return; }
+    if (state.done) { duckdb_compat::SetChildCardinality(output, 0); return; }
 
     if (state.NeedsFetch()) {
         state.SeedFrom(bind_data.prefetched_json);
@@ -790,7 +791,7 @@ void GraphExcelFunctions::ExcelTableDataScan(
     if (!state.parsed_doc) {
         if (!state.InitIterator()) {
             state.done = true;
-            output.SetCardinality(0);
+            duckdb_compat::SetChildCardinality(output, 0);
             return;
         }
     }
@@ -806,7 +807,7 @@ void GraphExcelFunctions::ExcelTableDataScan(
 
         if (!inner_arr || !yyjson_is_arr(inner_arr)) {
             for (size_t col = 0; col < col_count; col++) {
-                duckdb::FlatVector::Validity(output.data[col]).SetInvalid(row_idx);
+                duckdb_compat::MutableValidity(output.data[col]).SetInvalid(row_idx);
             }
             row_idx++;
             continue;
@@ -823,7 +824,7 @@ void GraphExcelFunctions::ExcelTableDataScan(
     }
 
     if (row_idx < STANDARD_VECTOR_SIZE) { state.done = true; }
-    output.SetCardinality(row_idx);
+    duckdb_compat::SetChildCardinality(output, row_idx);
 }
 
 // ============================================================================
@@ -843,7 +844,7 @@ unique_ptr<FunctionData> GraphExcelFunctions::AddRowsBind(
     ClientContext &context,
     TableFunctionBindInput &input,
     vector<LogicalType> &return_types,
-    vector<std::string> &names) {
+    duckdb_compat::BindNames &names) {
 
     if (input.inputs.size() < 2) {
         throw BinderException("graph_excel_add_rows requires file_path and table_name parameters");
@@ -852,11 +853,11 @@ unique_ptr<FunctionData> GraphExcelFunctions::AddRowsBind(
     bind->file_path  = input.inputs[0].GetValue<std::string>();
     bind->table_name = input.inputs[1].GetValue<std::string>();
 
-    if (input.named_parameters.count("data")) {
-        bind->rows_json = input.named_parameters.at("data").GetValue<std::string>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "data") != nullptr) {
+        bind->rows_json = input.named_parameters.at(duckdb_compat::Ident("data")).GetValue<std::string>();
     }
-    if (input.named_parameters.count("secret")) {
-        bind->secret_name = input.named_parameters.at("secret").GetValue<std::string>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "secret") != nullptr) {
+        bind->secret_name = input.named_parameters.at(duckdb_compat::Ident("secret")).GetValue<std::string>();
     }
     bind->drive_id = ResolveGraphDriveId(context, bind->secret_name, input);
 
@@ -874,11 +875,11 @@ void GraphExcelFunctions::AddRowsScan(
     // deliberately and a second EXECUTE of a bound plan adds nothing further rather than
     // duplicating rows in the workbook. This is NOT the #202 read defect.
     auto &bind = data_p.bind_data->CastNoConst<AddRowsBindData>();
-    if (bind.done) { output.SetCardinality(0); return; }
+    if (bind.done) { duckdb_compat::SetChildCardinality(output, 0); return; }
     bind.done = true;
 
     if (bind.rows_json.empty()) {
-        output.SetCardinality(1);
+        duckdb_compat::SetChildCardinality(output, 1);
         output.SetValue(0, 0, Value::BIGINT(0));
         return;
     }
@@ -886,7 +887,7 @@ void GraphExcelFunctions::AddRowsScan(
     auto auth_info = ResolveGraphAuth(context, bind.secret_name);
     GraphExcelClient client(auth_info.auth_params);
     const idx_t n = client.AddTableRows(bind.file_path, bind.table_name, bind.rows_json, bind.drive_id);
-    output.SetCardinality(1);
+    duckdb_compat::SetChildCardinality(output, 1);
     output.SetValue(0, 0, Value::BIGINT(static_cast<int64_t>(n)));
 }
 
@@ -910,7 +911,7 @@ unique_ptr<FunctionData> GraphExcelFunctions::DeleteRowsBind(
     ClientContext &context,
     TableFunctionBindInput &input,
     vector<LogicalType> &return_types,
-    vector<std::string> &names) {
+    duckdb_compat::BindNames &names) {
 
     if (input.inputs.size() < 4) {
         throw BinderException("graph_excel_delete_rows requires file_path, table_name, col_index, col_value");
@@ -921,8 +922,8 @@ unique_ptr<FunctionData> GraphExcelFunctions::DeleteRowsBind(
     bind->col_index  = static_cast<idx_t>(input.inputs[2].GetValue<int64_t>());
     bind->col_value  = input.inputs[3].GetValue<std::string>();
 
-    if (input.named_parameters.count("secret")) {
-        bind->secret_name = input.named_parameters.at("secret").GetValue<std::string>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "secret") != nullptr) {
+        bind->secret_name = input.named_parameters.at(duckdb_compat::Ident("secret")).GetValue<std::string>();
     }
     bind->drive_id = ResolveGraphDriveId(context, bind->secret_name, input);
 
@@ -935,7 +936,7 @@ unique_ptr<FunctionData> GraphExcelFunctions::DeleteRowsByNameBind(
     ClientContext &context,
     TableFunctionBindInput &input,
     vector<LogicalType> &return_types,
-    vector<std::string> &names) {
+    duckdb_compat::BindNames &names) {
 
     if (input.inputs.size() < 4) {
         throw BinderException("graph_excel_delete_rows requires file_path, table_name, column, col_value");
@@ -947,8 +948,8 @@ unique_ptr<FunctionData> GraphExcelFunctions::DeleteRowsByNameBind(
     bind->col_name   = input.inputs[2].GetValue<std::string>();
     bind->col_value  = input.inputs[3].GetValue<std::string>();
 
-    if (input.named_parameters.count("secret")) {
-        bind->secret_name = input.named_parameters.at("secret").GetValue<std::string>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "secret") != nullptr) {
+        bind->secret_name = input.named_parameters.at(duckdb_compat::Ident("secret")).GetValue<std::string>();
     }
     bind->drive_id = ResolveGraphDriveId(context, bind->secret_name, input);
 
@@ -995,7 +996,7 @@ void GraphExcelFunctions::DeleteRowsScan(
     // One-shot by design - see the note in AddRowsScan. A second EXECUTE deletes nothing
     // further rather than deleting another row.
     auto &bind = data_p.bind_data->CastNoConst<DeleteRowsBindData>();
-    if (bind.done) { output.SetCardinality(0); return; }
+    if (bind.done) { duckdb_compat::SetChildCardinality(output, 0); return; }
     bind.done = true;
 
     auto auth_info = ResolveGraphAuth(context, bind.secret_name);
@@ -1011,7 +1012,7 @@ void GraphExcelFunctions::DeleteRowsScan(
 
     const idx_t n = client.DeleteTableRowsMatchingColumn(
         bind.file_path, bind.table_name, col_index, bind.col_value, bind.drive_id);
-    output.SetCardinality(1);
+    duckdb_compat::SetChildCardinality(output, 1);
     output.SetValue(0, 0, Value::BIGINT(static_cast<int64_t>(n)));
 }
 
@@ -1024,10 +1025,10 @@ void GraphExcelFunctions::Register(ExtensionLoader &loader) {
 
     {
         TableFunction list_files("graph_show_files", {}, DATAZOO_GUARD(ERPL_ODATA_BANNER, ListFilesScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, ListFilesBind));
-        list_files.varargs = LogicalType::VARCHAR;
-        list_files.named_parameters["secret"] = LogicalType::VARCHAR;
-        list_files.named_parameters["drive"] = LogicalType::VARCHAR;
-        list_files.named_parameters["site"] = LogicalType::VARCHAR;
+        duckdb_compat::SetVarArgs(list_files, LogicalType::VARCHAR);
+        duckdb_compat::AddNamedParameter(list_files, "secret", LogicalType::VARCHAR);
+        duckdb_compat::AddNamedParameter(list_files, "drive", LogicalType::VARCHAR);
+        duckdb_compat::AddNamedParameter(list_files, "site", LogicalType::VARCHAR);
         list_files.init_global = GraphJsonArrayScanState::Init;
         CreateTableFunctionInfo info(list_files);
         FunctionDescription desc;
@@ -1044,14 +1045,15 @@ void GraphExcelFunctions::Register(ExtensionLoader &loader) {
         };
         desc.categories = {"microsoft", "graph", "excel"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
         TableFunction excel_tables("graph_excel_tables", {LogicalType::VARCHAR},
                                    DATAZOO_GUARD(ERPL_ODATA_BANNER, ExcelTablesScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, ExcelTablesBind));
-        excel_tables.named_parameters["secret"] = LogicalType::VARCHAR;
-        excel_tables.named_parameters["drive"] = LogicalType::VARCHAR;
-        excel_tables.named_parameters["site"] = LogicalType::VARCHAR;
+        duckdb_compat::AddNamedParameter(excel_tables, "secret", LogicalType::VARCHAR);
+        duckdb_compat::AddNamedParameter(excel_tables, "drive", LogicalType::VARCHAR);
+        duckdb_compat::AddNamedParameter(excel_tables, "site", LogicalType::VARCHAR);
         excel_tables.init_global = GraphJsonArrayScanState::Init;
         CreateTableFunctionInfo info(excel_tables);
         FunctionDescription desc;
@@ -1068,14 +1070,15 @@ void GraphExcelFunctions::Register(ExtensionLoader &loader) {
         };
         desc.categories = {"microsoft", "graph", "excel"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
         TableFunction excel_worksheets("graph_excel_worksheets", {LogicalType::VARCHAR},
                                        DATAZOO_GUARD(ERPL_ODATA_BANNER, ExcelWorksheetsScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, ExcelWorksheetsBind));
-        excel_worksheets.named_parameters["secret"] = LogicalType::VARCHAR;
-        excel_worksheets.named_parameters["drive"] = LogicalType::VARCHAR;
-        excel_worksheets.named_parameters["site"] = LogicalType::VARCHAR;
+        duckdb_compat::AddNamedParameter(excel_worksheets, "secret", LogicalType::VARCHAR);
+        duckdb_compat::AddNamedParameter(excel_worksheets, "drive", LogicalType::VARCHAR);
+        duckdb_compat::AddNamedParameter(excel_worksheets, "site", LogicalType::VARCHAR);
         excel_worksheets.init_global = GraphJsonArrayScanState::Init;
         CreateTableFunctionInfo info(excel_worksheets);
         FunctionDescription desc;
@@ -1092,16 +1095,17 @@ void GraphExcelFunctions::Register(ExtensionLoader &loader) {
         };
         desc.categories = {"microsoft", "graph", "excel"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
         TableFunction excel_range("graph_excel_range",
                                   {LogicalType::VARCHAR, LogicalType::VARCHAR},
                                   DATAZOO_GUARD(ERPL_ODATA_BANNER, ExcelRangeScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, ExcelRangeBind));
-        excel_range.varargs = LogicalType::VARCHAR;
-        excel_range.named_parameters["secret"] = LogicalType::VARCHAR;
-        excel_range.named_parameters["drive"] = LogicalType::VARCHAR;
-        excel_range.named_parameters["site"] = LogicalType::VARCHAR;
+        duckdb_compat::SetVarArgs(excel_range, LogicalType::VARCHAR);
+        duckdb_compat::AddNamedParameter(excel_range, "secret", LogicalType::VARCHAR);
+        duckdb_compat::AddNamedParameter(excel_range, "drive", LogicalType::VARCHAR);
+        duckdb_compat::AddNamedParameter(excel_range, "site", LogicalType::VARCHAR);
         excel_range.init_global = ExcelRangeScanState::Init;
         CreateTableFunctionInfo info(excel_range);
         FunctionDescription desc;
@@ -1123,15 +1127,16 @@ void GraphExcelFunctions::Register(ExtensionLoader &loader) {
         };
         desc.categories = {"microsoft", "graph", "excel"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
         TableFunction excel_table_data("graph_excel_read",
                                        {LogicalType::VARCHAR, LogicalType::VARCHAR},
                                        DATAZOO_GUARD(ERPL_ODATA_BANNER, ExcelTableDataScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, ExcelTableDataBind));
-        excel_table_data.named_parameters["secret"] = LogicalType::VARCHAR;
-        excel_table_data.named_parameters["drive"] = LogicalType::VARCHAR;
-        excel_table_data.named_parameters["site"] = LogicalType::VARCHAR;
+        duckdb_compat::AddNamedParameter(excel_table_data, "secret", LogicalType::VARCHAR);
+        duckdb_compat::AddNamedParameter(excel_table_data, "drive", LogicalType::VARCHAR);
+        duckdb_compat::AddNamedParameter(excel_table_data, "site", LogicalType::VARCHAR);
         excel_table_data.init_global = GraphJsonArrayScanState::Init;
         CreateTableFunctionInfo info(excel_table_data);
         FunctionDescription desc;
@@ -1152,6 +1157,7 @@ void GraphExcelFunctions::Register(ExtensionLoader &loader) {
         };
         desc.categories = {"microsoft", "graph", "excel"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
 
@@ -1161,9 +1167,9 @@ void GraphExcelFunctions::Register(ExtensionLoader &loader) {
                                {LogicalType::VARCHAR, LogicalType::VARCHAR},
                                GraphExcelFunctions::AddRowsScan,
                                GraphExcelFunctions::AddRowsBind);
-        add_rows.named_parameters["data"]   = LogicalType::VARCHAR;
-        add_rows.named_parameters["drive"]  = LogicalType::VARCHAR;
-        add_rows.named_parameters["secret"] = LogicalType::VARCHAR;
+        duckdb_compat::AddNamedParameter(add_rows, "data", LogicalType::VARCHAR);
+        duckdb_compat::AddNamedParameter(add_rows, "drive", LogicalType::VARCHAR);
+        duckdb_compat::AddNamedParameter(add_rows, "secret", LogicalType::VARCHAR);
 
         CreateTableFunctionInfo info(add_rows);
         FunctionDescription desc;
@@ -1184,6 +1190,7 @@ void GraphExcelFunctions::Register(ExtensionLoader &loader) {
         };
         desc.categories = {"microsoft", "graph", "excel"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
 
@@ -1192,9 +1199,9 @@ void GraphExcelFunctions::Register(ExtensionLoader &loader) {
     // which is resolved against the table header at scan time.
     {
         const auto add_named_params = [](TableFunction &fn) {
-            fn.named_parameters["drive"]  = LogicalType::VARCHAR;
-            fn.named_parameters["secret"] = LogicalType::VARCHAR;
-            fn.named_parameters["site"]   = LogicalType::VARCHAR;
+            duckdb_compat::AddNamedParameter(fn, "drive", LogicalType::VARCHAR);
+            duckdb_compat::AddNamedParameter(fn, "secret", LogicalType::VARCHAR);
+            duckdb_compat::AddNamedParameter(fn, "site", LogicalType::VARCHAR);
         };
 
         TableFunctionSet del_rows_set("graph_excel_delete_rows");
@@ -1255,6 +1262,7 @@ void GraphExcelFunctions::Register(ExtensionLoader &loader) {
             desc.categories = {"microsoft", "graph", "excel"};
             info.descriptions.push_back(std::move(desc));
         }
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
 

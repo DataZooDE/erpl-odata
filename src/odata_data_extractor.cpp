@@ -1,4 +1,5 @@
 #include "odata_read_functions.hpp"
+#include "duckdb_compat.hpp"
 #include "odata_edm.hpp"
 #include "yyjson.hpp"
 
@@ -866,8 +867,8 @@ ODataDataExtractor::ParseJsonObject(duckdb_yyjson::yyjson_val *obj_val,
         std::unordered_map<std::string, size_t> child_index;
         for (size_t i = 0; i < struct_types.size(); ++i) {
             const auto &field_name = struct_types[i].first;
-            child_index.emplace(NormalizeJsonFieldName(field_name), i);
-            child_index.emplace(NormalizeJsonFieldName(field_name, true), i);
+            child_index.emplace(NormalizeJsonFieldName(duckdb_compat::Str(field_name)), i);
+            child_index.emplace(NormalizeJsonFieldName(duckdb_compat::Str(field_name), true), i);
         }
         
         // Iterate JSON object keys and assign where matching
@@ -895,8 +896,8 @@ ODataDataExtractor::ParseJsonObject(duckdb_yyjson::yyjson_val *obj_val,
                     // fields that are perfectly good, and the record still has to
                     // occupy its position so later rows are not re-indexed.
                     LogError("STRUCT_FIELD_RANGE",
-                             "Field '" + struct_types[pos].first + "': " + e.what());
-                    RecordConversionFailure(struct_types[pos].first,
+                             "Field '" + duckdb_compat::Str(struct_types[pos].first) + "': " + e.what());
+                    RecordConversionFailure(duckdb_compat::Str(struct_types[pos].first),
                                             JsonValueToString(json_val), e.what());
                     struct_values[pos] = duckdb::Value(field_type);
                 }

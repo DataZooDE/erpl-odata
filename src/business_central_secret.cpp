@@ -1,4 +1,5 @@
 #include "business_central_secret.hpp"
+#include "duckdb_compat.hpp"
 #include "tracing.hpp"
 #include "duckdb/common/exception.hpp"
 
@@ -11,27 +12,27 @@ void CreateBusinessCentralSecretFunctions::Register(duckdb::ExtensionLoader &loa
 
     // Register the secret type
     duckdb::SecretType secret_type;
-    secret_type.name = type;
+    secret_type.name = duckdb_compat::Ident(type);
     secret_type.deserializer = duckdb::KeyValueSecret::Deserialize<duckdb::KeyValueSecret>;
     secret_type.default_provider = "client_credentials";
 
     // Register the client_credentials provider
     duckdb::CreateSecretFunction client_creds_function = {type, "client_credentials", CreateFromClientCredentials, {}};
-    client_creds_function.named_parameters["tenant_id"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
-    client_creds_function.named_parameters["client_id"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
-    client_creds_function.named_parameters["client_secret"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
-    client_creds_function.named_parameters["environment"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
+    duckdb_compat::AddNamedParameter(client_creds_function, "tenant_id", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
+    duckdb_compat::AddNamedParameter(client_creds_function, "client_id", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
+    duckdb_compat::AddNamedParameter(client_creds_function, "client_secret", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
+    duckdb_compat::AddNamedParameter(client_creds_function, "environment", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
     RegisterCommonSecretParameters(client_creds_function);
 
     // Register the config provider
     duckdb::CreateSecretFunction config_function = {type, "config", CreateFromConfig, {}};
-    config_function.named_parameters["tenant_id"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
-    config_function.named_parameters["client_id"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
-    config_function.named_parameters["client_secret"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
-    config_function.named_parameters["environment"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
-    config_function.named_parameters["access_token"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
-    config_function.named_parameters["refresh_token"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
-    config_function.named_parameters["expires_at"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
+    duckdb_compat::AddNamedParameter(config_function, "tenant_id", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
+    duckdb_compat::AddNamedParameter(config_function, "client_id", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
+    duckdb_compat::AddNamedParameter(config_function, "client_secret", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
+    duckdb_compat::AddNamedParameter(config_function, "environment", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
+    duckdb_compat::AddNamedParameter(config_function, "access_token", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
+    duckdb_compat::AddNamedParameter(config_function, "refresh_token", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
+    duckdb_compat::AddNamedParameter(config_function, "expires_at", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
     RegisterCommonSecretParameters(config_function);
 
     loader.RegisterSecretType(secret_type);
@@ -54,7 +55,7 @@ duckdb::unique_ptr<duckdb::BaseSecret> CreateBusinessCentralSecretFunctions::Cre
     auto copy_param = [&](const std::string &key) {
         auto val = input.options.find(key);
         if (val != input.options.end()) {
-            result->secret_map[key] = val->second;
+            result->secret_map[duckdb_compat::Ident(key)] = val->second;
             ERPL_TRACE_DEBUG("BC_SECRET", "Set parameter: " + key);
         }
     };
@@ -107,7 +108,7 @@ duckdb::unique_ptr<duckdb::BaseSecret> CreateBusinessCentralSecretFunctions::Cre
     auto copy_param = [&](const std::string &key) {
         auto val = input.options.find(key);
         if (val != input.options.end()) {
-            result->secret_map[key] = val->second;
+            result->secret_map[duckdb_compat::Ident(key)] = val->second;
         }
     };
 
@@ -130,7 +131,7 @@ duckdb::unique_ptr<duckdb::BaseSecret> CreateBusinessCentralSecretFunctions::Cre
 }
 
 void CreateBusinessCentralSecretFunctions::RegisterCommonSecretParameters(duckdb::CreateSecretFunction &function) {
-    function.named_parameters["name"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
+    duckdb_compat::AddNamedParameter(function, "name", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
 }
 
 void CreateBusinessCentralSecretFunctions::RedactCommonKeys(duckdb::KeyValueSecret &result) {

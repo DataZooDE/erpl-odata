@@ -1,4 +1,5 @@
 #include "catch.hpp"
+#include "duckdb_compat.hpp"
 #include "odp_subscription_repository.hpp"
 #include "odp_test_db.hpp"
 #include "duckdb.hpp"
@@ -311,7 +312,7 @@ TEST_CASE("OdpSubscriptionRepository - values containing SQL syntax round-trip",
             "SELECT count(*) FROM information_schema.tables "
             "WHERE table_schema = 'erpl_web' AND table_name = 'odp_subscriptions'");
         REQUIRE(!surviving->HasError());
-        REQUIRE(surviving->GetValue(0, 0).GetValue<int64_t>() == 1);
+        REQUIRE(duckdb_compat::ResultValue(*surviving, 0, 0).GetValue<int64_t>() == 1);
 
         auto found = repo.FindActiveSubscription("https://test.com/EntityOfInjection", malicious, "default");
         REQUIRE(found.has_value());
@@ -377,12 +378,12 @@ TEST_CASE("OdpSubscriptionRepository - state catalog resolution", "[odp_reposito
         auto rows = state_db.Conn().Query(
             "SELECT count(*) FROM \"" + home_catalog + "\".erpl_web.odp_subscriptions");
         REQUIRE(!rows->HasError());
-        REQUIRE(rows->GetValue(0, 0).GetValue<int64_t>() == 1);
+        REQUIRE(duckdb_compat::ResultValue(*rows, 0, 0).GetValue<int64_t>() == 1);
 
         auto stray = state_db.Conn().Query(
             "SELECT count(*) FROM duckdb_tables() WHERE database_name = 'elsewhere' AND schema_name = 'erpl_web'");
         REQUIRE(!stray->HasError());
-        REQUIRE(stray->GetValue(0, 0).GetValue<int64_t>() == 0);
+        REQUIRE(duckdb_compat::ResultValue(*stray, 0, 0).GetValue<int64_t>() == 0);
 
         state_db.Conn().Query("USE \"" + home_catalog + "\"");
         state_db.Conn().Query("DETACH elsewhere");
@@ -643,7 +644,7 @@ TEST_CASE("OdpSubscriptionRepository - a v1 state table migrates without losing 
             "AND table_name = 'odp_subscriptions' AND constraint_type = 'UNIQUE' "
             "AND list_contains(constraint_column_names, 'secret_name')");
         REQUIRE_FALSE(constraints->HasError());
-        REQUIRE(constraints->GetValue(0, 0).GetValue<int64_t>() > 0);
+        REQUIRE(duckdb_compat::ResultValue(*constraints, 0, 0).GetValue<int64_t>() > 0);
 
         // and the new key is actually enforced: same pair, second secret, both rows kept
         REQUIRE_NOTHROW(repo.CreateSubscription("https://sap.test/TEST_SRV/EntityOfA", "EntityOfA",
@@ -659,7 +660,7 @@ TEST_CASE("OdpSubscriptionRepository - a v1 state table migrates without losing 
             "SELECT count(*) FROM duckdb_tables() WHERE schema_name = 'erpl_web' "
             "AND table_name LIKE '%_v1_migrating'");
         REQUIRE_FALSE(leftovers->HasError());
-        REQUIRE(leftovers->GetValue(0, 0).GetValue<int64_t>() == 0);
+        REQUIRE(duckdb_compat::ResultValue(*leftovers, 0, 0).GetValue<int64_t>() == 0);
     }
 
     SECTION("migrating is idempotent - a second open leaves the table alone") {

@@ -1,7 +1,10 @@
 #include "business_central_storage.hpp"
+#include "duckdb_compat.hpp"
+#include "duckdb/main/attached_database.hpp"
 #include "business_central_catalog.hpp"
 #include "business_central_client.hpp"
 #include "business_central_secret.hpp"
+#include "storage_access_mode.hpp"
 #include "tracing.hpp"
 #include "duckdb/common/string_util.hpp"
 
@@ -27,7 +30,7 @@ duckdb::optional_ptr<duckdb::CatalogEntry> BcTransaction::GetCatalogEntry(const 
         return it->second.get();
     }
 
-    duckdb::CreateTableInfo info(bc_catalog_.GetMainSchema(), table_name);
+    duckdb::CreateTableInfo info(bc_catalog_.GetMainSchema(), duckdb_compat::Ident(table_name));
     bc_catalog_.GetTableInfo(table_name, info.columns, info.constraints);
     if (info.columns.empty()) {
         return nullptr;
@@ -89,9 +92,7 @@ static duckdb::unique_ptr<duckdb::Catalog> BcAttach(
     duckdb::AttachInfo &info,
     duckdb::AttachOptions &options)
 {
-    if (options.access_mode != duckdb::AccessMode::READ_ONLY) {
-        throw duckdb::BinderException("business_central storage is read-only");
-    }
+    EnforceReadOnlyAttachment(db, info, options, "business_central storage is read-only");
 
     // info.path is the secret name (e.g. 'bc_dev')
     std::string secret_name = info.path;
@@ -99,7 +100,7 @@ static duckdb::unique_ptr<duckdb::Catalog> BcAttach(
 
     for (auto &entry : info.options) {
         auto lower_key = duckdb::StringUtil::Lower(entry.first);
-        if (lower_key == "type" || lower_key == "read_only") {
+        if (lower_key == "type" || IsAccessModeOption(lower_key)) {
             // already handled by DuckDB
         } else if (lower_key == "company") {
             company_param = entry.second.ToString();

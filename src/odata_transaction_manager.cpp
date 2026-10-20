@@ -1,4 +1,5 @@
 #include "odata_transaction_manager.hpp"
+#include "duckdb_compat.hpp"
 
 namespace erpl_web {
 
@@ -28,7 +29,7 @@ optional_ptr<CatalogEntry> ODataTransaction::GetCatalogEntry(const string &entry
 		return entry->second.get();
 	}
 
-    duckdb::CreateTableInfo info(odata_catalog.GetMainSchema(), entry_name);
+    duckdb::CreateTableInfo info(odata_catalog.GetMainSchema(), duckdb_compat::Ident(entry_name));
     odata_catalog.GetTableInfo(entry_name, info.columns, info.constraints);
     D_ASSERT(!info.columns.empty());
 

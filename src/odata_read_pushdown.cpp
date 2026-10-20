@@ -1,4 +1,5 @@
 #include "duckdb/function/table_function.hpp"
+#include "duckdb_compat/filter.hpp"
 
 #include "datazoo/oauth2/http_client.hpp"
 #include "odata_edm.hpp"
@@ -96,15 +97,15 @@ void ODataReadBindData::AddFilters(
         "Service-root mode: ignoring filters for predicate pushdown");
     return;
   }
-    if (filters && !filters->filters.empty()) {
+    if (filters && duckdb_compat::FilterCount(*filters) != 0) {
         std::stringstream filters_str;
-    for (auto &[projected_column_idx, filter] : filters->filters) {
+    duckdb_compat::ForEachFilter(*filters, [&](duckdb::idx_t projected_column_idx, const duckdb::TableFilter &filter) {
       filters_str << "Column " << projected_column_idx << ": "
-                  << filter->DebugToString() << std::endl;
-    }
+                  << duckdb_compat::FilterToString(filter, "") << std::endl;
+    });
     ERPL_TRACE_DEBUG("ODATA_READ_BIND",
                      duckdb::StringUtil::Format("Adding %d filters: %s",
-                                                filters->filters.size(),
+                                                duckdb_compat::FilterCount(*filters),
                                                 filters_str.str().c_str()));
         
         PredicatePushdownHelper()->ConsumeFilters(filters);

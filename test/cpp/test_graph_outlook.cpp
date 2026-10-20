@@ -1,4 +1,5 @@
 #include "catch.hpp"
+#include "test_extension_load_sql.hpp"
 #include "graph_outlook_client.hpp"
 #include "duckdb.hpp"
 
@@ -117,7 +118,7 @@ TEST_CASE("Graph Outlook functions are registered in DuckDB", "[graph_outlook][d
     DuckDB db(nullptr, &config);
     Connection con(db);
 
-    con.Query("LOAD erpl_odata");
+    con.Query(ErplOdataLoadSql());
 
     SECTION("graph_calendars") {
         auto result = con.Query("SELECT function_name FROM duckdb_functions() WHERE function_name = 'graph_calendars'");
@@ -147,7 +148,7 @@ TEST_CASE("graph_calendar_events: start_date without end_date is an error", "[gr
     DuckDB db(nullptr, &config);
     Connection con(db);
 
-    con.Query("LOAD erpl_odata");
+    con.Query(ErplOdataLoadSql());
     con.Query("SET allow_persistent_secrets=false");
 
     auto result = con.Query("SELECT * FROM graph_calendar_events(start_date := '2024-01-01')");

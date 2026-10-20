@@ -1,6 +1,7 @@
 #pragma once
 
 #include "duckdb.hpp"
+#include "duckdb_compat.hpp"
 #include "duckdb/main/extension/extension_loader.hpp"
 
 namespace erpl_web {
@@ -16,7 +17,7 @@ private:
         duckdb::ClientContext &context,
         duckdb::TableFunctionBindInput &input,
         duckdb::vector<duckdb::LogicalType> &return_types,
-        duckdb::vector<std::string> &names);
+        duckdb_compat::BindNames &names);
 
     static void PlansScan(
         duckdb::ClientContext &context,
@@ -28,7 +29,7 @@ private:
         duckdb::ClientContext &context,
         duckdb::TableFunctionBindInput &input,
         duckdb::vector<duckdb::LogicalType> &return_types,
-        duckdb::vector<std::string> &names);
+        duckdb_compat::BindNames &names);
 
     static void BucketsScan(
         duckdb::ClientContext &context,
@@ -40,7 +41,7 @@ private:
         duckdb::ClientContext &context,
         duckdb::TableFunctionBindInput &input,
         duckdb::vector<duckdb::LogicalType> &return_types,
-        duckdb::vector<std::string> &names);
+        duckdb_compat::BindNames &names);
 
     static void TasksScan(
         duckdb::ClientContext &context,
@@ -55,7 +56,7 @@ private:
         duckdb::ClientContext &context,
         duckdb::TableFunctionBindInput &input,
         duckdb::vector<duckdb::LogicalType> &return_types,
-        duckdb::vector<std::string> &names);
+        duckdb_compat::BindNames &names);
 
     static void CreateTaskScan(
         duckdb::ClientContext &context,

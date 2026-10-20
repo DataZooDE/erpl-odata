@@ -1,4 +1,5 @@
 #include <limits>
+#include "duckdb_compat.hpp"
 #include <cpptrace/cpptrace.hpp>
 
 #include "odata_client.hpp"
@@ -588,7 +589,7 @@ std::vector<std::string> ODataEntitySetClient::GetResultNames()
 
     std::vector<std::string> ret_names;
     for (const auto& child : StructType::GetChildTypes(entity_struct)) {
-        ret_names.push_back(child.first);
+        ret_names.push_back(duckdb_compat::Str(child.first));
     }
 
     return ret_names;

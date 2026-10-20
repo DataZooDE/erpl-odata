@@ -41,7 +41,7 @@ void ExtensionHelper::LoadAllExtensions(DuckDB &db) {
     }
 }
 
-#ifdef DUCKDB_HAS_EXTENSION_CALLBACK_MANAGER
+#ifdef ERPL_TEST_HAS_LOADED_EXTENSION_TEST_PATHS
 // Added in DuckDB v1.5.0
 vector<string> ExtensionHelper::LoadedExtensionTestPaths() {
     return {};

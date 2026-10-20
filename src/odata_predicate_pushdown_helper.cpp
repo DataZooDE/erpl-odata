@@ -3,6 +3,7 @@
 #include <set>
 #include "duckdb/planner/filter/optional_filter.hpp"
 #include "tracing.hpp"
+#include "duckdb_compat.hpp"
 
 namespace erpl_web {
 
@@ -167,14 +168,14 @@ void ODataPredicatePushdownHelper::ConsumeFilters(duckdb::optional_ptr<duckdb::T
     // later use of the same helper, even after the filters were replaced.
     has_untranslated_filter = false;
 
-    if (filters && !filters->filters.empty()) {
+    if (filters && duckdb_compat::FilterCount(*filters) != 0) {
         std::stringstream filters_str;
         /*
         for (auto &[projected_column_idx, filter] : filters->filters) 
         {
             filters_str << "Column " << projected_column_idx << ": " << filter->DebugToString() << std::endl;
         }
-        ERPL_TRACE_DEBUG("PREDICATE_PUSHDOWN", "Consuming " + std::to_string(filters->filters.size()) + " filters: " + filters_str.str());
+        ERPL_TRACE_DEBUG("PREDICATE_PUSHDOWN", "Consuming " + std::to_string(duckdb_compat::FilterCount(*filters)) + " filters: " + filters_str.str());
         */
         this->filter_clause = BuildFilterClause(filters);
         ERPL_TRACE_DEBUG("PREDICATE_PUSHDOWN", "Built filter clause: " + this->filter_clause);
@@ -640,30 +641,30 @@ std::string ODataPredicatePushdownHelper::BuildSelectClause(const std::vector<du
 std::string ODataPredicatePushdownHelper::BuildFilterClause(duckdb::optional_ptr<duckdb::TableFilterSet> filters) {
     ERPL_TRACE_DEBUG("PREDICATE_PUSHDOWN", "Building filter clause");
     
-    if (!filters || filters->filters.empty()) {
+    if (!filters || duckdb_compat::FilterCount(*filters) == 0) {
         ERPL_TRACE_DEBUG("PREDICATE_PUSHDOWN", "No filters provided, returning empty filter clause");
         return "";
     }
 
-    ERPL_TRACE_DEBUG("PREDICATE_PUSHDOWN", "Processing " + std::to_string(filters->filters.size()) + " filters");
+    ERPL_TRACE_DEBUG("PREDICATE_PUSHDOWN", "Processing " + std::to_string(duckdb_compat::FilterCount(*filters)) + " filters");
     
     std::stringstream filter_clause;
     std::vector<std::string> valid_filters;
     
     // First pass: collect all valid filters
-    for (const auto &filter_entry : filters->filters) {
-        ERPL_TRACE_DEBUG("PREDICATE_PUSHDOWN", duckdb::StringUtil::Format("Processing filter for DuckDB column index: %d", filter_entry.first));
+    duckdb_compat::ForEachFilter(*filters, [&](duckdb::idx_t filter_index, const duckdb::TableFilter &filter) {
+        ERPL_TRACE_DEBUG("PREDICATE_PUSHDOWN", duckdb::StringUtil::Format("Processing filter for DuckDB column index: %d", filter_index));
         ERPL_TRACE_DEBUG("PREDICATE_PUSHDOWN", duckdb::StringUtil::Format("Total columns available: %d", all_column_names.size()));
         
         // Use column name resolver if available, otherwise fall back to direct indexing
         std::string column_name;
         if (column_name_resolver) {
-            column_name = column_name_resolver(filter_entry.first);
+            column_name = column_name_resolver(filter_index);
             if (column_name.empty()) {
                 // Skipping loses the predicate entirely: DuckDB pushed it here and removed
                 // it from the plan, so nothing re-applies it and the scan returns rows that
                 // do not satisfy the WHERE clause. See GitHub #153.
-                ERPL_TRACE_ERROR("PREDICATE_PUSHDOWN", "Column name resolver returned empty string for index " + std::to_string(filter_entry.first));
+                ERPL_TRACE_ERROR("PREDICATE_PUSHDOWN", "Column name resolver returned empty string for index " + std::to_string(filter_index));
                 // NotImplementedException, not InternalException: DuckDB treats
                 // ExceptionType::INTERNAL as fatal and calls ValidChecker::Invalidate on the
                 // whole database instance, so a single query with an unresolvable filter
@@ -671,14 +672,14 @@ std::string ODataPredicatePushdownHelper::BuildFilterClause(duckdb::optional_ptr
                 // the statement is right; failing the instance is not.
                 throw duckdb::NotImplementedException(
                     "OData pushdown could not resolve a column name for filter index " +
-                    std::to_string(filter_entry.first) +
+                    std::to_string(filter_index) +
                     "; refusing to drop the filter, which would return rows that do not match "
                     "the query");
             }
-            ERPL_TRACE_DEBUG("PREDICATE_PUSHDOWN", "Column name resolver mapped index " + std::to_string(filter_entry.first) + " to: " + column_name);
+            ERPL_TRACE_DEBUG("PREDICATE_PUSHDOWN", "Column name resolver mapped index " + std::to_string(filter_index) + " to: " + column_name);
         } else {
             // Fallback to direct indexing (for backward compatibility)
-            duckdb::idx_t column_index = filter_entry.first;
+            duckdb::idx_t column_index = filter_index;
             ERPL_TRACE_DEBUG("PREDICATE_PUSHDOWN", "No column name resolver, using direct index: " + std::to_string(column_index));
             
             if (column_index >= all_column_names.size()) {
@@ -696,7 +697,7 @@ std::string ODataPredicatePushdownHelper::BuildFilterClause(duckdb::optional_ptr
             ERPL_TRACE_DEBUG("PREDICATE_PUSHDOWN", "Direct mapping: column index " + std::to_string(column_index) + " maps to column name: " + column_name);
         }
         
-        std::string translated_filter = TranslateFilter(*filter_entry.second, column_name);
+        std::string translated_filter = TranslateFilter(filter, column_name);
         if (!translated_filter.empty()) {
             valid_filters.push_back(translated_filter);
             ERPL_TRACE_DEBUG("PREDICATE_PUSHDOWN", "Valid filter: " + translated_filter);
@@ -706,7 +707,7 @@ std::string ODataPredicatePushdownHelper::BuildFilterClause(duckdb::optional_ptr
             has_untranslated_filter = true;
             ERPL_TRACE_DEBUG("PREDICATE_PUSHDOWN", "Filter translation resulted in empty string for column: " + column_name);
         }
-    }
+    });
     
     // If no valid filters, return empty string
     if (valid_filters.empty()) {
@@ -788,51 +789,75 @@ std::string ODataPredicatePushdownHelper::SkipTokenClause() const {
     }
 }
 
-namespace {
-
-// DuckDB 1.5 appended TableFilterType::BLOOM_FILTER (= 10). The 1.4 LTS line, which this
-// extension still builds against, stops at EXPRESSION_FILTER (= 9) and has no such
-// enumerator, so naming it directly fails to compile there. The numeric value is stable
-// and unused on 1.4, which makes this case label simply unreachable on the LTS build.
-constexpr auto BLOOM_FILTER_TABLE_FILTER_TYPE = static_cast<duckdb::TableFilterType>(10);
-
-// Where the 1.5 header exists, hold the numeric value to the real enumerator: a future
-// renumbering would otherwise silently point this case label at a different filter kind.
-#if __has_include("duckdb/planner/filter/bloom_filter.hpp")
-static_assert(BLOOM_FILTER_TABLE_FILTER_TYPE == duckdb::TableFilterType::BLOOM_FILTER,
-              "TableFilterType::BLOOM_FILTER is no longer 10; update the LTS fallback value");
-#endif
-
-}  // namespace
-
 std::string ODataPredicatePushdownHelper::TranslateFilter(const duckdb::TableFilter &filter, const std::string &column_name) const {
     ERPL_TRACE_DEBUG("PREDICATE_PUSHDOWN", "Translating filter for column '" + column_name + "' with filter type: " + std::to_string(static_cast<int>(filter.filter_type)));
+
+    // DuckDB 2.0 represents Top-N's advisory filters as expressions. DuckDB keeps
+    // the actual ORDER BY/LIMIT above this scan, so an optional expression need
+    // not be sent to the OData service.
+    if (duckdb_compat::IsOptionalExpressionFilter(filter)) {
+        return "";
+    }
+    if (auto expression = duckdb_compat::SimpleExpressionTree(filter)) {
+        auto render = [&](const auto &self, const duckdb_compat::FilterExpressionNode &node) -> std::string {
+            if (node.kind == duckdb_compat::FilterExpressionNode::Kind::COMPARISON) {
+                return TranslateConstantComparison(node.constant, node.comparison_type, column_name);
+            }
+            if (node.kind == duckdb_compat::FilterExpressionNode::Kind::IS_NULL) {
+                return column_name + " eq null";
+            }
+            if (node.kind == duckdb_compat::FilterExpressionNode::Kind::IS_NOT_NULL) {
+                return column_name + " ne null";
+            }
+            const char *separator = node.kind == duckdb_compat::FilterExpressionNode::Kind::CONJUNCTION_AND
+                                        ? " and " : " or ";
+            std::string combined = "(";
+            for (duckdb::idx_t index = 0; index < node.children.size(); index++) {
+                if (index) {
+                    combined += separator;
+                }
+                combined += self(self, node.children[index]);
+            }
+            return combined + ")";
+        };
+        return render(render, *expression);
+    }
     
+    if (duckdb_compat::FilterKind::BLOOM_FILTER &&
+        filter.filter_type == *duckdb_compat::FilterKind::BLOOM_FILTER) {
+        // Bloom is an advisory join pre-filter and may be omitted safely.
+        return "";
+    }
+
     std::string result;
     switch (filter.filter_type) {
-        case duckdb::TableFilterType::CONSTANT_COMPARISON:
-            result = TranslateConstantComparison(filter.Cast<duckdb::ConstantFilter>(), column_name);
+        case duckdb_compat::FilterKind::CONSTANT_COMPARISON:
+            {
+                const auto &constant_filter = filter.Cast<duckdb_compat::ConstantFilter>();
+                result = TranslateConstantComparison(constant_filter.constant, constant_filter.comparison_type,
+                                                     column_name);
+            }
             break;
-        case duckdb::TableFilterType::IS_NULL:
+        case duckdb_compat::FilterKind::IS_NULL:
             result = column_name + " eq null";
             break;
-        case duckdb::TableFilterType::IS_NOT_NULL:
+        case duckdb_compat::FilterKind::IS_NOT_NULL:
             result = column_name + " ne null";
             break;
-        case duckdb::TableFilterType::CONJUNCTION_AND:
-            result = TranslateConjunction(filter.Cast<duckdb::ConjunctionAndFilter>(), column_name);
+        case duckdb_compat::FilterKind::CONJUNCTION_AND:
+            result = TranslateConjunction(filter.Cast<duckdb_compat::ConjunctionAndFilter>(), column_name);
             break;
-        case duckdb::TableFilterType::CONJUNCTION_OR:
-            result = TranslateConjunction(filter.Cast<duckdb::ConjunctionOrFilter>(), column_name);
+        case duckdb_compat::FilterKind::CONJUNCTION_OR:
+            result = TranslateConjunction(filter.Cast<duckdb_compat::ConjunctionOrFilter>(), column_name);
             break;
-        case duckdb::TableFilterType::OPTIONAL_FILTER:
+        case duckdb_compat::FilterKind::OPTIONAL_FILTER:
             // DuckDB documents this kind as "executing filter is not required for query
             // correctness" (duckdb/planner/table_filter.hpp), so it is always safe to skip
             // and must never fail the query. A hash join pushes an optional filter wrapping
             // a bloom filter into this slot; translating the child eagerly would reach the
             // default: arm below and throw on an ordinary join.
             try {
-                result = TranslateFilter(*filter.Cast<duckdb::OptionalFilter>().child_filter, column_name);
+                result = TranslateFilter(*filter.Cast<duckdb_compat::OptionalFilter>().child_filter, column_name);
             } catch (const duckdb::NotImplementedException &) {
                 ERPL_TRACE_DEBUG("PREDICATE_PUSHDOWN",
                                  "Optional filter on column '" + column_name +
@@ -840,23 +865,17 @@ std::string ODataPredicatePushdownHelper::TranslateFilter(const duckdb::TableFil
                 result = "";
             }
             break;
-        case BLOOM_FILTER_TABLE_FILTER_TYPE:
-            // A probabilistic join pre-filter: dropping it costs only the rows it would
-            // have skipped early, never correctness.
-            ERPL_TRACE_DEBUG("PREDICATE_PUSHDOWN",
-                             "Bloom filter on column '" + column_name + "' is not pushed down");
-            result = "";
-            break;
-        case duckdb::TableFilterType::DYNAMIC_FILTER: {
+        case duckdb_compat::FilterKind::DYNAMIC_FILTER: {
             // A dynamic filter is filled in by the Top-N optimizer only once the
             // first rows have been seen. Until then filter_data->filter holds a
             // placeholder sentinel (INT32_MIN and friends) that must never reach
             // the server: pushing it returns zero rows, and because the filter
             // was pushed there is no residual filter left to restore them.
             // See GitHub #59.
-            auto &filter_data = *filter.Cast<duckdb::DynamicFilter>().filter_data;
+            auto &filter_data = *filter.Cast<duckdb_compat::DynamicFilter>().filter_data;
             duckdb::lock_guard<duckdb::mutex> filter_guard(filter_data.lock);
-            if (!filter_data.initialized || !filter_data.filter) {
+            auto snapshot = duckdb_compat::DynamicSnapshot(filter_data);
+            if (!snapshot) {
                 ERPL_TRACE_DEBUG("PREDICATE_PUSHDOWN",
                                  "Dynamic filter for column '" + column_name +
                                  "' is not initialized yet; not pushing it down");
@@ -864,7 +883,7 @@ std::string ODataPredicatePushdownHelper::TranslateFilter(const duckdb::TableFil
                 break;
             }
             try {
-                result = TranslateConstantComparison(*filter_data.filter, column_name);
+                result = TranslateConstantComparison(snapshot->second, snapshot->first, column_name);
             } catch (const duckdb::NotImplementedException &) {
                 // A dynamic filter is advisory by construction: the Top-N operator that
                 // produced it enforces the bound again above the scan. Failing here would
@@ -878,12 +897,12 @@ std::string ODataPredicatePushdownHelper::TranslateFilter(const duckdb::TableFil
             }
             break;
         }
-        case duckdb::TableFilterType::IN_FILTER:
-            result = TranslateInFilter(filter.Cast<duckdb::InFilter>(), column_name);
+        case duckdb_compat::FilterKind::IN_FILTER:
+            result = TranslateInFilter(filter.Cast<duckdb_compat::InFilter>(), column_name);
             break;
         default:
             std::stringstream error;
-            auto filter_str = const_cast<duckdb::TableFilter&>(filter).ToString(column_name);
+            auto filter_str = duckdb_compat::FilterToString(filter, column_name);
             auto filter_type_name = typeid(filter).name();
             error << "Unsupported filter type for OData translation: '" << filter_str << "'"
                   << " (" << filter_type_name << ")";
@@ -898,12 +917,12 @@ std::string ODataPredicatePushdownHelper::TranslateFilter(const duckdb::TableFil
     return result;
 }
 
-std::string ODataPredicatePushdownHelper::TranslateConstantComparison(const duckdb::ConstantFilter &filter, const std::string &column_name) const {
+std::string ODataPredicatePushdownHelper::TranslateConstantComparison(const duckdb::Value &constant, duckdb::ExpressionType comparison_type, const std::string &column_name) const {
     ERPL_TRACE_DEBUG("PREDICATE_PUSHDOWN", "Translating constant comparison for column '" + column_name + "'");
     
     // Validate the filter value to ensure it makes sense for OData
-    std::string constant_value = filter.constant.ToString();
-    ERPL_TRACE_DEBUG("PREDICATE_PUSHDOWN", "Constant value: '" + constant_value + "' (type: " + filter.constant.type().ToString() + ")");
+    std::string constant_value = constant.ToString();
+    ERPL_TRACE_DEBUG("PREDICATE_PUSHDOWN", "Constant value: '" + constant_value + "' (type: " + constant.type().ToString() + ")");
     
     // Nothing is skipped here on the grounds of the value alone. DuckDB removes a
     // predicate from the plan once it becomes a TableFilter and the function advertises
@@ -917,7 +936,7 @@ std::string ODataPredicatePushdownHelper::TranslateConstantComparison(const duck
     result << column_name << " ";
 
     std::string comparison_operator;
-    switch (filter.comparison_type) {
+    switch (comparison_type) {
         case duckdb::ExpressionType::COMPARE_EQUAL:
             comparison_operator = "eq";
             break;
@@ -951,13 +970,13 @@ std::string ODataPredicatePushdownHelper::TranslateConstantComparison(const duck
     // literal form cannot be pushed and cannot be left to DuckDB either, because the
     // predicate is no longer in the plan - so the query fails rather than answering with
     // rows that do not match it.
-    const auto literal = FormatODataLiteral(filter.constant, odata_version);
+    const auto literal = FormatODataLiteral(constant, odata_version);
     if (!literal.has_value()) {
         ERPL_TRACE_ERROR("PREDICATE_PUSHDOWN",
-                         "No OData literal form for type " + filter.constant.type().ToString() +
+                         "No OData literal form for type " + constant.type().ToString() +
                          " on column " + column_name);
         throw duckdb::NotImplementedException(
-            "OData pushdown has no literal form for type " + filter.constant.type().ToString() +
+            "OData pushdown has no literal form for type " + constant.type().ToString() +
             " used in a comparison on column '" + column_name +
             "'. Cast the value to a type the service understands, or filter after reading.");
     }
@@ -969,7 +988,7 @@ std::string ODataPredicatePushdownHelper::TranslateConstantComparison(const duck
     return final_result;
 }
 
-std::string ODataPredicatePushdownHelper::TranslateInFilter(const duckdb::InFilter &filter, const std::string &column_name) const {
+std::string ODataPredicatePushdownHelper::TranslateInFilter(const duckdb_compat::InFilter &filter, const std::string &column_name) const {
     // OData has no IN operator, so an IN list becomes a parenthesised or-chain.
     // Every value must translate: dropping one would narrow the disjunction and
     // silently lose rows, and DuckDB prunes a pushed IN filter from the residual
@@ -1007,7 +1026,7 @@ std::string ODataPredicatePushdownHelper::TranslateInFilter(const duckdb::InFilt
     return result.str();
 }
 
-std::string ODataPredicatePushdownHelper::TranslateConjunction(const duckdb::ConjunctionAndFilter &filter, const std::string &column_name) const {
+std::string ODataPredicatePushdownHelper::TranslateConjunction(const duckdb_compat::ConjunctionAndFilter &filter, const std::string &column_name) const {
     // A child that cannot be translated throws, and the exception propagates: dropping
     // it would widen the result set with nothing downstream to narrow it again. An empty
     // translation now means only "advisory filter" (optional, bloom, or an uninitialised
@@ -1037,7 +1056,7 @@ std::string ODataPredicatePushdownHelper::TranslateConjunction(const duckdb::Con
     return result.str();
 }
 
-std::string ODataPredicatePushdownHelper::TranslateConjunction(const duckdb::ConjunctionOrFilter &filter, const std::string &column_name) const {
+std::string ODataPredicatePushdownHelper::TranslateConjunction(const duckdb_compat::ConjunctionOrFilter &filter, const std::string &column_name) const {
     // An OR is all-or-nothing. A branch that cannot be translated throws from the child
     // translation, like everywhere else (GitHub #153). A branch that translates to "" is
     // merely advisory and carries no predicate of its own, so pushing a partial form would

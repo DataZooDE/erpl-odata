@@ -1,6 +1,7 @@
 #pragma once
 
 #include "duckdb/catalog/catalog.hpp"
+#include "duckdb_compat.hpp"
 #include "duckdb/catalog/catalog_entry/schema_catalog_entry.hpp"
 #include "duckdb/catalog/catalog_entry/table_catalog_entry.hpp"
 #include "duckdb/parser/parsed_data/create_schema_info.hpp"
@@ -80,6 +81,9 @@ public:
 	                     const std::string &list_id,
 	                     const std::string &secret_name,
 	                     std::shared_ptr<HttpAuthParams> auth_params);
+	// DuckDB 2.0 makes this virtual. Keep our copy because scan binding needs
+	// the column names after the base entry has consumed the constructor list.
+	const duckdb::ColumnList &GetColumns() const { return entry_columns_; }
 
 	duckdb::unique_ptr<duckdb::BaseStatistics> GetStatistics(duckdb::ClientContext &context, duckdb::column_t column_id) override;
 	duckdb::TableFunction GetScanFunction(duckdb::ClientContext &context, duckdb::unique_ptr<duckdb::FunctionData> &bind_data) override;
@@ -91,6 +95,11 @@ public:
 	std::shared_ptr<HttpAuthParams> GetAuthParams() const { return auth_params_; }
 
 private:
+	SharePointTableEntry(duckdb::Catalog &catalog, duckdb::SchemaCatalogEntry &schema,
+	                     duckdb::CreateTableInfo &info, const std::string &site_id,
+	                     const std::string &list_id, const std::string &secret_name,
+	                     std::shared_ptr<HttpAuthParams> auth_params, duckdb::ColumnList columns);
+	duckdb::ColumnList entry_columns_;
 	std::string site_id_;
 	std::string list_id_;
 	std::string secret_name_;
@@ -117,7 +126,7 @@ public:
 	duckdb::string GetDBPath() override;
 	bool InMemory() override;
 	bool SupportsTimeTravel() const override;
-	duckdb::string GetDefaultSchema() const override;
+	duckdb_compat::DefaultSchemaName GetDefaultSchema() const override;
 	duckdb::DatabaseSize GetDatabaseSize(duckdb::ClientContext &context) override;
 	duckdb::vector<duckdb::MetadataBlockInfo> GetMetadataInfo(duckdb::ClientContext &context) override;
 

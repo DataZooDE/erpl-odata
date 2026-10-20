@@ -298,9 +298,8 @@ ODataTestServer::ODataTestServer() : impl(std::make_unique<Impl>())
     state->server.set_read_timeout(READ_TIMEOUT_SECONDS, 0);
     state->server.set_idle_interval(0, IDLE_INTERVAL_MICROSECONDS);
 
-    state->server.set_pre_routing_handler(
-        [state](const duckdb_httplib_openssl::Request &request,
-                duckdb_httplib_openssl::Response &response) {
+    auto respond = [state](const duckdb_httplib_openssl::Request &request,
+                           duckdb_httplib_openssl::Response &response) {
             const auto recorded = Translate(request);
 
             CannedResponse canned;
@@ -365,8 +364,20 @@ ODataTestServer::ODataTestServer() : impl(std::make_unique<Impl>())
                 }
                 response.set_header(header.first, header.second);
             }
+        };
+
+    // httplib calls pre-routing handlers before it reads a POST body. Route POSTs
+    // through a normal handler so recorded request bodies include COPY payloads.
+    state->server.set_pre_routing_handler(
+        [respond](const duckdb_httplib_openssl::Request &request,
+                  duckdb_httplib_openssl::Response &response) {
+            if (request.method == "POST") {
+                return duckdb_httplib_openssl::Server::HandlerResponse::Unhandled;
+            }
+            respond(request, response);
             return duckdb_httplib_openssl::Server::HandlerResponse::Handled;
         });
+    state->server.Post(R"(.*)", respond);
 
     state->port = state->server.bind_to_any_port(LOOPBACK_HOST);
     if (state->port <= 0) {

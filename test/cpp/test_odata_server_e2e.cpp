@@ -6,6 +6,8 @@
 // behaviour can be tested without a live SAP system (GitHub #103).
 
 #include "catch.hpp"
+#include "test_extension_load_sql.hpp"
+#include "duckdb_compat.hpp"
 #include "duckdb.hpp"
 
 #include "odata_test_server.hpp"
@@ -84,16 +86,16 @@ TEST_CASE("odata_read reads an OData v4 entity set end to end", "[odata_e2e][v4]
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     auto result = con.Query("SELECT AirlineCode, Name FROM odata_read('" +
                             server.Url("/v4/Airlines") + "') ORDER BY AirlineCode");
     INFO((result->HasError() ? result->GetError() : std::string()));
     REQUIRE_FALSE(result->HasError());
     REQUIRE(result->RowCount() == 2);
-    REQUIRE(result->GetValue(0, 0).GetValue<std::string>() == "AA");
-    REQUIRE(result->GetValue(1, 0).GetValue<std::string>() == "American Airlines");
-    REQUIRE(result->GetValue(0, 1).GetValue<std::string>() == "FM");
+    REQUIRE(duckdb_compat::ResultValue(*result, 0, 0).GetValue<std::string>() == "AA");
+    REQUIRE(duckdb_compat::ResultValue(*result, 1, 0).GetValue<std::string>() == "American Airlines");
+    REQUIRE(duckdb_compat::ResultValue(*result, 0, 1).GetValue<std::string>() == "FM");
 
     // Assert on what was REQUESTED, not just on what came back.
     REQUIRE(server.RequestsFor("/v4/$metadata").size() >= 1);
@@ -114,16 +116,16 @@ TEST_CASE("odata_read reads an OData v2 entity set end to end", "[odata_e2e][v2]
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     auto result = con.Query("SELECT RegionID, RegionDescription FROM odata_read('" +
                             server.Url("/v2/Regions") + "') ORDER BY RegionID");
     INFO((result->HasError() ? result->GetError() : std::string()));
     REQUIRE_FALSE(result->HasError());
     REQUIRE(result->RowCount() == 2);
-    REQUIRE(result->GetValue(0, 0).GetValue<int32_t>() == 1);
-    REQUIRE(result->GetValue(1, 0).GetValue<std::string>() == "Eastern");
-    REQUIRE(result->GetValue(0, 1).GetValue<int32_t>() == 2);
+    REQUIRE(duckdb_compat::ResultValue(*result, 0, 0).GetValue<int32_t>() == 1);
+    REQUIRE(duckdb_compat::ResultValue(*result, 1, 0).GetValue<std::string>() == "Eastern");
+    REQUIRE(duckdb_compat::ResultValue(*result, 0, 1).GetValue<int32_t>() == 2);
 
     REQUIRE(server.RequestsFor("/v2/$metadata").size() >= 1);
     REQUIRE(server.RequestsFor("/v2/Regions").size() >= 1);
@@ -160,7 +162,7 @@ TEST_CASE("odata_read follows every @odata.nextLink page", "[odata_e2e][paging]"
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     auto result = con.Query("SELECT AirlineCode FROM odata_read('" + entity_url +
                             "') ORDER BY AirlineCode");
@@ -207,7 +209,7 @@ TEST_CASE("odata_read follows every page when all columns are selected",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     // ORDER BY over the star keeps every column live, so the projection cannot be
     // pruned back down to one and no $select is emitted.
@@ -248,7 +250,7 @@ TEST_CASE("a bound SELECT * plan returns every row on re-execution", "[odata_e2e
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     REQUIRE_FALSE(con.Query("PREPARE p AS SELECT * FROM odata_read('" + entity_url + "')")->HasError());
 
@@ -278,7 +280,7 @@ TEST_CASE("two SELECT * scans of one call each see every row", "[odata_e2e][pagi
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     // A cross join of two unprojected scans: 4 x 4. Sharing one cursor between them makes
     // this collapse.
@@ -286,7 +288,7 @@ TEST_CASE("two SELECT * scans of one call each see every row", "[odata_e2e][pagi
                             entity_url + "') b");
     INFO((result->HasError() ? result->GetError() : std::string()));
     REQUIRE_FALSE(result->HasError());
-    REQUIRE(result->GetValue(0, 0).GetValue<int64_t>() == 16);
+    REQUIRE(duckdb_compat::ResultValue(*result, 0, 0).GetValue<int64_t>() == 16);
 }
 
 // The OData clients wrapped their HTTP client in CachingHttpClient, a process-wide 30s
@@ -314,7 +316,7 @@ TEST_CASE("a page fetched under different credentials is not served from cache",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     const std::string scope = server.BaseUrl();
     for (const std::string &user : {std::string("alice"), std::string("bob")}) {
@@ -327,7 +329,7 @@ TEST_CASE("a page fetched under different credentials is not served from cache",
         auto result = con.Query("SELECT COUNT(*) FROM odata_read('" + entity_url + "')");
         INFO((result->HasError() ? result->GetError() : std::string()));
         REQUIRE_FALSE(result->HasError());
-        REQUIRE(result->GetValue(0, 0).GetValue<int64_t>() == 4);
+        REQUIRE(duckdb_compat::ResultValue(*result, 0, 0).GetValue<int64_t>() == 4);
     }
 
     // The second page is the one that goes through the client under test. Both reads must
@@ -362,7 +364,7 @@ TEST_CASE("odata_read fails loudly when a next-link page errors", "[odata_e2e][p
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     auto result = con.Query("SELECT count(*) FROM odata_read('" + entity_url + "')");
     REQUIRE(result->HasError());
@@ -397,12 +399,12 @@ TEST_CASE("odata_read keeps paging through an empty page that has a next link",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     auto result = con.Query("SELECT count(*) FROM odata_read('" + entity_url + "')");
     INFO((result->HasError() ? result->GetError() : std::string()));
     REQUIRE_FALSE(result->HasError());
-    REQUIRE(result->GetValue(0, 0).GetValue<int64_t>() == 4);
+    REQUIRE(duckdb_compat::ResultValue(*result, 0, 0).GetValue<int64_t>() == 4);
 
     REQUIRE(AnyRequestQueryContains(server.RequestsFor("/empty/Airlines"), "$skiptoken=3"));
 }
@@ -436,12 +438,12 @@ TEST_CASE("odata_read keeps paging when a v4 page omits the value array entirely
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     auto result = con.Query("SELECT count(*) FROM odata_read('" + entity_url + "')");
     INFO((result->HasError() ? result->GetError() : std::string()));
     REQUIRE_FALSE(result->HasError());
-    REQUIRE(result->GetValue(0, 0).GetValue<int64_t>() == 4);
+    REQUIRE(duckdb_compat::ResultValue(*result, 0, 0).GetValue<int64_t>() == 4);
 
     // The page AFTER the value-less one really was fetched.
     REQUIRE(AnyRequestQueryContains(server.RequestsFor("/novalue/Airlines"), "$skiptoken=3"));
@@ -475,12 +477,12 @@ TEST_CASE("odata_read keeps paging when a v2 page omits the results array",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     auto result = con.Query("SELECT count(*) FROM odata_read('" + entity_url + "')");
     INFO((result->HasError() ? result->GetError() : std::string()));
     REQUIRE_FALSE(result->HasError());
-    REQUIRE(result->GetValue(0, 0).GetValue<int64_t>() == 3);
+    REQUIRE(duckdb_compat::ResultValue(*result, 0, 0).GetValue<int64_t>() == 3);
 
     REQUIRE(AnyRequestQueryContains(server.RequestsFor("/v2empty/Regions"), "$skiptoken=3"));
 }
@@ -501,7 +503,7 @@ TEST_CASE("odata_read surfaces the service's own error code and message",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     auto result = con.Query("SELECT * FROM odata_read('" + entity_url + "')");
     REQUIRE(result->HasError());
@@ -527,7 +529,7 @@ TEST_CASE("odata_read pushes projection and filter into the request URL",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     auto result = con.Query("SELECT AirlineCode FROM odata_read('" + server.Url("/pd/Airlines") +
                             "') WHERE AirlineCode = 'AA'");
@@ -568,7 +570,7 @@ TEST_CASE("odata_read pushes the top named parameter into the request URL",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     auto result = con.Query("SELECT * FROM odata_read('" + server.Url("/top/Airlines") +
                             "', top = 1)");
@@ -607,7 +609,7 @@ TEST_CASE("ODataTestServer serves a SAP ODP delta page with a !deltatoken link",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     // Drive the plain HTTP function so the assertion is about the wire shape and
     // not about ODP subscription bookkeeping.
@@ -616,7 +618,7 @@ TEST_CASE("ODataTestServer serves a SAP ODP delta page with a !deltatoken link",
     REQUIRE_FALSE(result->HasError());
     REQUIRE(result->RowCount() == 1);
 
-    const auto content = result->GetValue(1, 0).GetValue<std::string>();
+    const auto content = duckdb_compat::ResultValue(*result, 1, 0).GetValue<std::string>();
     REQUIRE(content.find("__delta") != std::string::npos);
     REQUIRE(content.find("!deltatoken=D20240101120000") != std::string::npos);
     REQUIRE(content.find("\"results\"") != std::string::npos);
@@ -634,7 +636,7 @@ TEST_CASE("ODataTestServer records the Prefer header sent by the client",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     auto result = con.Query(
         "SELECT status FROM http_get('" + server.Url("/odp/Entity") +
@@ -660,7 +662,7 @@ TEST_CASE("odata_read fails when the entity set itself errors", "[odata_e2e][err
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     auto result = con.Query("SELECT * FROM odata_read('" + server.Url("/bad/Airlines") + "')");
     REQUIRE(result->HasError());
@@ -720,10 +722,10 @@ TEST_CASE("a Decimal with no Precision holds values above 1 end to end",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     SECTION("through ATTACH, as reported") {
-        auto attach = con.Query("ATTACH '" + server.Url("/topdesk/") + "' AS topdesk (TYPE odata)");
+        auto attach = con.Query("ATTACH '" + server.Url("/topdesk/") + "' AS topdesk (TYPE odata, READ_ONLY)");
         INFO((attach->HasError() ? attach->GetError() : std::string()));
         REQUIRE_FALSE(attach->HasError());
 
@@ -732,14 +734,14 @@ TEST_CASE("a Decimal with no Precision holds values above 1 end to end",
             "ORDER BY serviceagreementcost");
         INFO((result->HasError() ? result->GetError() : std::string()));
         REQUIRE_FALSE(result->HasError());
-        REQUIRE(result->types.size() == 1);
-        INFO("column type " << result->types[0].ToString());
-        REQUIRE(result->types[0].ToString() == "DECIMAL(38,18)");
+        REQUIRE(duckdb_compat::ResultTypes(*result).size() == 1);
+        INFO("column type " << duckdb_compat::ResultTypes(*result)[0].ToString());
+        REQUIRE(duckdb_compat::ResultTypes(*result)[0].ToString() == "DECIMAL(38,18)");
         REQUIRE(result->RowCount() == 2);
-        REQUIRE_FALSE(result->GetValue(0, 0).IsNull());
-        REQUIRE_FALSE(result->GetValue(0, 1).IsNull());
-        REQUIRE(result->GetValue(0, 0).GetValue<double>() == Approx(490.0));
-        REQUIRE(result->GetValue(0, 1).GetValue<double>() == Approx(1250.75));
+        REQUIRE_FALSE(duckdb_compat::ResultValue(*result, 0, 0).IsNull());
+        REQUIRE_FALSE(duckdb_compat::ResultValue(*result, 0, 1).IsNull());
+        REQUIRE(duckdb_compat::ResultValue(*result, 0, 0).GetValue<double>() == Approx(490.0));
+        REQUIRE(duckdb_compat::ResultValue(*result, 0, 1).GetValue<double>() == Approx(1250.75));
     }
 
     SECTION("through odata_read") {
@@ -747,9 +749,9 @@ TEST_CASE("a Decimal with no Precision holds values above 1 end to end",
                                 server.Url("/topdesk/AssetList") + "') ORDER BY Id");
         INFO((result->HasError() ? result->GetError() : std::string()));
         REQUIRE_FALSE(result->HasError());
-        REQUIRE(result->types[0].ToString() == "DECIMAL(38,18)");
+        REQUIRE(duckdb_compat::ResultTypes(*result)[0].ToString() == "DECIMAL(38,18)");
         REQUIRE(result->RowCount() == 2);
-        REQUIRE_FALSE(result->GetValue(0, 0).IsNull());
-        REQUIRE(result->GetValue(0, 0).GetValue<double>() == Approx(490.0));
+        REQUIRE_FALSE(duckdb_compat::ResultValue(*result, 0, 0).IsNull());
+        REQUIRE(duckdb_compat::ResultValue(*result, 0, 0).GetValue<double>() == Approx(490.0));
     }
 }

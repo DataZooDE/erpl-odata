@@ -1,4 +1,5 @@
 #include "duckdb.hpp"
+#include "duckdb_compat.hpp"
 #include "duckdb/parser/parsed_data/create_pragma_function_info.hpp"
 #include "duckdb/catalog/catalog.hpp"
 #include <duckdb/parser/parsed_data/create_scalar_function_info.hpp>
@@ -363,6 +364,7 @@ static void RegisterWebFunctions(ExtensionLoader &loader)
         desc.examples = {"SELECT * FROM http_get('https://httpbin.org/ip')"};
         desc.categories = {"http"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
@@ -374,6 +376,7 @@ static void RegisterWebFunctions(ExtensionLoader &loader)
         desc.examples = {"SELECT * FROM http_head('https://httpbin.org/ip')"};
         desc.categories = {"http"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
@@ -392,6 +395,7 @@ static void RegisterWebFunctions(ExtensionLoader &loader)
         desc2.examples = {"SELECT * FROM http_post('https://httpbin.org/post', 'hello', 'text/plain')"};
         desc2.categories = {"http"};
         info.descriptions.push_back(std::move(desc2));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
@@ -410,6 +414,7 @@ static void RegisterWebFunctions(ExtensionLoader &loader)
         desc2.examples = {"SELECT * FROM http_put('https://example.com/resource', 'data', 'text/plain')"};
         desc2.categories = {"http"};
         info.descriptions.push_back(std::move(desc2));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
@@ -428,6 +433,7 @@ static void RegisterWebFunctions(ExtensionLoader &loader)
         desc2.examples = {"SELECT * FROM http_patch('https://example.com/resource', 'patch', 'text/plain')"};
         desc2.categories = {"http"};
         info.descriptions.push_back(std::move(desc2));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
@@ -446,6 +452,7 @@ static void RegisterWebFunctions(ExtensionLoader &loader)
         desc2.examples = {"SELECT * FROM http_delete('https://example.com/resource', '', 'text/plain')"};
         desc2.categories = {"http"};
         info.descriptions.push_back(std::move(desc2));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
 
@@ -465,6 +472,7 @@ static void RegisterODataFunctions(ExtensionLoader &loader)
         desc.examples = {"SELECT * FROM odata_read('https://services.odata.org/V4/Northwind/Northwind.svc/Customers')"};
         desc.categories = {"odata"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
@@ -476,6 +484,7 @@ static void RegisterODataFunctions(ExtensionLoader &loader)
         desc.examples = {"SELECT * FROM odata_describe('https://services.odata.org/V4/Northwind/Northwind.svc/Customers')"};
         desc.categories = {"odata"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
@@ -487,6 +496,7 @@ static void RegisterODataFunctions(ExtensionLoader &loader)
         desc.examples = {"SELECT * FROM odata_attach('https://services.odata.org/V4/Northwind/Northwind.svc/')"};
         desc.categories = {"odata"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
@@ -498,6 +508,7 @@ static void RegisterODataFunctions(ExtensionLoader &loader)
         desc.examples = {"SELECT * FROM odata_sap_show('https://<host>/sap/opu/odata/sap/')"};
         desc.categories = {"odata", "sap"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     
@@ -524,6 +535,7 @@ static void RegisterDatasphereFunctions(ExtensionLoader &loader)
         desc.examples = {"SELECT * FROM datasphere_show_spaces()"};
         desc.categories = {"sap", "datasphere"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
@@ -542,6 +554,7 @@ static void RegisterDatasphereFunctions(ExtensionLoader &loader)
         desc2.examples = {"SELECT * FROM datasphere_show_assets()"};
         desc2.categories = {"sap", "datasphere"};
         info.descriptions.push_back(std::move(desc2));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
@@ -553,6 +566,7 @@ static void RegisterDatasphereFunctions(ExtensionLoader &loader)
         desc.examples = {"SELECT * FROM datasphere_describe_space('MY_SPACE')"};
         desc.categories = {"sap", "datasphere"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
@@ -564,6 +578,7 @@ static void RegisterDatasphereFunctions(ExtensionLoader &loader)
         desc.examples = {"SELECT * FROM datasphere_describe_asset('MY_SPACE', 'MY_VIEW')"};
         desc.categories = {"sap", "datasphere"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
@@ -582,6 +597,7 @@ static void RegisterDatasphereFunctions(ExtensionLoader &loader)
         desc2.examples = {"SELECT * FROM datasphere_read_relational('MY_SPACE', 'MY_VIEW', 'my_secret')"};
         desc2.categories = {"sap", "datasphere"};
         info.descriptions.push_back(std::move(desc2));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
@@ -600,6 +616,7 @@ static void RegisterDatasphereFunctions(ExtensionLoader &loader)
         desc2.examples = {"SELECT * FROM datasphere_read_analytical('MY_SPACE', 'MY_CUBE', 'my_secret')"};
         desc2.categories = {"sap", "datasphere"};
         info.descriptions.push_back(std::move(desc2));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
 
@@ -617,6 +634,7 @@ static void RegisterOdpFunctions(ExtensionLoader &loader)
         desc.examples = {"SELECT * FROM odp_odata_show('https://<host>/sap/opu/odata/iwbep/GWSAMPLE_BASIC/')"};
         desc.categories = {"sap", "odp"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
@@ -628,6 +646,7 @@ static void RegisterOdpFunctions(ExtensionLoader &loader)
         desc.examples = {"SELECT * FROM odp_odata_read('https://<host>/sap/opu/odata/sap/ZEXTRACTOR_SRV/DataSet')"};
         desc.categories = {"sap", "odp"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
@@ -639,6 +658,7 @@ static void RegisterOdpFunctions(ExtensionLoader &loader)
         desc.examples = {"SELECT * FROM odp_odata_list_subscriptions()"};
         desc.categories = {"sap", "odp"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     // Documented via the system catalog -- see RegisterDocumentedPragma below for why
@@ -675,6 +695,7 @@ static void RegisterSacFunctions(ExtensionLoader &loader)
         desc.examples = {"SELECT * FROM sac_show_models()"};
         desc.categories = {"sap", "sac"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
@@ -686,6 +707,7 @@ static void RegisterSacFunctions(ExtensionLoader &loader)
         desc.examples = {"SELECT * FROM sac_show_stories()"};
         desc.categories = {"sap", "sac"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
@@ -697,6 +719,7 @@ static void RegisterSacFunctions(ExtensionLoader &loader)
         desc.examples = {"SELECT * FROM sac_describe_model('t.2:MY_MODEL')"};
         desc.categories = {"sap", "sac"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
@@ -708,6 +731,7 @@ static void RegisterSacFunctions(ExtensionLoader &loader)
         desc.examples = {"SELECT * FROM sac_describe_story('ABC12345')"};
         desc.categories = {"sap", "sac"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
@@ -719,6 +743,7 @@ static void RegisterSacFunctions(ExtensionLoader &loader)
         desc.examples = {"SELECT * FROM sac_read_planning_data('t.2:MY_PLANNING_MODEL')"};
         desc.categories = {"sap", "sac"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
@@ -730,6 +755,7 @@ static void RegisterSacFunctions(ExtensionLoader &loader)
         desc.examples = {"SELECT * FROM sac_read_analytical('t.2:MY_ANALYTICAL_MODEL')"};
         desc.categories = {"sap", "sac"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
@@ -741,6 +767,7 @@ static void RegisterSacFunctions(ExtensionLoader &loader)
         desc.examples = {"SELECT * FROM sac_read_story_data('ABC12345')"};
         desc.categories = {"sap", "sac"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
 
@@ -770,6 +797,7 @@ static void RegisterDeltaShareFunctions(ExtensionLoader &loader)
         desc.examples = {"SELECT * FROM delta_share_scan('/path/to/profile.json', 'my_share', 'my_schema', 'my_table')"};
         desc.categories = {"delta", "sharing"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
@@ -781,6 +809,7 @@ static void RegisterDeltaShareFunctions(ExtensionLoader &loader)
         desc.examples = {"SELECT * FROM delta_share_show_shares('/path/to/profile.json')"};
         desc.categories = {"delta", "sharing"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
@@ -792,6 +821,7 @@ static void RegisterDeltaShareFunctions(ExtensionLoader &loader)
         desc.examples = {"SELECT * FROM delta_share_show_schemas('/path/to/profile.json', 'my_share')"};
         desc.categories = {"delta", "sharing"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
@@ -803,6 +833,7 @@ static void RegisterDeltaShareFunctions(ExtensionLoader &loader)
         desc.examples = {"SELECT * FROM delta_share_show_tables('/path/to/profile.json', 'my_share', 'my_schema')"};
         desc.categories = {"delta", "sharing"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
 }
@@ -820,6 +851,7 @@ static void RegisterBusinessCentralFunctions(ExtensionLoader &loader)
         desc.examples = {"SELECT * FROM bc_show_companies()"};
         desc.categories = {"microsoft", "business_central"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
@@ -831,6 +863,7 @@ static void RegisterBusinessCentralFunctions(ExtensionLoader &loader)
         desc.examples = {"SELECT * FROM bc_show_entities()"};
         desc.categories = {"microsoft", "business_central"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
@@ -842,6 +875,7 @@ static void RegisterBusinessCentralFunctions(ExtensionLoader &loader)
         desc.examples = {"SELECT * FROM bc_describe('customers')"};
         desc.categories = {"microsoft", "business_central"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
@@ -853,6 +887,7 @@ static void RegisterBusinessCentralFunctions(ExtensionLoader &loader)
         desc.examples = {"SELECT * FROM bc_read('customers')"};
         desc.categories = {"microsoft", "business_central"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
 
@@ -879,6 +914,7 @@ static void RegisterDataverseFunctions(ExtensionLoader &loader)
         desc.examples = {"SELECT * FROM crm_show_entities()"};
         desc.categories = {"microsoft", "dataverse"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
@@ -890,6 +926,7 @@ static void RegisterDataverseFunctions(ExtensionLoader &loader)
         desc.examples = {"SELECT * FROM crm_describe('accounts')"};
         desc.categories = {"microsoft", "dataverse"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
@@ -901,6 +938,7 @@ static void RegisterDataverseFunctions(ExtensionLoader &loader)
         desc.examples = {"SELECT * FROM crm_read('accounts')"};
         desc.categories = {"microsoft", "dataverse"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
 }

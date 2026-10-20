@@ -11,6 +11,7 @@
 //    the same link paged forever.
 
 #include "catch.hpp"
+#include "test_extension_load_sql.hpp"
 #include "duckdb.hpp"
 
 #include "odata_test_server.hpp"
@@ -61,7 +62,7 @@ TEST_CASE("odata_read puts percent-encoded filter bytes on the wire",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     auto result = con.Query("SELECT AirlineCode FROM odata_read('" + server.Url("/enc/Airlines") +
                             "') WHERE AirlineCode = 'AA'");
@@ -105,7 +106,7 @@ TEST_CASE("http_get with url_encode := false transmits the query verbatim",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     auto result = con.Query("SELECT status FROM http_get('" + url + "', url_encode := false)");
     INFO((result->HasError() ? result->GetError() : std::string()));
@@ -158,7 +159,7 @@ TEST_CASE("odata_read stops with an error when a next link repeats itself",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     auto result = con.Query("SELECT count(*) FROM odata_read('" + entity_url + "')");
     REQUIRE(result->HasError());

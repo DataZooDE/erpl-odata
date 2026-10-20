@@ -1,4 +1,5 @@
 #include "odata_catalog.hpp"
+#include "duckdb_compat.hpp"
 #include "odata_read_functions.hpp"
 #include "duckdb/parser/parsed_data/create_table_info.hpp"
 #include "duckdb/catalog/catalog_entry/table_catalog_entry.hpp"
@@ -147,8 +148,7 @@ void ODataSchemaEntry::LoadTables() {
         }
 
         duckdb::CreateTableInfo table_info;
-        table_info.table = entity_set.name;
-        table_info.schema = name;
+        duckdb_compat::SetQualifiedName(table_info, "", duckdb_compat::Str(name), entity_set.name);
 
         try {
             auto type_variant = metadata.FindType(entity_set.entity_type_name);
@@ -157,7 +157,7 @@ void ODataSchemaEntry::LoadTables() {
                 for (const auto& property : entity_type.properties) {
                     // Prefer property-aware central mapping (precision/scale + collection)
                     auto logical_type = DuckTypeConverter::BuildLogicalTypeForProperty(property, metadata);
-                    table_info.columns.AddColumn(duckdb::ColumnDefinition(property.name, logical_type));
+                    table_info.columns.AddColumn(duckdb::ColumnDefinition(duckdb_compat::Ident(property.name), logical_type));
                 }
             } else {
                 // Fallback for entity type not found
@@ -180,7 +180,12 @@ void ODataSchemaEntry::LoadTables() {
 // -------------------------------------------------------------------------------------------------
 
 ODataTableEntry::ODataTableEntry(duckdb::Catalog &catalog, duckdb::SchemaCatalogEntry &schema, duckdb::CreateTableInfo &info)
-    : duckdb::TableCatalogEntry(catalog, schema, info) {
+    : ODataTableEntry(catalog, schema, info, info.columns.Copy()) {
+}
+
+ODataTableEntry::ODataTableEntry(duckdb::Catalog &catalog, duckdb::SchemaCatalogEntry &schema,
+                                 duckdb::CreateTableInfo &info, duckdb::ColumnList columns)
+    : duckdb::TableCatalogEntry(catalog, schema, info), entry_columns_(std::move(columns)) {
 }
 
 duckdb::unique_ptr<duckdb::BaseStatistics> ODataTableEntry::GetStatistics(duckdb::ClientContext &context, duckdb::column_t column_id) {
@@ -239,7 +244,7 @@ ODataCatalog::ODataCatalog(duckdb::AttachedDatabase &db,
     
     // Create the main schema
     duckdb::CreateSchemaInfo schema_info;
-    schema_info.schema = "main";
+    duckdb_compat::SetSchema(schema_info, "main");
     main_schema = duckdb::make_uniq<ODataSchemaEntry>(*this, schema_info);
 }
 
@@ -271,8 +276,8 @@ bool ODataCatalog::SupportsTimeTravel() const {
     return false;
 }
 
-duckdb::string ODataCatalog::GetDefaultSchema() const {
-    return "main";
+duckdb_compat::DefaultSchemaName ODataCatalog::GetDefaultSchema() const {
+    return duckdb_compat::Ident("main");
 }
 
 duckdb::DatabaseSize ODataCatalog::GetDatabaseSize(duckdb::ClientContext &context) {
@@ -374,7 +379,7 @@ void ODataCatalog::GetTableInfo(const std::string &table_name,
                 auto entity_type = std::get<EntityType>(type_variant);
                 for (const auto& property : entity_type.properties) {
                     auto logical_type = DuckTypeConverter::BuildLogicalTypeForProperty(property, metadata);
-                    columns.AddColumn(duckdb::ColumnDefinition(property.name, logical_type));
+                    columns.AddColumn(duckdb::ColumnDefinition(duckdb_compat::Ident(property.name), logical_type));
                 }
                 return;
             }

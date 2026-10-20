@@ -1,4 +1,6 @@
 #include "catch.hpp"
+#include "test_extension_load_sql.hpp"
+#include "duckdb_compat.hpp"
 #include "duckdb.hpp"
 #include "graph_planner_client.hpp"
 
@@ -73,24 +75,24 @@ TEST_CASE("Microsoft Graph Planner Functions Exist", "[graph_planner][functions]
     duckdb::Connection con(db);
 
     // Load the extension
-    auto result = con.Query("LOAD erpl_odata");
+    auto result = con.Query(ErplOdataLoadSql());
     REQUIRE_FALSE(result->HasError());
 
     SECTION("graph_planner_plans function exists") {
         result = con.Query("SELECT count(*) FROM duckdb_functions() WHERE function_name = 'graph_planner_plans'");
         REQUIRE_FALSE(result->HasError());
-        REQUIRE(result->GetValue(0, 0).GetValue<int64_t>() == 1);
+        REQUIRE(duckdb_compat::ResultValue(*result, 0, 0).GetValue<int64_t>() == 1);
     }
 
     SECTION("graph_planner_buckets function exists") {
         result = con.Query("SELECT count(*) FROM duckdb_functions() WHERE function_name = 'graph_planner_buckets'");
         REQUIRE_FALSE(result->HasError());
-        REQUIRE(result->GetValue(0, 0).GetValue<int64_t>() == 1);
+        REQUIRE(duckdb_compat::ResultValue(*result, 0, 0).GetValue<int64_t>() == 1);
     }
 
     SECTION("graph_planner_tasks function exists") {
         result = con.Query("SELECT count(*) FROM duckdb_functions() WHERE function_name = 'graph_planner_tasks'");
         REQUIRE_FALSE(result->HasError());
-        REQUIRE(result->GetValue(0, 0).GetValue<int64_t>() == 1);
+        REQUIRE(duckdb_compat::ResultValue(*result, 0, 0).GetValue<int64_t>() == 1);
     }
 }

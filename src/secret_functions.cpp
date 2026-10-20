@@ -1,4 +1,5 @@
 #include "secret_functions.hpp"
+#include "duckdb_compat.hpp"
 #include "tracing.hpp"
 
 using namespace duckdb;
@@ -11,15 +12,15 @@ void CreateBasicSecretFunctions::Register(duckdb::ExtensionLoader &loader)
     
     std::string type = "http_basic";
 	SecretType secret_type;
-	secret_type.name = type;
+	secret_type.name = duckdb_compat::Ident(type);
 	secret_type.deserializer = KeyValueSecret::Deserialize<duckdb::KeyValueSecret>;
 	secret_type.default_provider = "config";
 
 	loader.RegisterSecretType(secret_type);
 
 	CreateSecretFunction secret_fun = {type, "config", CreateBasicSecretFromConfig};
-	secret_fun.named_parameters["username"] = LogicalType::VARCHAR;
-    secret_fun.named_parameters["password"] = LogicalType::VARCHAR;
+	duckdb_compat::AddNamedParameter(secret_fun, "username", LogicalType::VARCHAR);
+    duckdb_compat::AddNamedParameter(secret_fun, "password", LogicalType::VARCHAR);
 	loader.RegisterFunction(secret_fun);
     
     ERPL_TRACE_INFO("SECRET_FUNCTIONS", "Successfully registered HTTP Basic authentication secret functions");
@@ -71,14 +72,14 @@ void CreateBearerTokenSecretFunctions::Register(duckdb::ExtensionLoader &loader)
     
     std::string type = "http_bearer";
 	SecretType secret_type;
-	secret_type.name = type;
+	secret_type.name = duckdb_compat::Ident(type);
 	secret_type.deserializer = KeyValueSecret::Deserialize<duckdb::KeyValueSecret>;
 	secret_type.default_provider = "config";
 
 	loader.RegisterSecretType(secret_type);
 
 	CreateSecretFunction secret_fun = {type, "config", CreateBearerSecretFromConfig};
-	secret_fun.named_parameters["token"] = LogicalType::VARCHAR;
+	duckdb_compat::AddNamedParameter(secret_fun, "token", LogicalType::VARCHAR);
 	loader.RegisterFunction(secret_fun);
     
     ERPL_TRACE_INFO("SECRET_FUNCTIONS", "Successfully registered HTTP Bearer token secret functions");

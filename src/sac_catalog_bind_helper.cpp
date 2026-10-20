@@ -1,4 +1,5 @@
 #include "sac_catalog_bind_helper.hpp"
+#include "duckdb_compat.hpp"
 #include "duckdb/main/secret/secret_manager.hpp"
 
 namespace erpl_web {
@@ -50,9 +51,8 @@ std::string SacCatalogBindHelper::GetOptionalNamedString(
     const std::string &param_name,
     const std::string &default_value) {
 
-    if (!input.named_parameters.empty() &&
-        input.named_parameters.find(param_name) != input.named_parameters.end()) {
-        return input.named_parameters.at(param_name).GetValue<std::string>();
+    if (const auto value = duckdb_compat::FindNamedParameter(input.named_parameters, param_name)) {
+        return value->GetValue<std::string>();
     }
 
     return default_value;

@@ -1,4 +1,5 @@
 #include "odata_url_helpers.hpp"
+#include "duckdb_compat.hpp"
 #include "duckdb_argument_helper.hpp"
 #include "datasphere_secret.hpp"
 #include "datazoo/oauth2/oauth2_flow_v2.hpp"
@@ -71,31 +72,31 @@ void CreateDatasphereSecretFunctions::Register(duckdb::ExtensionLoader &loader) 
     
     // Register the new type
     duckdb::SecretType secret_type;
-    secret_type.name = type;
+    secret_type.name = duckdb_compat::Ident(type);
     secret_type.deserializer = duckdb::KeyValueSecret::Deserialize<duckdb::KeyValueSecret>;
     secret_type.default_provider = "oauth2";
     
     // Register the oauth2 secret provider
     duckdb::CreateSecretFunction oauth2_function = {type, "oauth2", CreateDatasphereSecretFromOAuth2, {}};
-    oauth2_function.named_parameters["client_id"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
-    oauth2_function.named_parameters["client_secret"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
-    oauth2_function.named_parameters["tenant_name"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
-    oauth2_function.named_parameters["data_center"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
-    oauth2_function.named_parameters["scope"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
-    oauth2_function.named_parameters["redirect_uri"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
+    duckdb_compat::AddNamedParameter(oauth2_function, "client_id", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
+    duckdb_compat::AddNamedParameter(oauth2_function, "client_secret", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
+    duckdb_compat::AddNamedParameter(oauth2_function, "tenant_name", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
+    duckdb_compat::AddNamedParameter(oauth2_function, "data_center", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
+    duckdb_compat::AddNamedParameter(oauth2_function, "scope", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
+    duckdb_compat::AddNamedParameter(oauth2_function, "redirect_uri", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
     // Optional for explicit grant/endpoints
-    oauth2_function.named_parameters["grant_type"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
-    oauth2_function.named_parameters["token_url"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
+    duckdb_compat::AddNamedParameter(oauth2_function, "grant_type", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
+    duckdb_compat::AddNamedParameter(oauth2_function, "token_url", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
     RegisterCommonSecretParameters(oauth2_function);
     
     // Register the config secret provider
     duckdb::CreateSecretFunction config_function = {type, "config", CreateDatasphereSecretFromConfig, {}};
-    config_function.named_parameters["config_file"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
+    duckdb_compat::AddNamedParameter(config_function, "config_file", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
     RegisterCommonSecretParameters(config_function);
     
     // Register the file secret provider
     duckdb::CreateSecretFunction file_function = {type, "file", CreateDatasphereSecretFromFile, {}};
-    file_function.named_parameters["filepath"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
+    duckdb_compat::AddNamedParameter(file_function, "filepath", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
     RegisterCommonSecretParameters(file_function);
     
     loader.RegisterSecretType(secret_type);
@@ -115,7 +116,7 @@ duckdb::unique_ptr<duckdb::BaseSecret> CreateDatasphereSecretFunctions::CreateDa
     auto copy_param = [&](const std::string &key) {
         auto val = input.options.find(key);
         if (val != input.options.end()) {
-            result->secret_map[key] = val->second;
+            result->secret_map[duckdb_compat::Ident(key)] = val->second;
         }
     };
     
@@ -181,7 +182,7 @@ duckdb::unique_ptr<duckdb::BaseSecret> CreateDatasphereSecretFunctions::CreateDa
             value.erase(0, value.find_first_not_of(" \t"));
             value.erase(value.find_last_not_of(" \t") + 1);
             
-            result->secret_map[key] = duckdb::Value(value);
+            result->secret_map[duckdb_compat::Ident(key)] = duckdb::Value(value);
         }
     }
     
@@ -223,8 +224,8 @@ duckdb::unique_ptr<duckdb::BaseSecret> CreateDatasphereSecretFunctions::CreateDa
 
 void CreateDatasphereSecretFunctions::RegisterCommonSecretParameters(duckdb::CreateSecretFunction &function) {
     // Register common parameters for all Datasphere secret providers
-    function.named_parameters["name"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
-    function.named_parameters["scope"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
+    duckdb_compat::AddNamedParameter(function, "name", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
+    duckdb_compat::AddNamedParameter(function, "scope", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
 }
 
 void CreateDatasphereSecretFunctions::RedactCommonKeys(duckdb::KeyValueSecret &result) {
@@ -270,7 +271,7 @@ void DatasphereTokenManager::UpdateSecretWithTokens(
     
     // Get the secret manager
     auto &secret_manager = duckdb::SecretManager::Get(context);
-    auto secret_name = kv_secret->GetName();
+    auto secret_name = duckdb_compat::Str(kv_secret->GetName());
     
     // Get the current secret to preserve metadata
     auto transaction = duckdb::CatalogTransaction::GetSystemCatalogTransaction(context);

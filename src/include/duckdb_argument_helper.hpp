@@ -1,6 +1,7 @@
 #pragma once
 
 #include "duckdb/main/secret/secret.hpp"
+#include "duckdb_compat.hpp"
 #include "datazoo/oauth2/http_client.hpp"
 
 #include <map>
@@ -54,7 +55,7 @@ namespace erpl_web
         std::vector<std::string> _root_path;
     };
 
-    using named_parameter_map_t = duckdb::named_parameter_map_t;
+    using named_parameter_map_t = duckdb_compat::BindNamedParameters;
     bool HasParam(const named_parameter_map_t& named_params, const std::string& name);
     duckdb::Value ConvertBoolArgument(const named_parameter_map_t& named_params, const std::string& name, const bool default_value);
 

@@ -7,6 +7,8 @@
 // What matters is what reaches the wire, so these tests read the requests the service received.
 
 #include "catch.hpp"
+#include "test_extension_load_sql.hpp"
+#include "duckdb_compat.hpp"
 #include "duckdb.hpp"
 
 #include "odata_test_server.hpp"
@@ -58,7 +60,7 @@ int64_t Count(duckdb::Connection &con, const std::string &sql)
     auto result = con.Query(sql);
     INFO((result->HasError() ? result->GetError() : std::string()));
     REQUIRE_FALSE(result->HasError());
-    return result->GetValue(0, 0).GetValue<int64_t>();
+    return duckdb_compat::ResultValue(*result, 0, 0).GetValue<int64_t>();
 }
 
 }  // namespace
@@ -70,7 +72,7 @@ TEST_CASE("force_full_load := true re-extracts in full even when a delta token i
 
     odp_test::TempDatabase database("odp_249_force");
     auto &con = database.Conn();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
     const std::string url = server.Url(SERVICE_PATH);
 
     // Seed the token: the initial load stores the delta link.
@@ -94,7 +96,7 @@ TEST_CASE("a forced full load asks for change tracking again", "[odp_force_full_
 
     odp_test::TempDatabase database("odp_249_prefer");
     auto &con = database.Conn();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
     const std::string url = server.Url(SERVICE_PATH);
 
     REQUIRE(Count(con, "SELECT COUNT(*) FROM odp_odata_read('" + url + "')") == static_cast<int64_t>(ROW_COUNT));
@@ -119,7 +121,7 @@ TEST_CASE("force_full_load is one-shot: the read after it resumes from the new t
 
     odp_test::TempDatabase database("odp_249_oneshot");
     auto &con = database.Conn();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
     const std::string url = server.Url(SERVICE_PATH);
 
     REQUIRE(Count(con, "SELECT COUNT(*) FROM odp_odata_read('" + url + "')") == static_cast<int64_t>(ROW_COUNT));

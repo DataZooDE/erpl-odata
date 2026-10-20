@@ -1,4 +1,5 @@
 #include "graph_excel_catalog.hpp"
+#include "duckdb_compat.hpp"
 #include "graph_excel_client.hpp"
 #include "graph_write_helpers.hpp"
 #include "tracing.hpp"
@@ -35,9 +36,39 @@ struct ExcelTableScanBindData : public duckdb::TableFunctionData {
 	duckdb::TableCatalogEntry *table_entry = nullptr;
 };
 
-static duckdb::BindInfo ExcelTableScanGetBindInfo(const duckdb::optional_ptr<duckdb::FunctionData> bind_data_p) {
+struct ExcelTableScanLocalState : public duckdb::LocalTableFunctionState {
+	std::vector<duckdb::column_t> column_ids;
+	// Positional only: Excel has no persistent row ID. This lets DELETE bind so
+	// PlanDelete can report that writes are unsupported; it is not a stable key.
+	duckdb::idx_t next_rowid = 0;
+};
+
+static duckdb::unique_ptr<duckdb::LocalTableFunctionState> ExcelTableScanInitLocal(
+    duckdb::ExecutionContext &, duckdb::TableFunctionInitInput &input,
+    duckdb::GlobalTableFunctionState *) {
+	auto state = duckdb::make_uniq<ExcelTableScanLocalState>();
+	state->column_ids = input.column_ids;
+	return state;
+}
+
+static duckdb::BindInfo ExcelTableScanGetBindInfo(duckdb_compat::GetBindInfoInput input) {
+	auto bind_data_p = duckdb_compat::GetBindData(input);
+	if (!bind_data_p) {
+		return duckdb::BindInfo(duckdb::ScanType::TABLE);
+	}
 	auto &bind_data = bind_data_p->Cast<ExcelTableScanBindData>();
-	return duckdb::BindInfo(*bind_data.table_entry);
+	if (!bind_data.table_entry) {
+		return duckdb::BindInfo(duckdb::ScanType::TABLE);
+	}
+	return duckdb_compat::MakeTableBindInfo(*bind_data.table_entry);
+}
+
+static duckdb::optional_ptr<duckdb::TableCatalogEntry>
+ExcelTableScanGetTableEntry(duckdb::optional_ptr<const duckdb::FunctionData> bind_data) {
+	if (!bind_data) {
+		return nullptr;
+	}
+	return bind_data->Cast<ExcelTableScanBindData>().table_entry;
 }
 
 static void ExcelTableScan(duckdb::ClientContext &context,
@@ -45,10 +76,11 @@ static void ExcelTableScan(duckdb::ClientContext &context,
                             duckdb::DataChunk &output)
 {
 	auto &bind_data = data.bind_data->Cast<ExcelTableScanBindData>();
+	auto &local_state = data.local_state->Cast<ExcelTableScanLocalState>();
 	auto &state = data.global_state->Cast<GraphJsonArrayScanState>();
 
 	if (state.done) {
-		output.SetCardinality(0);
+		duckdb_compat::SetChildCardinality(output, 0);
 		return;
 	}
 
@@ -61,12 +93,11 @@ static void ExcelTableScan(duckdb::ClientContext &context,
 	if (!state.parsed_doc) {
 		if (!state.InitIterator()) {
 			state.done = true;
-			output.SetCardinality(0);
+			duckdb_compat::SetChildCardinality(output, 0);
 			return;
 		}
 	}
 
-	const size_t col_count = bind_data.column_names.size();
 	idx_t row_idx = 0;
 	yyjson_val *item;
 
@@ -75,21 +106,25 @@ static void ExcelTableScan(duckdb::ClientContext &context,
 		yyjson_val *values_arr = yyjson_obj_get(item, "values");
 		yyjson_val *inner_arr  = (values_arr && yyjson_is_arr(values_arr))
 		                             ? yyjson_arr_get_first(values_arr) : nullptr;
-
-		if (!inner_arr || !yyjson_is_arr(inner_arr)) {
-			for (size_t col = 0; col < col_count; col++) {
-				duckdb::FlatVector::Validity(output.data[col]).SetInvalid(row_idx);
+		std::vector<yyjson_val *> cells;
+		if (inner_arr && yyjson_is_arr(inner_arr)) {
+			cells.reserve(yyjson_arr_size(inner_arr));
+			yyjson_arr_iter cell_iter;
+			yyjson_arr_iter_init(inner_arr, &cell_iter);
+			while (auto *cell = yyjson_arr_iter_next(&cell_iter)) {
+				cells.push_back(cell);
 			}
-			row_idx++;
-			continue;
 		}
 
-		yyjson_arr_iter cell_iter;
-		yyjson_arr_iter_init(inner_arr, &cell_iter);
-		for (size_t col = 0; col < col_count; col++) {
-			yyjson_val *cell = yyjson_arr_iter_next(&cell_iter);
+		for (size_t col = 0; col < local_state.column_ids.size(); col++) {
+			const auto col_id = local_state.column_ids[col];
+			if (col_id == COLUMN_IDENTIFIER_ROW_ID) {
+				output.SetValue(col, row_idx, duckdb::Value::BIGINT(local_state.next_rowid));
+				continue;
+			}
+			yyjson_val *cell = col_id < cells.size() ? cells[col_id] : nullptr;
 			if (!cell || yyjson_is_null(cell)) {
-				duckdb::FlatVector::Validity(output.data[col]).SetInvalid(row_idx);
+				duckdb_compat::MutableValidity(output.data[col]).SetInvalid(row_idx);
 			} else {
 				std::string str_val;
 				if (yyjson_is_str(cell)) {
@@ -102,15 +137,16 @@ static void ExcelTableScan(duckdb::ClientContext &context,
 						free(tmp);
 					}
 				}
-				duckdb::FlatVector::GetData<duckdb::string_t>(output.data[col])[row_idx] =
+				duckdb_compat::FlatData<duckdb::string_t>(output.data[col])[row_idx] =
 				    duckdb::StringVector::AddString(output.data[col], str_val);
 			}
 		}
+		local_state.next_rowid++;
 		row_idx++;
 	}
 
 	if (row_idx < STANDARD_VECTOR_SIZE) { state.done = true; }
-	output.SetCardinality(row_idx);
+	duckdb_compat::SetChildCardinality(output, row_idx);
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -190,7 +226,7 @@ public:
 	                                 duckdb::OperatorSourceInput &input) const override {
 #endif
 		auto &g = sink_state->Cast<ExcelWriteGlobalState>();
-		chunk.SetCardinality(1);
+		duckdb_compat::SetChildCardinality(chunk, 1);
 		chunk.SetValue(0, 0, duckdb::Value::BIGINT(static_cast<int64_t>(g.affected_count)));
 		return duckdb::SourceResultType::FINISHED;
 	}
@@ -334,8 +370,7 @@ void ExcelSchemaEntry::LoadTables() {
 			std::vector<std::string> col_names = client.GetTableColumnsByPath(file_path, table_name, drive_id);
 
 			duckdb::CreateTableInfo table_info;
-			table_info.table  = table_name;
-			table_info.schema = name;
+			duckdb_compat::SetQualifiedName(table_info, "", duckdb_compat::Str(name), table_name);
 
 			if (col_names.empty()) {
 				// Fallback: at least one generic column so the entry is usable
@@ -343,7 +378,7 @@ void ExcelSchemaEntry::LoadTables() {
 				col_names.push_back("column_0");
 			} else {
 				for (const auto &col_name : col_names) {
-					table_info.columns.AddColumn(duckdb::ColumnDefinition(col_name, duckdb::LogicalType::VARCHAR));
+					table_info.columns.AddColumn(duckdb::ColumnDefinition(duckdb_compat::Ident(col_name), duckdb::LogicalType::VARCHAR));
 				}
 			}
 
@@ -374,7 +409,22 @@ ExcelTableEntry::ExcelTableEntry(duckdb::Catalog &catalog,
                                  const std::string &drive_id,
                                  const std::string &secret_name,
                                  std::shared_ptr<HttpAuthParams> auth_params)
+    : ExcelTableEntry(catalog, schema, info, file_path, table_name, drive_id,
+                      secret_name, auth_params, info.columns.Copy())
+{
+}
+
+ExcelTableEntry::ExcelTableEntry(duckdb::Catalog &catalog,
+                                 duckdb::SchemaCatalogEntry &schema,
+                                 duckdb::CreateTableInfo &info,
+                                 const std::string &file_path,
+                                 const std::string &table_name,
+                                 const std::string &drive_id,
+                                 const std::string &secret_name,
+                                 std::shared_ptr<HttpAuthParams> auth_params,
+                                 duckdb::ColumnList columns)
     : duckdb::TableCatalogEntry(catalog, schema, info),
+      entry_columns_(std::move(columns)),
       file_path_(file_path),
       excel_table_name_(table_name),
       drive_id_(drive_id),
@@ -396,15 +446,17 @@ duckdb::TableFunction ExcelTableEntry::GetScanFunction(duckdb::ClientContext &,
 	scan_data->auth_params = auth_params_;
 	scan_data->table_entry = this;
 
-	for (const auto &col : columns.Physical()) {
-		scan_data->column_names.push_back(col.Name());
+	for (const auto &col : entry_columns_.Physical()) {
+		scan_data->column_names.push_back(duckdb_compat::Str(col.Name()));
 	}
 
 	bind_data = std::move(scan_data);
 
 	duckdb::TableFunction fn("excel_table_scan", {}, ExcelTableScan, nullptr,
-	                         GraphJsonArrayScanState::Init);
+	                         GraphJsonArrayScanState::Init, ExcelTableScanInitLocal);
+	fn.projection_pushdown = true;
 	fn.get_bind_info = ExcelTableScanGetBindInfo;
+	duckdb_compat::SetTableEntryGetter(fn, ExcelTableScanGetTableEntry);
 	return fn;
 }
 
@@ -419,8 +471,9 @@ void ExcelTableEntry::BindUpdateConstraints(duckdb::Binder &, duckdb::LogicalGet
 }
 
 duckdb::virtual_column_map_t ExcelTableEntry::GetVirtualColumns() const {
-	// Excel tables are remote-only; no rowid or other virtual columns are supported.
-	return {};
+	// DuckDB binds a rowid before it reaches PlanDelete. Provide the normal
+	// virtual rowid so our explicit unsupported-DELETE error can be raised.
+	return duckdb::TableCatalogEntry::GetVirtualColumns();
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -439,7 +492,7 @@ ExcelCatalog::ExcelCatalog(duckdb::AttachedDatabase &db,
       auth_params_(auth_params)
 {
 	duckdb::CreateSchemaInfo schema_info;
-	schema_info.schema = "main";
+	duckdb_compat::SetSchema(schema_info, "main");
 	main_schema_ = duckdb::make_uniq<ExcelSchemaEntry>(*this, schema_info);
 }
 
@@ -450,7 +503,7 @@ void ExcelCatalog::FinalizeLoad(duckdb::optional_ptr<duckdb::ClientContext>) {}
 duckdb::string ExcelCatalog::GetDBPath() { return file_path_; }
 bool ExcelCatalog::InMemory() { return true; }
 bool ExcelCatalog::SupportsTimeTravel() const { return false; }
-duckdb::string ExcelCatalog::GetDefaultSchema() const { return "main"; }
+duckdb_compat::DefaultSchemaName ExcelCatalog::GetDefaultSchema() const { return duckdb_compat::Ident("main"); }
 duckdb::DatabaseSize ExcelCatalog::GetDatabaseSize(duckdb::ClientContext &) { return duckdb::DatabaseSize(); }
 duckdb::vector<duckdb::MetadataBlockInfo> ExcelCatalog::GetMetadataInfo(duckdb::ClientContext &) { return {}; }
 
@@ -506,7 +559,7 @@ duckdb::PhysicalOperator &ExcelCatalog::PlanInsert(duckdb::ClientContext &contex
 	// Column names in physical order (must match the API row column order)
 	std::vector<std::string> col_names;
 	for (const auto &col : op.table.GetColumns().Physical()) {
-		col_names.push_back(col.Name());
+		col_names.push_back(duckdb_compat::Str(col.Name()));
 	}
 
 	auto &insert_op = planner.Make<PhysicalExcelInsert>(

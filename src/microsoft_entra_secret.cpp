@@ -1,4 +1,5 @@
 #include "microsoft_entra_secret.hpp"
+#include "duckdb_compat.hpp"
 #include "datazoo/oauth2/http_client.hpp"
 #include "tracing.hpp"
 #include "duckdb/common/string_util.hpp"
@@ -166,25 +167,25 @@ void CreateMicrosoftEntraSecretFunctions::Register(duckdb::ExtensionLoader &load
 
     // Register the secret type
     duckdb::SecretType secret_type;
-    secret_type.name = type;
+    secret_type.name = duckdb_compat::Ident(type);
     secret_type.deserializer = duckdb::KeyValueSecret::Deserialize<duckdb::KeyValueSecret>;
     secret_type.default_provider = "client_credentials";
 
     // Register the client_credentials provider (most common for service-to-service)
     duckdb::CreateSecretFunction client_creds_function = {type, "client_credentials", CreateMicrosoftEntraSecretFromClientCredentials, {}};
-    client_creds_function.named_parameters["tenant_id"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
-    client_creds_function.named_parameters["client_id"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
-    client_creds_function.named_parameters["client_secret"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
-    client_creds_function.named_parameters["scope"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
+    duckdb_compat::AddNamedParameter(client_creds_function, "tenant_id", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
+    duckdb_compat::AddNamedParameter(client_creds_function, "client_id", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
+    duckdb_compat::AddNamedParameter(client_creds_function, "client_secret", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
+    duckdb_compat::AddNamedParameter(client_creds_function, "scope", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
     RegisterCommonSecretParameters(client_creds_function);
 
     // Register the config provider (for reading credentials from file)
     duckdb::CreateSecretFunction config_function = {type, "config", CreateMicrosoftEntraSecretFromConfig, {}};
-    config_function.named_parameters["tenant_id"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
-    config_function.named_parameters["client_id"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
-    config_function.named_parameters["client_secret"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
-    config_function.named_parameters["scope"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
-    config_function.named_parameters["access_token"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
+    duckdb_compat::AddNamedParameter(config_function, "tenant_id", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
+    duckdb_compat::AddNamedParameter(config_function, "client_id", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
+    duckdb_compat::AddNamedParameter(config_function, "client_secret", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
+    duckdb_compat::AddNamedParameter(config_function, "scope", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
+    duckdb_compat::AddNamedParameter(config_function, "access_token", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
     RegisterCommonSecretParameters(config_function);
 
     loader.RegisterSecretType(secret_type);
@@ -207,7 +208,7 @@ duckdb::unique_ptr<duckdb::BaseSecret> CreateMicrosoftEntraSecretFunctions::Crea
     auto copy_param = [&](const std::string &key) {
         auto val = input.options.find(key);
         if (val != input.options.end()) {
-            result->secret_map[key] = val->second;
+            result->secret_map[duckdb_compat::Ident(key)] = val->second;
             ERPL_TRACE_DEBUG("MS_ENTRA_SECRET", "Set parameter: " + key);
         }
     };
@@ -257,7 +258,7 @@ duckdb::unique_ptr<duckdb::BaseSecret> CreateMicrosoftEntraSecretFunctions::Crea
     auto copy_param = [&](const std::string &key) {
         auto val = input.options.find(key);
         if (val != input.options.end()) {
-            result->secret_map[key] = val->second;
+            result->secret_map[duckdb_compat::Ident(key)] = val->second;
         }
     };
 
@@ -275,7 +276,7 @@ duckdb::unique_ptr<duckdb::BaseSecret> CreateMicrosoftEntraSecretFunctions::Crea
 }
 
 void CreateMicrosoftEntraSecretFunctions::RegisterCommonSecretParameters(duckdb::CreateSecretFunction &function) {
-    function.named_parameters["name"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
+    duckdb_compat::AddNamedParameter(function, "name", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
 }
 
 void CreateMicrosoftEntraSecretFunctions::RedactCommonKeys(duckdb::KeyValueSecret &result) {
@@ -498,7 +499,7 @@ void MicrosoftEntraTokenManager::UpdateSecretWithTokens(
 
     // Get the secret manager
     auto &secret_manager = duckdb::SecretManager::Get(context);
-    auto secret_name = kv_secret->GetName();
+    auto secret_name = duckdb_compat::Str(kv_secret->GetName());
     if (secret_name.empty()) {
         ERPL_TRACE_WARN("MS_ENTRA_TOKEN", "Secret has no name; refreshed token will not be persisted");
         return;

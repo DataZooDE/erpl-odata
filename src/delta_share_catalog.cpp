@@ -1,4 +1,5 @@
 #include "delta_share_catalog.hpp"
+#include "duckdb_compat.hpp"
 #include "delta_share_client.hpp"
 #include "delta_share_types.hpp"
 #include "tracing.hpp"
@@ -97,7 +98,7 @@ static void DeltaShareShowSharesScan(ClientContext &context, TableFunctionInput 
 	auto &bind_data = data_p.bind_data->Cast<DeltaShareShowSharesBindData>();
 
 	if (state.finished) {
-		output.SetCardinality(0);
+		duckdb_compat::SetChildCardinality(output, 0);
 		return;
 	}
 
@@ -113,12 +114,12 @@ static void DeltaShareShowSharesScan(ClientContext &context, TableFunctionInput 
 	}
 
 	state.finished = (state.current_index >= bind_data.shares.size());
-	output.SetCardinality(count);
+	duckdb_compat::SetChildCardinality(output, count);
 }
 
 static duckdb::unique_ptr<FunctionData>
 DeltaShareShowSharesBind(ClientContext &context, TableFunctionBindInput &input,
-						vector<LogicalType> &return_types, vector<string> &names) {
+						vector<LogicalType> &return_types, duckdb_compat::BindNames &names) {
 	PostHogTelemetry::Instance().RecordFunctionCall("delta_share_show_shares");
 	// Validate input
 	if (input.inputs.empty()) {
@@ -170,7 +171,7 @@ static void DeltaShareShowSchemasScan(ClientContext &context, TableFunctionInput
 	auto &bind_data = data_p.bind_data->Cast<DeltaShareShowSchemasBindData>();
 
 	if (state.finished) {
-		output.SetCardinality(0);
+		duckdb_compat::SetChildCardinality(output, 0);
 		return;
 	}
 
@@ -186,12 +187,12 @@ static void DeltaShareShowSchemasScan(ClientContext &context, TableFunctionInput
 	}
 
 	state.finished = (state.current_index >= bind_data.schemas.size());
-	output.SetCardinality(count);
+	duckdb_compat::SetChildCardinality(output, count);
 }
 
 static duckdb::unique_ptr<FunctionData>
 DeltaShareShowSchemasBind(ClientContext &context, TableFunctionBindInput &input,
-						vector<LogicalType> &return_types, vector<string> &names) {
+						vector<LogicalType> &return_types, duckdb_compat::BindNames &names) {
 	PostHogTelemetry::Instance().RecordFunctionCall("delta_share_show_schemas");
 	// Validate input
 	if (input.inputs.size() < 2) {
@@ -247,7 +248,7 @@ static void DeltaShareShowTablesScan(ClientContext &context, TableFunctionInput 
 	auto &bind_data = data_p.bind_data->Cast<DeltaShareShowTablesBindData>();
 
 	if (state.finished) {
-		output.SetCardinality(0);
+		duckdb_compat::SetChildCardinality(output, 0);
 		return;
 	}
 
@@ -270,12 +271,12 @@ static void DeltaShareShowTablesScan(ClientContext &context, TableFunctionInput 
 	}
 
 	state.finished = (state.current_index >= bind_data.tables.size());
-	output.SetCardinality(count);
+	duckdb_compat::SetChildCardinality(output, count);
 }
 
 static duckdb::unique_ptr<FunctionData>
 DeltaShareShowTablesBind(ClientContext &context, TableFunctionBindInput &input,
-						vector<LogicalType> &return_types, vector<string> &names) {
+						vector<LogicalType> &return_types, duckdb_compat::BindNames &names) {
 	PostHogTelemetry::Instance().RecordFunctionCall("delta_share_show_tables");
 	// Validate input
 	if (input.inputs.size() < 3) {

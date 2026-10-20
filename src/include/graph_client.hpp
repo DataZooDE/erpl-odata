@@ -78,6 +78,10 @@ public:
     void DeleteWithHeaders(const std::string &url, const std::map<std::string, std::string> &extra_headers);
 
     static std::string BaseUrl();
+#ifdef ERPL_ODATA_TEST_SEAMS
+    // C++ loopback tests only. Accepts 127.0.0.1 HTTP URLs; empty restores Graph.
+    static void SetLoopbackBaseUrlForTest(const std::string &url);
+#endif
     static std::string UrlEncode(const std::string &value, bool preserve_slashes = false);
     static std::string StripLeadingSlash(const std::string &value);
     static std::string EscapeODataStringLiteral(const std::string &value);

@@ -1,4 +1,5 @@
 #include "odata_odp_functions.hpp"
+#include "duckdb_compat.hpp"
 #include "tracing.hpp"
 #include "datazoo/oauth2/http_client.hpp"
 #include "odata_edm.hpp"
@@ -122,7 +123,7 @@ void OdpODataShowBindData::LoadOdpServiceData() {
 static duckdb::unique_ptr<duckdb::FunctionData> SapODataShowBind(duckdb::ClientContext &context,
                                                                  duckdb::TableFunctionBindInput &input,
                                                                  duckdb::vector<duckdb::LogicalType> &return_types,
-                                                                 duckdb::vector<std::string> &names) {
+                                                                 duckdb_compat::BindNames &names) {
     PostHogTelemetry::Instance().RecordFunctionCall("odata_sap_show");
     auto base_url = input.inputs[0].GetValue<std::string>();
 
@@ -187,7 +188,7 @@ static void SapODataShowScan(duckdb::ClientContext &context,
         ERPL_TRACE_DEBUG("SAP_ODATA_SHOW", "Scan: service_data.size() = " + std::to_string(bind_data.service_data.size()) + ", next_index = " + std::to_string(state.current_index));
         if (bind_data.service_data.empty()) {
             ERPL_TRACE_DEBUG("SAP_ODATA_SHOW", "Scan: service_data is empty, returning 0 rows");
-            output.SetCardinality(0);
+            duckdb_compat::SetChildCardinality(output, 0);
             return;
         }
     
@@ -198,7 +199,7 @@ static void SapODataShowScan(duckdb::ClientContext &context,
     idx_t count = end_idx - start_idx;
     
     if (count == 0) {
-        output.SetCardinality(0);
+        duckdb_compat::SetChildCardinality(output, 0);
         return;
     }
     
@@ -214,7 +215,7 @@ static void SapODataShowScan(duckdb::ClientContext &context,
         output.data[3].SetValue(i, service_row[2]); // service_url
     }
     
-    output.SetCardinality(count);
+    duckdb_compat::SetChildCardinality(output, count);
     state.current_index = end_idx;
     
     } catch (const std::exception& e) {
@@ -225,7 +226,7 @@ static void SapODataShowScan(duckdb::ClientContext &context,
 static duckdb::unique_ptr<duckdb::FunctionData> OdpODataShowBind(duckdb::ClientContext &context,
                                                                  duckdb::TableFunctionBindInput &input,
                                                                  duckdb::vector<duckdb::LogicalType> &return_types,
-                                                                 duckdb::vector<std::string> &names) {
+                                                                 duckdb_compat::BindNames &names) {
     PostHogTelemetry::Instance().RecordFunctionCall("odp_odata_show");
     auto base_url = input.inputs[0].GetValue<std::string>();
 
@@ -272,7 +273,7 @@ static void OdpODataShowScan(duckdb::ClientContext &context,
         // Return the discovered ODP services
         if (bind_data.odp_service_data.empty()) {
             ERPL_TRACE_DEBUG("ODP_SCAN", "No ODP service data found, returning 0 rows");
-            output.SetCardinality(0);
+            duckdb_compat::SetChildCardinality(output, 0);
             return;
         }
     
@@ -286,7 +287,7 @@ static void OdpODataShowScan(duckdb::ClientContext &context,
     
     if (count == 0) {
         ERPL_TRACE_DEBUG("ODP_SCAN", "Count is 0, returning 0 rows");
-        output.SetCardinality(0);
+        duckdb_compat::SetChildCardinality(output, 0);
         return;
     }
     
@@ -304,7 +305,7 @@ static void OdpODataShowScan(duckdb::ClientContext &context,
         output.data[5].SetValue(i, odp_service_row[5]); // change_tracking
     }
     
-    output.SetCardinality(count);
+    duckdb_compat::SetChildCardinality(output, count);
     state.current_index = end_idx;
     
     } catch (const std::exception& e) {
@@ -891,7 +892,7 @@ duckdb::TableFunctionSet CreateODataSapShowFunction() {
     );
     
     // Add named parameters for optional configuration
-    sap_odata_show.named_parameters["secret"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
+    duckdb_compat::AddNamedParameter(sap_odata_show, "secret", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
     sap_odata_show.init_global = ScanRowCursorState::Init;
     
     function_set.AddFunction(sap_odata_show);
@@ -910,7 +911,7 @@ duckdb::TableFunctionSet CreateOdpODataShowFunction() {
     );
     
     // Add named parameters for optional configuration
-    odp_odata_show.named_parameters["secret"] = duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR);
+    duckdb_compat::AddNamedParameter(odp_odata_show, "secret", duckdb::LogicalType(duckdb::LogicalTypeId::VARCHAR));
     
     odp_odata_show.init_global = ScanRowCursorState::Init;
 

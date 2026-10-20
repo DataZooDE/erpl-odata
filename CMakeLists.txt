@@ -92,6 +92,14 @@ target_link_libraries(posthog_telemetry PRIVATE OpenSSL::SSL OpenSSL::Crypto)
 # both again, and every translation unit that sees both headers fails with a
 # macro redefinition and a type conflict.
 # ---------------------------------------------------------------------------
+# duckdb-compat: one source tree for DuckDB 1.4 LTS, 1.5 and 2.0. Header-only
+# API-shape shims (DataZooDE/duckdb-compat); no `#if` on DuckDB versions at
+# call sites. Must come before datazoo-oauth2, which takes its include path.
+# Include path only -- DuckDB export()s extension targets, so linking the
+# duckdb_compat target would break CMake's generate step.
+add_subdirectory(duckdb-compat)
+include_directories(duckdb-compat/include)
+
 add_subdirectory(datazoo-oauth2)
 target_compile_definitions(datazoo_oauth2 PUBLIC DATAZOO_OAUTH2_USE_HOST_TRACING)
 target_include_directories(datazoo_oauth2 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/include)
@@ -186,6 +194,14 @@ target_link_libraries(${LOADABLE_EXTENSION_NAME} OpenSSL::SSL OpenSSL::Crypto ti
 # Enable C++17
 target_compile_features(${EXTENSION_NAME} PRIVATE cxx_std_17)
 target_compile_features(${LOADABLE_EXTENSION_NAME} PRIVATE cxx_std_17)
+
+# Opt-in port audit: DuckDB's default flags suppress deprecation warnings after
+# CMAKE_CXX_FLAGS, so a global -Wdeprecated-declarations alone does not show them.
+option(ERPL_AUDIT_DEPRECATIONS "Show deprecated DuckDB API uses in erpl-odata" OFF)
+if(ERPL_AUDIT_DEPRECATIONS AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  target_compile_options(${EXTENSION_NAME} PRIVATE -Wdeprecated-declarations)
+  target_compile_options(${LOADABLE_EXTENSION_NAME} PRIVATE -Wdeprecated-declarations)
+endif()
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
@@ -203,8 +219,9 @@ endif()
 if(APPLE)
    find_library(COREFOUNDATION_FRAMEWORK CoreFoundation)
    find_library(APPLICATIONSERVICES_FRAMEWORK ApplicationServices)
-   target_link_libraries(${EXTENSION_NAME} ${COREFOUNDATION_FRAMEWORK} ${APPLICATIONSERVICES_FRAMEWORK})
-   target_link_libraries(${LOADABLE_EXTENSION_NAME} ${COREFOUNDATION_FRAMEWORK} ${APPLICATIONSERVICES_FRAMEWORK})
+   find_library(SECURITY_FRAMEWORK Security)
+   target_link_libraries(${EXTENSION_NAME} ${COREFOUNDATION_FRAMEWORK} ${APPLICATIONSERVICES_FRAMEWORK} ${SECURITY_FRAMEWORK})
+   target_link_libraries(${LOADABLE_EXTENSION_NAME} ${COREFOUNDATION_FRAMEWORK} ${APPLICATIONSERVICES_FRAMEWORK} ${SECURITY_FRAMEWORK})
 endif()
 
 # C++ unit tests are a developer-only artifact. They are only buildable from our own
@@ -226,5 +243,8 @@ endif()
 
 install(
   TARGETS ${EXTENSION_NAME}
+  # DuckDB 2.0 removed DONT_LINK; the loadable target still needs this export
+  # set when erpl_odata is also linked into the SQL unittest binary.
+  EXPORT "${DUCKDB_EXPORT_SET}"
   LIBRARY DESTINATION "${INSTALL_LIB_DIR}"
   ARCHIVE DESTINATION "${INSTALL_LIB_DIR}")

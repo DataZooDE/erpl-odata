@@ -1,4 +1,5 @@
 #include "graph_outlook_functions.hpp"
+#include "duckdb_compat.hpp"
 #include "graph_outlook_client.hpp"
 #include "graph_client.hpp"
 #include "graph_excel_secret.hpp"
@@ -45,7 +46,7 @@ static bool FetchPage(GraphPagedScanState &state, const OutlookBindData &bd,
 static bool InitScan(GraphPagedScanState &state, const OutlookBindData &bd, DataChunk &output,
                      const char *array_key = "value") {
     if (state.done) {
-        output.SetCardinality(0);
+        duckdb_compat::SetChildCardinality(output, 0);
         return false;
     }
     if (!state.initialized) {
@@ -53,7 +54,7 @@ static bool InitScan(GraphPagedScanState &state, const OutlookBindData &bd, Data
         state.origin_url = bd.first_url;
         if (!FetchPage(state, bd, bd.first_url, array_key)) {
             state.done = true;
-            output.SetCardinality(0);
+            duckdb_compat::SetChildCardinality(output, 0);
             return false;
         }
         state.initialized = true;
@@ -70,9 +71,9 @@ static yyjson_val *NextItem(GraphPagedScanState &state, const OutlookBindData &b
 
 // Named-parameter helper
 static std::string GetNamedStr(TableFunctionBindInput &input, const char *name) {
-    auto it = input.named_parameters.find(name);
-    if (it != input.named_parameters.end() && !it->second.IsNull()) {
-        return it->second.GetValue<std::string>();
+    const auto value = duckdb_compat::FindNamedParameter(input.named_parameters, name);
+    if (value && !value->IsNull()) {
+        return value->GetValue<std::string>();
     }
     return {};
 }
@@ -94,7 +95,7 @@ unique_ptr<FunctionData> GraphOutlookFunctions::CalendarsBind(
     ClientContext &context,
     TableFunctionBindInput &input,
     vector<LogicalType> &return_types,
-    vector<std::string> &names)
+    duckdb_compat::BindNames &names)
 {
     auto bind_data         = make_uniq<OutlookBindData>();
     bind_data->secret_name = GetNamedStr(input, "secret");
@@ -139,7 +140,7 @@ void GraphOutlookFunctions::CalendarsScan(
         SetBoolCell(output.data[4], row, yyjson_obj_get(item, "canEdit"));
         row++;
     }
-    output.SetCardinality(row);
+    duckdb_compat::SetChildCardinality(output, row);
 }
 
 // ============================================================================
@@ -156,7 +157,7 @@ unique_ptr<FunctionData> GraphOutlookFunctions::CalendarEventsBind(
     ClientContext &context,
     TableFunctionBindInput &input,
     vector<LogicalType> &return_types,
-    vector<std::string> &names)
+    duckdb_compat::BindNames &names)
 {
     auto bind_data        = make_uniq<CalendarEventsBindData>();
     bind_data->secret_name = GetNamedStr(input, "secret");
@@ -245,7 +246,7 @@ void GraphOutlookFunctions::CalendarEventsScan(
         SetStrCell(output.data[10], row, yyjson_obj_get(item, "webLink"));
         row++;
     }
-    output.SetCardinality(row);
+    duckdb_compat::SetChildCardinality(output, row);
 }
 
 // ============================================================================
@@ -256,7 +257,7 @@ unique_ptr<FunctionData> GraphOutlookFunctions::ContactsBind(
     ClientContext &context,
     TableFunctionBindInput &input,
     vector<LogicalType> &return_types,
-    vector<std::string> &names)
+    duckdb_compat::BindNames &names)
 {
     auto bind_data         = make_uniq<OutlookBindData>();
     bind_data->secret_name = GetNamedStr(input, "secret");
@@ -318,7 +319,7 @@ void GraphOutlookFunctions::ContactsScan(
         SetStrCell(output.data[8], row, yyjson_obj_get(item, "jobTitle"));
         row++;
     }
-    output.SetCardinality(row);
+    duckdb_compat::SetChildCardinality(output, row);
 }
 
 // ============================================================================
@@ -329,7 +330,7 @@ unique_ptr<FunctionData> GraphOutlookFunctions::MailFoldersBind(
     ClientContext &context,
     TableFunctionBindInput &input,
     vector<LogicalType> &return_types,
-    vector<std::string> &names)
+    duckdb_compat::BindNames &names)
 {
     auto bind_data         = make_uniq<OutlookBindData>();
     bind_data->secret_name = GetNamedStr(input, "secret");
@@ -374,7 +375,7 @@ void GraphOutlookFunctions::MailFoldersScan(
         SetInt32Cell(output.data[4], row, yyjson_obj_get(item, "unreadItemCount"));
         row++;
     }
-    output.SetCardinality(row);
+    duckdb_compat::SetChildCardinality(output, row);
 }
 
 // ============================================================================
@@ -403,7 +404,7 @@ unique_ptr<FunctionData> GraphOutlookFunctions::MessagesBind(
     ClientContext &context,
     TableFunctionBindInput &input,
     vector<LogicalType> &return_types,
-    vector<std::string> &names)
+    duckdb_compat::BindNames &names)
 {
     auto bind_data         = make_uniq<MessagesBindData>();
     bind_data->secret_name = GetNamedStr(input, "secret");
@@ -541,17 +542,17 @@ void GraphOutlookFunctions::MessagesScan(
         if (pid_val && yyjson_is_str(pid_val)) {
             auto it = bd.folder_name_by_id.find(yyjson_get_str(pid_val));
             if (it != bd.folder_name_by_id.end()) {
-                FlatVector::GetData<string_t>(output.data[11])[row] =
+                duckdb_compat::FlatData<string_t>(output.data[11])[row] =
                     StringVector::AddString(output.data[11], it->second);
             } else {
-                FlatVector::Validity(output.data[11]).SetInvalid(row);
+                duckdb_compat::MutableValidity(output.data[11]).SetInvalid(row);
             }
         } else {
-            FlatVector::Validity(output.data[11]).SetInvalid(row);
+            duckdb_compat::MutableValidity(output.data[11]).SetInvalid(row);
         }
         row++;
     }
-    output.SetCardinality(row);
+    duckdb_compat::SetChildCardinality(output, row);
 }
 
 // ============================================================================
@@ -564,8 +565,8 @@ void GraphOutlookFunctions::Register(ExtensionLoader &loader) {
     {
         TableFunction fn("graph_calendars", {}, DATAZOO_GUARD(ERPL_ODATA_BANNER, CalendarsScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, CalendarsBind));
         fn.init_global = GraphPagedScanState::Init;
-        fn.named_parameters["user"]    = LogicalType::VARCHAR;
-        fn.named_parameters["secret"]  = LogicalType::VARCHAR;
+        duckdb_compat::AddNamedParameter(fn, "user", LogicalType::VARCHAR);
+        duckdb_compat::AddNamedParameter(fn, "secret", LogicalType::VARCHAR);
         CreateTableFunctionInfo info(fn);
         FunctionDescription desc;
         desc.description = "List Outlook calendars for a user via Microsoft Graph. "
@@ -580,16 +581,17 @@ void GraphOutlookFunctions::Register(ExtensionLoader &loader) {
         };
         desc.categories  = {"microsoft", "graph", "outlook"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
         TableFunction fn("graph_calendar_events", {}, DATAZOO_GUARD(ERPL_ODATA_BANNER, CalendarEventsScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, CalendarEventsBind));
         fn.init_global = GraphPagedScanState::Init;
-        fn.named_parameters["user"]        = LogicalType::VARCHAR;
-        fn.named_parameters["calendar_id"] = LogicalType::VARCHAR;
-        fn.named_parameters["start_date"]  = LogicalType::VARCHAR;
-        fn.named_parameters["end_date"]    = LogicalType::VARCHAR;
-        fn.named_parameters["secret"]      = LogicalType::VARCHAR;
+        duckdb_compat::AddNamedParameter(fn, "user", LogicalType::VARCHAR);
+        duckdb_compat::AddNamedParameter(fn, "calendar_id", LogicalType::VARCHAR);
+        duckdb_compat::AddNamedParameter(fn, "start_date", LogicalType::VARCHAR);
+        duckdb_compat::AddNamedParameter(fn, "end_date", LogicalType::VARCHAR);
+        duckdb_compat::AddNamedParameter(fn, "secret", LogicalType::VARCHAR);
         CreateTableFunctionInfo info(fn);
         FunctionDescription desc;
         desc.description = "List Outlook calendar events for a user via Microsoft Graph. "
@@ -607,13 +609,14 @@ void GraphOutlookFunctions::Register(ExtensionLoader &loader) {
         };
         desc.categories  = {"microsoft", "graph", "outlook"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
         TableFunction fn("graph_contacts", {}, DATAZOO_GUARD(ERPL_ODATA_BANNER, ContactsScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, ContactsBind));
         fn.init_global = GraphPagedScanState::Init;
-        fn.named_parameters["user"]    = LogicalType::VARCHAR;
-        fn.named_parameters["secret"]  = LogicalType::VARCHAR;
+        duckdb_compat::AddNamedParameter(fn, "user", LogicalType::VARCHAR);
+        duckdb_compat::AddNamedParameter(fn, "secret", LogicalType::VARCHAR);
         CreateTableFunctionInfo info(fn);
         FunctionDescription desc;
         desc.description = "List Outlook contacts for a user via Microsoft Graph. "
@@ -628,13 +631,14 @@ void GraphOutlookFunctions::Register(ExtensionLoader &loader) {
         };
         desc.categories  = {"microsoft", "graph", "outlook"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
         TableFunction fn("graph_outlook_mail_folders", {}, DATAZOO_GUARD(ERPL_ODATA_BANNER, MailFoldersScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, MailFoldersBind));
         fn.init_global = GraphPagedScanState::Init;
-        fn.named_parameters["user"]    = LogicalType::VARCHAR;
-        fn.named_parameters["secret"]  = LogicalType::VARCHAR;
+        duckdb_compat::AddNamedParameter(fn, "user", LogicalType::VARCHAR);
+        duckdb_compat::AddNamedParameter(fn, "secret", LogicalType::VARCHAR);
         CreateTableFunctionInfo info(fn);
         FunctionDescription desc;
         desc.description = "List Outlook mail folders for a user via Microsoft Graph. "
@@ -649,14 +653,15 @@ void GraphOutlookFunctions::Register(ExtensionLoader &loader) {
         };
         desc.categories  = {"microsoft", "graph", "outlook"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
         TableFunction fn("graph_outlook_emails", {}, DATAZOO_GUARD(ERPL_ODATA_BANNER, MessagesScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, MessagesBind));
         fn.init_global = GraphPagedScanState::Init;
-        fn.named_parameters["user"]    = LogicalType::VARCHAR;
-        fn.named_parameters["folder"]  = LogicalType::VARCHAR;
-        fn.named_parameters["secret"]  = LogicalType::VARCHAR;
+        duckdb_compat::AddNamedParameter(fn, "user", LogicalType::VARCHAR);
+        duckdb_compat::AddNamedParameter(fn, "folder", LogicalType::VARCHAR);
+        duckdb_compat::AddNamedParameter(fn, "secret", LogicalType::VARCHAR);
         CreateTableFunctionInfo info(fn);
         FunctionDescription desc;
         desc.description = "List Outlook email messages for a user via Microsoft Graph. "
@@ -674,6 +679,7 @@ void GraphOutlookFunctions::Register(ExtensionLoader &loader) {
         };
         desc.categories  = {"microsoft", "graph", "outlook"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
 

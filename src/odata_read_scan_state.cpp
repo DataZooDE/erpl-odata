@@ -1,4 +1,5 @@
 #include "duckdb/function/table_function.hpp"
+#include "duckdb_compat.hpp"
 
 #include "datazoo/oauth2/http_client.hpp"
 #include "odata_edm.hpp"
@@ -154,7 +155,7 @@ void ODataReadBindData::FetchAdditionalPagesIfNeeded(
     while (row_buffer->Size() < target && row_buffer->HasNextPage()) {
         // Ctrl-C and statement timeouts both arrive as an interrupt flag on the
         // client context; a paging loop that never observes it is unstoppable.
-        if (context != nullptr && context->interrupted) {
+        if (context != nullptr && duckdb_compat::IsInterrupted(*context)) {
             ERPL_TRACE_INFO("ODATA_READ_BIND", "Interrupted while fetching additional pages");
             throw duckdb::InterruptException();
         }
@@ -241,7 +242,7 @@ idx_t ODataReadBindData::EmitRowsToOutput(duckdb::DataChunk &output, const Schem
         emitted_row_index_++;
     }
     
-    output.SetCardinality(to_emit);
+    duckdb_compat::SetChildCardinality(output, to_emit);
 
     // Rows are emitted strictly in order, so everything before the current position can
     // never be read again. Releasing here bounds the expand cache to the rows still in

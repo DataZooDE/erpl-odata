@@ -1,4 +1,5 @@
 #include "graph_planner_functions.hpp"
+#include "duckdb_compat.hpp"
 #include "graph_client.hpp"
 #include "graph_planner_client.hpp"
 #include "graph_excel_secret.hpp"
@@ -43,7 +44,7 @@ unique_ptr<FunctionData> GraphPlannerFunctions::PlansBind(
     ClientContext &context,
     TableFunctionBindInput &input,
     vector<LogicalType> &return_types,
-    vector<std::string> &names) {
+    duckdb_compat::BindNames &names) {
 
     auto bind_data = make_uniq<PlansBindData>();
 
@@ -55,8 +56,8 @@ unique_ptr<FunctionData> GraphPlannerFunctions::PlansBind(
 
     // Get secret name from named parameter (optional)
     std::string secret_name;
-    if (input.named_parameters.find("secret") != input.named_parameters.end()) {
-        secret_name = input.named_parameters.at("secret").GetValue<std::string>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "secret") != nullptr) {
+        secret_name = input.named_parameters.at(duckdb_compat::Ident("secret")).GetValue<std::string>();
     }
     bind_data->secret_name = secret_name;
 
@@ -81,7 +82,7 @@ void GraphPlannerFunctions::PlansScan(
     auto &bind_data = data.bind_data->Cast<PlansBindData>();
 
     if (state.done) {
-        output.SetCardinality(0);
+        duckdb_compat::SetChildCardinality(output, 0);
         return;
     }
 
@@ -94,7 +95,7 @@ void GraphPlannerFunctions::PlansScan(
     if (!state.parsed_doc) {
         if (!state.InitIterator()) {
             state.done = true;
-            output.SetCardinality(0);
+            duckdb_compat::SetChildCardinality(output, 0);
             return;
         }
     }
@@ -112,7 +113,7 @@ void GraphPlannerFunctions::PlansScan(
     if (row < STANDARD_VECTOR_SIZE) {
         state.done = true;
     }
-    output.SetCardinality(row);
+    duckdb_compat::SetChildCardinality(output, row);
 }
 
 // ============================================================================
@@ -123,7 +124,7 @@ unique_ptr<FunctionData> GraphPlannerFunctions::BucketsBind(
     ClientContext &context,
     TableFunctionBindInput &input,
     vector<LogicalType> &return_types,
-    vector<std::string> &names) {
+    duckdb_compat::BindNames &names) {
 
     auto bind_data = make_uniq<BucketsBindData>();
 
@@ -135,8 +136,8 @@ unique_ptr<FunctionData> GraphPlannerFunctions::BucketsBind(
 
     // Get secret name from named parameter (optional)
     std::string secret_name;
-    if (input.named_parameters.find("secret") != input.named_parameters.end()) {
-        secret_name = input.named_parameters.at("secret").GetValue<std::string>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "secret") != nullptr) {
+        secret_name = input.named_parameters.at(duckdb_compat::Ident("secret")).GetValue<std::string>();
     }
     bind_data->secret_name = secret_name;
 
@@ -161,7 +162,7 @@ void GraphPlannerFunctions::BucketsScan(
     auto &bind_data = data.bind_data->Cast<BucketsBindData>();
 
     if (state.done) {
-        output.SetCardinality(0);
+        duckdb_compat::SetChildCardinality(output, 0);
         return;
     }
 
@@ -174,7 +175,7 @@ void GraphPlannerFunctions::BucketsScan(
     if (!state.parsed_doc) {
         if (!state.InitIterator()) {
             state.done = true;
-            output.SetCardinality(0);
+            duckdb_compat::SetChildCardinality(output, 0);
             return;
         }
     }
@@ -192,7 +193,7 @@ void GraphPlannerFunctions::BucketsScan(
     if (row < STANDARD_VECTOR_SIZE) {
         state.done = true;
     }
-    output.SetCardinality(row);
+    duckdb_compat::SetChildCardinality(output, row);
 }
 
 // ============================================================================
@@ -203,7 +204,7 @@ unique_ptr<FunctionData> GraphPlannerFunctions::TasksBind(
     ClientContext &context,
     TableFunctionBindInput &input,
     vector<LogicalType> &return_types,
-    vector<std::string> &names) {
+    duckdb_compat::BindNames &names) {
 
     auto bind_data = make_uniq<TasksBindData>();
 
@@ -215,8 +216,8 @@ unique_ptr<FunctionData> GraphPlannerFunctions::TasksBind(
 
     // Get secret name from named parameter (optional)
     std::string secret_name;
-    if (input.named_parameters.find("secret") != input.named_parameters.end()) {
-        secret_name = input.named_parameters.at("secret").GetValue<std::string>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "secret") != nullptr) {
+        secret_name = input.named_parameters.at(duckdb_compat::Ident("secret")).GetValue<std::string>();
     }
     bind_data->secret_name = secret_name;
 
@@ -247,7 +248,7 @@ void GraphPlannerFunctions::TasksScan(
     auto &bind_data = data.bind_data->Cast<TasksBindData>();
 
     if (state.done) {
-        output.SetCardinality(0);
+        duckdb_compat::SetChildCardinality(output, 0);
         return;
     }
 
@@ -260,7 +261,7 @@ void GraphPlannerFunctions::TasksScan(
     if (!state.parsed_doc) {
         if (!state.InitIterator()) {
             state.done = true;
-            output.SetCardinality(0);
+            duckdb_compat::SetChildCardinality(output, 0);
             return;
         }
     }
@@ -283,7 +284,7 @@ void GraphPlannerFunctions::TasksScan(
     if (row < STANDARD_VECTOR_SIZE) {
         state.done = true;
     }
-    output.SetCardinality(row);
+    duckdb_compat::SetChildCardinality(output, row);
 }
 
 // ============================================================================
@@ -300,7 +301,7 @@ unique_ptr<FunctionData> GraphPlannerFunctions::CreateTaskBind(
     ClientContext &context,
     TableFunctionBindInput &input,
     vector<LogicalType> &return_types,
-    vector<std::string> &names) {
+    duckdb_compat::BindNames &names) {
 
     if (input.inputs.size() < 2) {
         throw BinderException("graph_planner_create_task requires plan_id and title parameters");
@@ -310,31 +311,31 @@ unique_ptr<FunctionData> GraphPlannerFunctions::CreateTaskBind(
     const std::string title   = input.inputs[1].GetValue<std::string>();
 
     std::string secret_name;
-    if (input.named_parameters.find("secret") != input.named_parameters.end()) {
-        secret_name = input.named_parameters.at("secret").GetValue<std::string>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "secret") != nullptr) {
+        secret_name = input.named_parameters.at(duckdb_compat::Ident("secret")).GetValue<std::string>();
     }
 
     PlannerTaskCreateParams params;
-    if (input.named_parameters.find("bucket_id") != input.named_parameters.end()) {
-        params.bucket_id = input.named_parameters.at("bucket_id").GetValue<std::string>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "bucket_id") != nullptr) {
+        params.bucket_id = input.named_parameters.at(duckdb_compat::Ident("bucket_id")).GetValue<std::string>();
     }
-    if (input.named_parameters.find("due_date") != input.named_parameters.end()) {
-        params.due_date = input.named_parameters.at("due_date").GetValue<std::string>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "due_date") != nullptr) {
+        params.due_date = input.named_parameters.at(duckdb_compat::Ident("due_date")).GetValue<std::string>();
     }
-    if (input.named_parameters.find("start_date") != input.named_parameters.end()) {
-        params.start_date = input.named_parameters.at("start_date").GetValue<std::string>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "start_date") != nullptr) {
+        params.start_date = input.named_parameters.at(duckdb_compat::Ident("start_date")).GetValue<std::string>();
     }
-    if (input.named_parameters.find("assigned_to") != input.named_parameters.end()) {
-        params.assigned_to = input.named_parameters.at("assigned_to").GetValue<std::string>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "assigned_to") != nullptr) {
+        params.assigned_to = input.named_parameters.at(duckdb_compat::Ident("assigned_to")).GetValue<std::string>();
     }
-    if (input.named_parameters.find("description") != input.named_parameters.end()) {
-        params.description = input.named_parameters.at("description").GetValue<std::string>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "description") != nullptr) {
+        params.description = input.named_parameters.at(duckdb_compat::Ident("description")).GetValue<std::string>();
     }
-    if (input.named_parameters.find("priority") != input.named_parameters.end()) {
-        params.priority = input.named_parameters.at("priority").GetValue<int32_t>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "priority") != nullptr) {
+        params.priority = input.named_parameters.at(duckdb_compat::Ident("priority")).GetValue<int32_t>();
     }
-    if (input.named_parameters.find("percent_complete") != input.named_parameters.end()) {
-        params.percent_complete = input.named_parameters.at("percent_complete").GetValue<int32_t>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "percent_complete") != nullptr) {
+        params.percent_complete = input.named_parameters.at(duckdb_compat::Ident("percent_complete")).GetValue<int32_t>();
     }
 
     auto auth_info = ResolveGraphAuth(context, secret_name);
@@ -367,13 +368,13 @@ void GraphPlannerFunctions::CreateTaskScan(
     auto &bind_data = data.bind_data->Cast<CreateTaskBindData>();
     auto &state = data.global_state->Cast<ScanRowCursorState>();
     if (state.finished) {
-        output.SetCardinality(0);
+        duckdb_compat::SetChildCardinality(output, 0);
         return;
     }
     state.finished = true;
     output.SetValue(0, 0, Value(bind_data.task_id));
     output.SetValue(1, 0, Value(bind_data.task_url));
-    output.SetCardinality(1);
+    duckdb_compat::SetChildCardinality(output, 1);
 }
 
 // ============================================================================
@@ -386,7 +387,7 @@ void GraphPlannerFunctions::Register(ExtensionLoader &loader) {
     {
         TableFunction planner_plans("graph_planner_plans", {LogicalType::VARCHAR},
                                     DATAZOO_GUARD(ERPL_ODATA_BANNER, PlansScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, PlansBind));
-        planner_plans.named_parameters["secret"] = LogicalType::VARCHAR;
+        duckdb_compat::AddNamedParameter(planner_plans, "secret", LogicalType::VARCHAR);
         planner_plans.init_global = GraphJsonArrayScanState::Init;
         CreateTableFunctionInfo info(planner_plans);
         FunctionDescription desc;
@@ -396,12 +397,13 @@ void GraphPlannerFunctions::Register(ExtensionLoader &loader) {
         desc.examples = {"SELECT * FROM graph_planner_plans('group-id-here', secret := 'ms_graph')"};
         desc.categories = {"microsoft", "graph", "planner"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
         TableFunction planner_buckets("graph_planner_buckets", {LogicalType::VARCHAR},
                                       DATAZOO_GUARD(ERPL_ODATA_BANNER, BucketsScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, BucketsBind));
-        planner_buckets.named_parameters["secret"] = LogicalType::VARCHAR;
+        duckdb_compat::AddNamedParameter(planner_buckets, "secret", LogicalType::VARCHAR);
         planner_buckets.init_global = GraphJsonArrayScanState::Init;
         CreateTableFunctionInfo info(planner_buckets);
         FunctionDescription desc;
@@ -411,12 +413,13 @@ void GraphPlannerFunctions::Register(ExtensionLoader &loader) {
         desc.examples = {"SELECT * FROM graph_planner_buckets('plan-id-here', secret := 'ms_graph')"};
         desc.categories = {"microsoft", "graph", "planner"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
         TableFunction planner_tasks("graph_planner_tasks", {LogicalType::VARCHAR},
                                     DATAZOO_GUARD(ERPL_ODATA_BANNER, TasksScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, TasksBind));
-        planner_tasks.named_parameters["secret"] = LogicalType::VARCHAR;
+        duckdb_compat::AddNamedParameter(planner_tasks, "secret", LogicalType::VARCHAR);
         planner_tasks.init_global = GraphJsonArrayScanState::Init;
         CreateTableFunctionInfo info(planner_tasks);
         FunctionDescription desc;
@@ -426,6 +429,7 @@ void GraphPlannerFunctions::Register(ExtensionLoader &loader) {
         desc.examples = {"SELECT * FROM graph_planner_tasks('plan-id-here', secret := 'ms_graph')"};
         desc.categories = {"microsoft", "graph", "planner"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
 
@@ -434,14 +438,14 @@ void GraphPlannerFunctions::Register(ExtensionLoader &loader) {
                                    {LogicalType::VARCHAR, LogicalType::VARCHAR},
                                    DATAZOO_GUARD(ERPL_ODATA_BANNER, CreateTaskScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, CreateTaskBind));
         create_task.init_global = ScanRowCursorState::Init;
-        create_task.named_parameters["bucket_id"]        = LogicalType::VARCHAR;
-        create_task.named_parameters["due_date"]         = LogicalType::VARCHAR;
-        create_task.named_parameters["start_date"]       = LogicalType::VARCHAR;
-        create_task.named_parameters["assigned_to"]      = LogicalType::VARCHAR;
-        create_task.named_parameters["description"]      = LogicalType::VARCHAR;
-        create_task.named_parameters["priority"]         = LogicalType::INTEGER;
-        create_task.named_parameters["percent_complete"] = LogicalType::INTEGER;
-        create_task.named_parameters["secret"]           = LogicalType::VARCHAR;
+        duckdb_compat::AddNamedParameter(create_task, "bucket_id", LogicalType::VARCHAR);
+        duckdb_compat::AddNamedParameter(create_task, "due_date", LogicalType::VARCHAR);
+        duckdb_compat::AddNamedParameter(create_task, "start_date", LogicalType::VARCHAR);
+        duckdb_compat::AddNamedParameter(create_task, "assigned_to", LogicalType::VARCHAR);
+        duckdb_compat::AddNamedParameter(create_task, "description", LogicalType::VARCHAR);
+        duckdb_compat::AddNamedParameter(create_task, "priority", LogicalType::INTEGER);
+        duckdb_compat::AddNamedParameter(create_task, "percent_complete", LogicalType::INTEGER);
+        duckdb_compat::AddNamedParameter(create_task, "secret", LogicalType::VARCHAR);
         CreateTableFunctionInfo info(create_task);
         FunctionDescription desc;
         desc.description =
@@ -472,6 +476,7 @@ void GraphPlannerFunctions::Register(ExtensionLoader &loader) {
         };
         desc.categories = {"microsoft", "graph", "planner"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
 

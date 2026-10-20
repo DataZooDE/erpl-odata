@@ -1,8 +1,10 @@
 #include "duckdb_argument_helper.hpp"
+#include "duckdb/main/attached_database.hpp"
 #include "odata_storage.hpp"
 #include "odata_catalog.hpp"
 
 #include "odata_transaction_manager.hpp"
+#include "storage_access_mode.hpp"
 
 namespace erpl_web {
 
@@ -15,14 +17,13 @@ static duckdb::unique_ptr<duckdb::Catalog> ODataAttach(duckdb::optional_ptr<duck
                                                        duckdb::AttachInfo &info,
                                                        duckdb::AttachOptions &options) 
 {
-    if (options.access_mode != duckdb::AccessMode::READ_ONLY) {
-        throw duckdb::BinderException("ODATA storage extension does not support write access");
-    }
+    EnforceReadOnlyAttachment(db, info, options,
+                              "ODATA storage extension does not support write access");
 
     std::string ignore_pattern;
     for (auto &entry : info.options) {
 		auto lower_name = StringUtil::Lower(entry.first);
-		if (lower_name == "type" || lower_name == "read_only") {
+		if (lower_name == "type" || IsAccessModeOption(lower_name)) {
 			// already handled
 		} else if (lower_name == "ignore") {
 			ignore_pattern = entry.second.ToString();

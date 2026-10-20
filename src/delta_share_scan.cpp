@@ -1,4 +1,5 @@
 #include "delta_share_scan.hpp"
+#include "duckdb_compat.hpp"
 #include "odata_url_helpers.hpp"
 
 #include "duckdb/parser/expression/cast_expression.hpp"
@@ -23,7 +24,7 @@ using duckdb::PostHogTelemetry;
 static unique_ptr<FunctionData> DeltaShareScanBind(ClientContext& context,
                                                    TableFunctionBindInput& input,
                                                    vector<LogicalType>& return_types,
-                                                   vector<string>& names) {
+                                                   duckdb_compat::BindNames &names) {
     PostHogTelemetry::Instance().RecordFunctionCall("delta_share_scan");
     ERPL_TRACE_DEBUG("DELTA_SHARE_SCAN", "Bind phase starting");
 
@@ -62,7 +63,7 @@ static unique_ptr<FunctionData> DeltaShareScanBind(ClientContext& context,
     if (bind_data->metadata.schema_json.empty()) {
         // Fallback: if no schema extracted, use a simple schema
         return_types.push_back(LogicalType::VARCHAR);
-        names.push_back("data");
+        names.emplace_back("data");
         ERPL_TRACE_WARN("DELTA_SHARE_SCAN", "Using fallback schema - no schema JSON extracted from metadata");
     } else {
         // Parse schemaString to extract column names and types
@@ -102,7 +103,7 @@ static unique_ptr<FunctionData> DeltaShareScanBind(ClientContext& context,
                 auto type_val = yyjson_obj_get(field_item, "type");
                 if (!type_val || !yyjson_is_str(type_val)) {
                     return_types.push_back(LogicalType::VARCHAR);
-                    names.push_back(field_name);
+                    names.emplace_back(field_name);
                     continue;
                 }
 
@@ -116,7 +117,7 @@ static unique_ptr<FunctionData> DeltaShareScanBind(ClientContext& context,
                 }
                 LogicalType duckdb_type = ConvertDeltaTypeToLogicalType(delta_type);
                 return_types.push_back(duckdb_type);
-                names.push_back(field_name);
+                names.emplace_back(field_name);
             }
 
             if (names.empty()) {
@@ -136,13 +137,13 @@ static unique_ptr<FunctionData> DeltaShareScanBind(ClientContext& context,
             ERPL_TRACE_ERROR("DELTA_SHARE_SCAN", "Error parsing schema: " + string(e.what()));
             // Fallback to simple schema
             return_types.push_back(LogicalType::VARCHAR);
-            names.push_back("data");
+            names.emplace_back("data");
             ERPL_TRACE_WARN("DELTA_SHARE_SCAN", "Using fallback schema after parsing error");
         }
     }
 
     bind_data->column_types = return_types;
-    bind_data->column_names = names;
+    bind_data->column_names = duckdb_compat::Strs(names);
 
     ERPL_TRACE_INFO("DELTA_SHARE_SCAN", "Bind phase complete");
 
@@ -289,8 +290,8 @@ static duckdb::vector<duckdb::unique_ptr<duckdb::ParsedExpression>> BuildAlignme
     std::map<string, string> by_exact_name;
     std::map<string, string> by_lowered_name;
     for (const auto& column : file_columns) {
-        by_exact_name.emplace(column.Name(), column.Name());
-        by_lowered_name.emplace(duckdb::StringUtil::Lower(column.Name()), column.Name());
+        by_exact_name.emplace(duckdb_compat::Str(column.Name()), duckdb_compat::Str(column.Name()));
+        by_lowered_name.emplace(duckdb::StringUtil::Lower(duckdb_compat::Str(column.Name())), duckdb_compat::Str(column.Name()));
     }
 
     duckdb::vector<duckdb::unique_ptr<duckdb::ParsedExpression>> expressions;
@@ -306,9 +307,9 @@ static duckdb::vector<duckdb::unique_ptr<duckdb::ParsedExpression>> BuildAlignme
 
         duckdb::unique_ptr<duckdb::ParsedExpression> source;
         if (exact != by_exact_name.end()) {
-            source = duckdb::make_uniq<duckdb::ColumnRefExpression>(exact->second);
+            source = duckdb::make_uniq<duckdb::ColumnRefExpression>(duckdb_compat::Ident(exact->second));
         } else if (lowered != by_lowered_name.end()) {
-            source = duckdb::make_uniq<duckdb::ColumnRefExpression>(lowered->second);
+            source = duckdb::make_uniq<duckdb::ColumnRefExpression>(duckdb_compat::Ident(lowered->second));
         } else if (const auto partition = FindPartitionValue(partition_values, wanted);
                    partition != partition_values.end()) {
             // A partition column: its value is not in the file, it is carried per file in
@@ -323,17 +324,17 @@ static duckdb::vector<duckdb::unique_ptr<duckdb::ParsedExpression>> BuildAlignme
             if (partition->second.empty()) {
                 ERPL_TRACE_DEBUG("DELTA_SHARE_SCAN", "Partition column '" + wanted +
                                                          "' has an empty value, which is NULL");
-                source = duckdb::make_uniq<duckdb::ConstantExpression>(duckdb::Value(wanted_type));
+                source = duckdb_compat::ParsedConstant(duckdb::Value(wanted_type));
             } else {
                 ERPL_TRACE_DEBUG("DELTA_SHARE_SCAN", "Column '" + wanted +
                                                          "' comes from the file's partition values");
                 source =
-                    duckdb::make_uniq<duckdb::ConstantExpression>(duckdb::Value(partition->second));
+                    duckdb_compat::ParsedConstant(duckdb::Value(partition->second));
             }
         } else {
             ERPL_TRACE_DEBUG("DELTA_SHARE_SCAN",
                              "Column '" + wanted + "' is absent from this file; filling NULL");
-            source = duckdb::make_uniq<duckdb::ConstantExpression>(duckdb::Value(wanted_type));
+            source = duckdb_compat::ParsedConstant(duckdb::Value(wanted_type));
         }
 
         expressions.push_back(
@@ -455,7 +456,7 @@ static void DeltaShareScan(ClientContext& context, TableFunctionInput& input, Da
 
         if (!ClaimNextFile(context, bind_data, global_state, local_state)) {
             ERPL_TRACE_DEBUG("DELTA_SHARE_SCAN", "All files processed, thread returning empty result");
-            output.SetCardinality(0);
+            duckdb_compat::SetChildCardinality(output, 0);
             return;
         }
     }

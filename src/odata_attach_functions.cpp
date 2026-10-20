@@ -1,4 +1,5 @@
 #include "duckdb_argument_helper.hpp"
+#include "duckdb_compat.hpp"
 #include "duckdb/common/types/string_type.hpp"
 #include "duckdb/function/scalar/string_functions.hpp"
 #include "duckdb/function/scalar/string_common.hpp"
@@ -135,7 +136,7 @@ static void ParseNamedParameters(TableFunctionBindInput &input, duckdb::unique_p
 static unique_ptr<FunctionData> ODataAttachBind(ClientContext &context,
                                                TableFunctionBindInput &input,
                                                vector<LogicalType> &return_types,
-                                               vector<string> &names)
+                                               duckdb_compat::BindNames &names)
 {
     PostHogTelemetry::Instance().RecordFunctionCall("odata_attach");
     auto auth_params = AuthParamsFromInput(context, input);
@@ -159,7 +160,7 @@ static void ODataAttachScan(ClientContext &context, TableFunctionInput &data_p, 
     // and the exemption list in test_graph_scan_reexecution.cpp.
     auto &data = data_p.bind_data->CastNoConst<ODataAttachBindData>();
 	if (data.IsFinished()) {
-		output.SetCardinality(0);
+		duckdb_compat::SetChildCardinality(output, 0);
 		return;
 	}
 
@@ -168,11 +169,11 @@ static void ODataAttachScan(ClientContext &context, TableFunctionInput &data_p, 
     auto svc_references = data.EntitySets();
     for (auto &svc_reference : svc_references) {
         auto table_relation = duck_conn.TableFunction("odata_read", {Value(svc_reference.url)});
-        auto table_view = table_relation->CreateView(svc_reference.name, data.Overwrite(), false);
+        auto table_view = table_relation->CreateView(duckdb_compat::Ident(svc_reference.name), data.Overwrite(), false);
     }
 	
     data.SetFinished();
-    output.SetCardinality(0);
+    duckdb_compat::SetChildCardinality(output, 0);
 }
 
 TableFunctionSet CreateODataAttachFunction()
@@ -180,8 +181,8 @@ TableFunctionSet CreateODataAttachFunction()
     TableFunctionSet function_set("odata_attach");
 
     TableFunction attach_service_ignore_complex({LogicalType::VARCHAR}, DATAZOO_GUARD(ERPL_ODATA_BANNER, ODataAttachScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, ODataAttachBind));
-    attach_service_ignore_complex.named_parameters["overwrite"] = LogicalTypeId::BOOLEAN;
-    attach_service_ignore_complex.named_parameters["ignore"] = LogicalType::LIST(LogicalTypeId::VARCHAR);
+    duckdb_compat::AddNamedParameter(attach_service_ignore_complex, "overwrite", LogicalTypeId::BOOLEAN);
+    duckdb_compat::AddNamedParameter(attach_service_ignore_complex, "ignore", LogicalType::LIST(LogicalTypeId::VARCHAR));
     function_set.AddFunction(attach_service_ignore_complex);
 
     return function_set;

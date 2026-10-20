@@ -4,6 +4,8 @@
 // execution, not to the plan.
 
 #include "catch.hpp"
+#include "test_extension_load_sql.hpp"
+#include "duckdb_compat.hpp"
 #include "duckdb.hpp"
 
 #include "odp_subscription_repository.hpp"
@@ -16,7 +18,7 @@ TEST_CASE("a bound odp_odata_list_subscriptions plan sees subscriptions created 
     // ODP state refuses an in-memory catalog (GitHub #92), so this needs a real database file.
     odp_test::TempDatabase database;
     duckdb::Connection &con = database.Conn();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     OdpSubscriptionRepository repository(database.Context());
     repository.EnsureSchemaExists();
@@ -28,12 +30,12 @@ TEST_CASE("a bound odp_odata_list_subscriptions plan sees subscriptions created 
 
     auto before = con.Query("EXECUTE listing");
     REQUIRE_FALSE(before->HasError());
-    REQUIRE(before->GetValue(0, 0).GetValue<int64_t>() == 0);
+    REQUIRE(duckdb_compat::ResultValue(*before, 0, 0).GetValue<int64_t>() == 0);
 
     repository.CreateSubscription("https://test.example/sap/opu/odata/sap/TEST_SRV/Facts", "Facts", "secret");
 
     auto after = con.Query("EXECUTE listing");
     INFO((after->HasError() ? after->GetError() : std::string()));
     REQUIRE_FALSE(after->HasError());
-    CHECK(after->GetValue(0, 0).GetValue<int64_t>() == 1);
+    CHECK(duckdb_compat::ResultValue(*after, 0, 0).GetValue<int64_t>() == 1);
 }

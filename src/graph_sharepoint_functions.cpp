@@ -1,4 +1,5 @@
 #include "graph_sharepoint_functions.hpp"
+#include "duckdb_compat.hpp"
 #include "graph_client.hpp"
 #include "graph_sharepoint_client.hpp"
 #include "graph_sharepoint_type_mapper.hpp"
@@ -61,7 +62,7 @@ unique_ptr<FunctionData> GraphSharePointFunctions::ShowSitesBind(
     ClientContext &context,
     TableFunctionBindInput &input,
     vector<LogicalType> &return_types,
-    vector<std::string> &names) {
+    duckdb_compat::BindNames &names) {
 
     auto bind_data = make_uniq<ShowSitesBindData>();
 
@@ -72,8 +73,8 @@ unique_ptr<FunctionData> GraphSharePointFunctions::ShowSitesBind(
 
     // Get secret name from named parameter (optional)
     std::string secret_name;
-    if (input.named_parameters.find("secret") != input.named_parameters.end()) {
-        secret_name = input.named_parameters.at("secret").GetValue<std::string>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "secret") != nullptr) {
+        secret_name = input.named_parameters.at(duckdb_compat::Ident("secret")).GetValue<std::string>();
     }
     bind_data->secret_name = secret_name;
 
@@ -99,7 +100,7 @@ void GraphSharePointFunctions::ShowSitesScan(
     auto &state = data.global_state->Cast<GraphJsonArrayScanState>();
 
     if (state.done) {
-        output.SetCardinality(0);
+        duckdb_compat::SetChildCardinality(output, 0);
         return;
     }
 
@@ -112,7 +113,7 @@ void GraphSharePointFunctions::ShowSitesScan(
     if (!state.parsed_doc) {
         if (!state.InitIterator()) {
             state.done = true;
-            output.SetCardinality(0);
+            duckdb_compat::SetChildCardinality(output, 0);
             return;
         }
     }
@@ -129,7 +130,7 @@ void GraphSharePointFunctions::ShowSitesScan(
     }
 
     if (row < STANDARD_VECTOR_SIZE) { state.done = true; }
-    output.SetCardinality(row);
+    duckdb_compat::SetChildCardinality(output, row);
 }
 
 // ============================================================================
@@ -140,21 +141,21 @@ unique_ptr<FunctionData> GraphSharePointFunctions::ShowListsBind(
     ClientContext &context,
     TableFunctionBindInput &input,
     vector<LogicalType> &return_types,
-    vector<std::string> &names) {
+    duckdb_compat::BindNames &names) {
 
     auto bind_data = make_uniq<ShowListsBindData>();
 
     // Accept either a positional site_id or named site := 'name'
-    if (input.named_parameters.find("site") != input.named_parameters.end()) {
-        bind_data->site_id = input.named_parameters.at("site").GetValue<std::string>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "site") != nullptr) {
+        bind_data->site_id = input.named_parameters.at(duckdb_compat::Ident("site")).GetValue<std::string>();
     } else if (!input.inputs.empty() && !input.inputs[0].IsNull()) {
         bind_data->site_id = input.inputs[0].GetValue<std::string>();
     } else {
         throw BinderException("graph_show_lists requires either a positional site_id or site := 'name'");
     }
 
-    if (input.named_parameters.find("secret") != input.named_parameters.end()) {
-        bind_data->secret_name = input.named_parameters.at("secret").GetValue<std::string>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "secret") != nullptr) {
+        bind_data->secret_name = input.named_parameters.at(duckdb_compat::Ident("secret")).GetValue<std::string>();
     }
 
     // Return schema: id, name, displayName, webUrl, createdDateTime, lastModifiedDateTime
@@ -181,7 +182,7 @@ void GraphSharePointFunctions::ShowListsScan(
     auto &state = data.global_state->Cast<GraphJsonArrayScanState>();
 
     if (state.done) {
-        output.SetCardinality(0);
+        duckdb_compat::SetChildCardinality(output, 0);
         return;
     }
 
@@ -194,7 +195,7 @@ void GraphSharePointFunctions::ShowListsScan(
     if (!state.parsed_doc) {
         if (!state.InitIterator()) {
             state.done = true;
-            output.SetCardinality(0);
+            duckdb_compat::SetChildCardinality(output, 0);
             return;
         }
     }
@@ -213,7 +214,7 @@ void GraphSharePointFunctions::ShowListsScan(
     }
 
     if (row < STANDARD_VECTOR_SIZE) { state.done = true; }
-    output.SetCardinality(row);
+    duckdb_compat::SetChildCardinality(output, row);
 }
 
 // ============================================================================
@@ -224,7 +225,7 @@ unique_ptr<FunctionData> GraphSharePointFunctions::DescribeListBind(
     ClientContext &context,
     TableFunctionBindInput &input,
     vector<LogicalType> &return_types,
-    vector<std::string> &names) {
+    duckdb_compat::BindNames &names) {
 
     auto bind_data = make_uniq<DescribeListBindData>();
 
@@ -237,8 +238,8 @@ unique_ptr<FunctionData> GraphSharePointFunctions::DescribeListBind(
 
     // Get secret name from named parameter (optional)
     std::string secret_name;
-    if (input.named_parameters.find("secret") != input.named_parameters.end()) {
-        secret_name = input.named_parameters.at("secret").GetValue<std::string>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "secret") != nullptr) {
+        secret_name = input.named_parameters.at(duckdb_compat::Ident("secret")).GetValue<std::string>();
     }
     bind_data->secret_name = secret_name;
 
@@ -275,7 +276,7 @@ void GraphSharePointFunctions::DescribeListScan(
     auto &state = data.global_state->Cast<GraphJsonArrayScanState>();
 
     if (state.done) {
-        output.SetCardinality(0);
+        duckdb_compat::SetChildCardinality(output, 0);
         return;
     }
 
@@ -288,7 +289,7 @@ void GraphSharePointFunctions::DescribeListScan(
     if (!state.parsed_doc) {
         if (!state.InitIterator()) {
             state.done = true;
-            output.SetCardinality(0);
+            duckdb_compat::SetChildCardinality(output, 0);
             return;
         }
     }
@@ -340,7 +341,7 @@ void GraphSharePointFunctions::DescribeListScan(
     }
 
     if (row < STANDARD_VECTOR_SIZE) { state.done = true; }
-    output.SetCardinality(row);
+    duckdb_compat::SetChildCardinality(output, row);
 }
 
 // ============================================================================
@@ -351,7 +352,7 @@ unique_ptr<FunctionData> GraphSharePointFunctions::ListItemsBind(
     ClientContext &context,
     TableFunctionBindInput &input,
     vector<LogicalType> &return_types,
-    vector<std::string> &names) {
+    duckdb_compat::BindNames &names) {
 
     auto bind_data = make_uniq<ListItemsBindData>();
 
@@ -364,8 +365,8 @@ unique_ptr<FunctionData> GraphSharePointFunctions::ListItemsBind(
 
     // Get secret name from named parameter (optional)
     std::string secret_name;
-    if (input.named_parameters.find("secret") != input.named_parameters.end()) {
-        secret_name = input.named_parameters.at("secret").GetValue<std::string>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "secret") != nullptr) {
+        secret_name = input.named_parameters.at(duckdb_compat::Ident("secret")).GetValue<std::string>();
     }
     bind_data->secret_name = secret_name;
 
@@ -388,9 +389,9 @@ unique_ptr<FunctionData> GraphSharePointFunctions::ListItemsBind(
     yyjson_val *col_arr = yyjson_obj_get(col_root, "value");
 
     // Always include id as first column (always VARCHAR — it's the Graph item GUID)
-    names.push_back("id");
+    names.emplace_back("id");
     return_types.push_back(LogicalType::VARCHAR);
-    bind_data->column_names.push_back("id");
+    bind_data->column_names.emplace_back("id");
     bind_data->column_types.push_back(LogicalType::VARCHAR);
 
     // Track seen names (lowercase) to prevent duplicate column errors
@@ -420,9 +421,9 @@ unique_ptr<FunctionData> GraphSharePointFunctions::ListItemsBind(
                 if (!seen_names.insert(lower_name).second) continue;
 
                 const LogicalType col_type = SharePointColumnToDuckDBType(col);
-                names.push_back(col_name);
+                names.emplace_back(col_name);
                 return_types.push_back(col_type);
-                bind_data->column_names.push_back(col_name);
+                bind_data->column_names.emplace_back(col_name);
                 bind_data->column_types.push_back(col_type);
             }
         }
@@ -432,9 +433,9 @@ unique_ptr<FunctionData> GraphSharePointFunctions::ListItemsBind(
 
     // If we only have the id column, add a default "fields" column
     if (names.size() == 1) {
-        names.push_back("fields");
+        names.emplace_back("fields");
         return_types.push_back(LogicalType::VARCHAR);
-        bind_data->column_names.push_back("fields");
+        bind_data->column_names.emplace_back("fields");
         bind_data->column_types.push_back(LogicalType::VARCHAR);
     }
 
@@ -450,7 +451,7 @@ void GraphSharePointFunctions::ListItemsScan(
     auto &state = data.global_state->Cast<GraphJsonArrayScanState>();
 
     if (state.done) {
-        output.SetCardinality(0);
+        duckdb_compat::SetChildCardinality(output, 0);
         return;
     }
 
@@ -463,7 +464,7 @@ void GraphSharePointFunctions::ListItemsScan(
     if (!state.parsed_doc) {
         if (!state.InitIterator()) {
             state.done = true;
-            output.SetCardinality(0);
+            duckdb_compat::SetChildCardinality(output, 0);
             return;
         }
     }
@@ -489,7 +490,7 @@ void GraphSharePointFunctions::ListItemsScan(
     }
 
     if (row < STANDARD_VECTOR_SIZE) { state.done = true; }
-    output.SetCardinality(row);
+    duckdb_compat::SetChildCardinality(output, row);
 }
 
 // ============================================================================
@@ -500,21 +501,21 @@ unique_ptr<FunctionData> GraphSharePointFunctions::ShowDrivesBind(
     ClientContext &context,
     TableFunctionBindInput &input,
     vector<LogicalType> &return_types,
-    vector<std::string> &names) {
+    duckdb_compat::BindNames &names) {
 
     auto bind_data = make_uniq<ShowDrivesBindData>();
 
     // Accept either a positional site_id or named site := 'name'
-    if (input.named_parameters.find("site") != input.named_parameters.end()) {
-        bind_data->site_id = input.named_parameters.at("site").GetValue<std::string>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "site") != nullptr) {
+        bind_data->site_id = input.named_parameters.at(duckdb_compat::Ident("site")).GetValue<std::string>();
     } else if (!input.inputs.empty() && !input.inputs[0].IsNull()) {
         bind_data->site_id = input.inputs[0].GetValue<std::string>();
     } else {
         throw BinderException("graph_show_drives requires either a positional site_id or site := 'name'");
     }
 
-    if (input.named_parameters.find("secret") != input.named_parameters.end()) {
-        bind_data->secret_name = input.named_parameters.at("secret").GetValue<std::string>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "secret") != nullptr) {
+        bind_data->secret_name = input.named_parameters.at(duckdb_compat::Ident("secret")).GetValue<std::string>();
     }
 
     names = {"id", "name", "drive_type", "web_url", "created_at", "modified_at"};
@@ -539,7 +540,7 @@ void GraphSharePointFunctions::ShowDrivesScan(
     auto &state = data.global_state->Cast<GraphJsonArrayScanState>();
 
     if (state.done) {
-        output.SetCardinality(0);
+        duckdb_compat::SetChildCardinality(output, 0);
         return;
     }
 
@@ -552,7 +553,7 @@ void GraphSharePointFunctions::ShowDrivesScan(
     if (!state.parsed_doc) {
         if (!state.InitIterator()) {
             state.done = true;
-            output.SetCardinality(0);
+            duckdb_compat::SetChildCardinality(output, 0);
             return;
         }
     }
@@ -570,7 +571,7 @@ void GraphSharePointFunctions::ShowDrivesScan(
     }
 
     if (row < STANDARD_VECTOR_SIZE) { state.done = true; }
-    output.SetCardinality(row);
+    duckdb_compat::SetChildCardinality(output, row);
 }
 
 // ============================================================================
@@ -589,7 +590,7 @@ unique_ptr<FunctionData> GraphSharePointFunctions::CreateItemBind(
     ClientContext &context,
     TableFunctionBindInput &input,
     vector<LogicalType> &return_types,
-    vector<std::string> &names) {
+    duckdb_compat::BindNames &names) {
 
     if (input.inputs.size() < 3) {
         throw BinderException("graph_sharepoint_create_item requires site, list, and fields_json parameters");
@@ -600,8 +601,8 @@ unique_ptr<FunctionData> GraphSharePointFunctions::CreateItemBind(
     bind_data->list_id    = input.inputs[1].GetValue<std::string>();
     bind_data->fields_json = input.inputs[2].GetValue<std::string>();
 
-    if (input.named_parameters.find("secret") != input.named_parameters.end()) {
-        bind_data->secret_name = input.named_parameters.at("secret").GetValue<std::string>();
+    if (duckdb_compat::FindNamedParameter(input.named_parameters, "secret") != nullptr) {
+        bind_data->secret_name = input.named_parameters.at(duckdb_compat::Ident("secret")).GetValue<std::string>();
     }
 
     auto auth_info = ResolveGraphAuth(context, bind_data->secret_name);
@@ -627,12 +628,12 @@ void GraphSharePointFunctions::CreateItemScan(
     auto &bind_data = data.bind_data->Cast<CreateItemBindData>();
     auto &state = data.global_state->Cast<ScanRowCursorState>();
     if (state.finished) {
-        output.SetCardinality(0);
+        duckdb_compat::SetChildCardinality(output, 0);
         return;
     }
     state.finished = true;
     output.SetValue(0, 0, Value(bind_data.new_item_id));
-    output.SetCardinality(1);
+    duckdb_compat::SetChildCardinality(output, 1);
 }
 
 void GraphSharePointFunctions::UpdateItemExecute(
@@ -646,7 +647,7 @@ void GraphSharePointFunctions::UpdateItemExecute(
     std::string secret_name;
     if (args.ColumnCount() > 4 && count > 0) {
         UnifiedVectorFormat secret_fmt;
-        args.data[4].ToUnifiedFormat(count, secret_fmt);
+        duckdb_compat::ToUnifiedFormat(args.data[4], count, secret_fmt);
         auto idx = secret_fmt.sel->get_index(0);
         if (secret_fmt.validity.RowIsValid(idx)) {
             secret_name = ((string_t *)secret_fmt.data)[idx].GetString(); // NOLINT
@@ -657,14 +658,14 @@ void GraphSharePointFunctions::UpdateItemExecute(
     GraphSharePointClient client(auth_info.auth_params);
 
     UnifiedVectorFormat site_fmt, list_fmt, item_fmt, fields_fmt;
-    args.data[0].ToUnifiedFormat(count, site_fmt);
-    args.data[1].ToUnifiedFormat(count, list_fmt);
-    args.data[2].ToUnifiedFormat(count, item_fmt);
-    args.data[3].ToUnifiedFormat(count, fields_fmt);
+    duckdb_compat::ToUnifiedFormat(args.data[0], count, site_fmt);
+    duckdb_compat::ToUnifiedFormat(args.data[1], count, list_fmt);
+    duckdb_compat::ToUnifiedFormat(args.data[2], count, item_fmt);
+    duckdb_compat::ToUnifiedFormat(args.data[3], count, fields_fmt);
 
     result.SetVectorType(VectorType::FLAT_VECTOR);
-    auto result_data = FlatVector::GetData<bool>(result);
-    auto &result_validity = FlatVector::Validity(result);
+    auto result_data = duckdb_compat::FlatData<bool>(result);
+    auto &result_validity = duckdb_compat::MutableValidity(result);
 
     for (idx_t i = 0; i < count; i++) {
         auto site_idx   = site_fmt.sel->get_index(i);
@@ -701,7 +702,7 @@ void GraphSharePointFunctions::DeleteItemExecute(
     std::string secret_name;
     if (args.ColumnCount() > 3 && count > 0) {
         UnifiedVectorFormat secret_fmt;
-        args.data[3].ToUnifiedFormat(count, secret_fmt);
+        duckdb_compat::ToUnifiedFormat(args.data[3], count, secret_fmt);
         auto idx = secret_fmt.sel->get_index(0);
         if (secret_fmt.validity.RowIsValid(idx)) {
             secret_name = ((string_t *)secret_fmt.data)[idx].GetString(); // NOLINT
@@ -712,13 +713,13 @@ void GraphSharePointFunctions::DeleteItemExecute(
     GraphSharePointClient client(auth_info.auth_params);
 
     UnifiedVectorFormat site_fmt, list_fmt, item_fmt;
-    args.data[0].ToUnifiedFormat(count, site_fmt);
-    args.data[1].ToUnifiedFormat(count, list_fmt);
-    args.data[2].ToUnifiedFormat(count, item_fmt);
+    duckdb_compat::ToUnifiedFormat(args.data[0], count, site_fmt);
+    duckdb_compat::ToUnifiedFormat(args.data[1], count, list_fmt);
+    duckdb_compat::ToUnifiedFormat(args.data[2], count, item_fmt);
 
     result.SetVectorType(VectorType::FLAT_VECTOR);
-    auto result_data = FlatVector::GetData<bool>(result);
-    auto &result_validity = FlatVector::Validity(result);
+    auto result_data = duckdb_compat::FlatData<bool>(result);
+    auto &result_validity = duckdb_compat::MutableValidity(result);
 
     for (idx_t i = 0; i < count; i++) {
         auto site_idx = site_fmt.sel->get_index(i);
@@ -751,8 +752,8 @@ void GraphSharePointFunctions::Register(ExtensionLoader &loader) {
 
     {
         TableFunction show_sites("graph_show_sites", {}, DATAZOO_GUARD(ERPL_ODATA_BANNER, ShowSitesScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, ShowSitesBind));
-        show_sites.varargs = LogicalType::VARCHAR;
-        show_sites.named_parameters["secret"] = LogicalType::VARCHAR;
+        duckdb_compat::SetVarArgs(show_sites, LogicalType::VARCHAR);
+        duckdb_compat::AddNamedParameter(show_sites, "secret", LogicalType::VARCHAR);
         show_sites.init_global = GraphJsonArrayScanState::Init;
         CreateTableFunctionInfo info(show_sites);
         FunctionDescription desc;
@@ -768,13 +769,14 @@ void GraphSharePointFunctions::Register(ExtensionLoader &loader) {
         };
         desc.categories = {"microsoft", "graph", "sharepoint"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
         TableFunction show_drives("graph_show_drives", {}, DATAZOO_GUARD(ERPL_ODATA_BANNER, ShowDrivesScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, ShowDrivesBind));
-        show_drives.varargs = LogicalType::VARCHAR;
-        show_drives.named_parameters["secret"] = LogicalType::VARCHAR;
-        show_drives.named_parameters["site"] = LogicalType::VARCHAR;
+        duckdb_compat::SetVarArgs(show_drives, LogicalType::VARCHAR);
+        duckdb_compat::AddNamedParameter(show_drives, "secret", LogicalType::VARCHAR);
+        duckdb_compat::AddNamedParameter(show_drives, "site", LogicalType::VARCHAR);
         show_drives.init_global = GraphJsonArrayScanState::Init;
         CreateTableFunctionInfo info(show_drives);
         FunctionDescription desc;
@@ -790,13 +792,14 @@ void GraphSharePointFunctions::Register(ExtensionLoader &loader) {
         };
         desc.categories = {"microsoft", "graph", "sharepoint"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
         TableFunction show_lists("graph_show_lists", {}, DATAZOO_GUARD(ERPL_ODATA_BANNER, ShowListsScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, ShowListsBind));
-        show_lists.varargs = LogicalType::VARCHAR;
-        show_lists.named_parameters["secret"] = LogicalType::VARCHAR;
-        show_lists.named_parameters["site"] = LogicalType::VARCHAR;
+        duckdb_compat::SetVarArgs(show_lists, LogicalType::VARCHAR);
+        duckdb_compat::AddNamedParameter(show_lists, "secret", LogicalType::VARCHAR);
+        duckdb_compat::AddNamedParameter(show_lists, "site", LogicalType::VARCHAR);
         show_lists.init_global = GraphJsonArrayScanState::Init;
         CreateTableFunctionInfo info(show_lists);
         FunctionDescription desc;
@@ -814,13 +817,14 @@ void GraphSharePointFunctions::Register(ExtensionLoader &loader) {
         };
         desc.categories = {"microsoft", "graph", "sharepoint"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
         TableFunction describe_list("graph_describe_list",
                                     {LogicalType::VARCHAR, LogicalType::VARCHAR},
                                     DATAZOO_GUARD(ERPL_ODATA_BANNER, DescribeListScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, DescribeListBind));
-        describe_list.named_parameters["secret"] = LogicalType::VARCHAR;
+        duckdb_compat::AddNamedParameter(describe_list, "secret", LogicalType::VARCHAR);
         describe_list.init_global = GraphJsonArrayScanState::Init;
         CreateTableFunctionInfo info(describe_list);
         FunctionDescription desc;
@@ -837,13 +841,14 @@ void GraphSharePointFunctions::Register(ExtensionLoader &loader) {
         };
         desc.categories = {"microsoft", "graph", "sharepoint"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
         TableFunction list_items("graph_sharepoint_list_read",
                                  {LogicalType::VARCHAR, LogicalType::VARCHAR},
                                  DATAZOO_GUARD(ERPL_ODATA_BANNER, ListItemsScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, ListItemsBind));
-        list_items.named_parameters["secret"] = LogicalType::VARCHAR;
+        duckdb_compat::AddNamedParameter(list_items, "secret", LogicalType::VARCHAR);
         list_items.init_global = GraphJsonArrayScanState::Init;
         CreateTableFunctionInfo info(list_items);
         FunctionDescription desc;
@@ -859,6 +864,7 @@ void GraphSharePointFunctions::Register(ExtensionLoader &loader) {
         };
         desc.categories = {"microsoft", "graph", "sharepoint"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
 
@@ -866,7 +872,7 @@ void GraphSharePointFunctions::Register(ExtensionLoader &loader) {
         TableFunction create_item("graph_sharepoint_create_item",
                                   {LogicalType::VARCHAR, LogicalType::VARCHAR, LogicalType::VARCHAR},
                                   DATAZOO_GUARD(ERPL_ODATA_BANNER, CreateItemScan), DATAZOO_GUARD(ERPL_ODATA_BANNER, CreateItemBind));
-        create_item.named_parameters["secret"] = LogicalType::VARCHAR;
+        duckdb_compat::AddNamedParameter(create_item, "secret", LogicalType::VARCHAR);
         create_item.init_global = ScanRowCursorState::Init;
         CreateTableFunctionInfo info(create_item);
         FunctionDescription desc;
@@ -883,6 +889,7 @@ void GraphSharePointFunctions::Register(ExtensionLoader &loader) {
         };
         desc.categories = {"microsoft", "graph", "sharepoint"};
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
@@ -891,14 +898,16 @@ void GraphSharePointFunctions::Register(ExtensionLoader &loader) {
         ScalarFunction update_no_secret(
             {LogicalType::VARCHAR, LogicalType::VARCHAR, LogicalType::VARCHAR, LogicalType::VARCHAR},
             LogicalType::BOOLEAN, UpdateItemExecute);
-        update_no_secret.stability = FunctionStability::VOLATILE;
+        duckdb_compat::SetStability(update_no_secret, FunctionStability::VOLATILE);
+        duckdb_compat::SetFallible(update_no_secret);
         update_set.AddFunction(update_no_secret);
         // Overload with explicit secret name
         ScalarFunction update_with_secret(
             {LogicalType::VARCHAR, LogicalType::VARCHAR, LogicalType::VARCHAR, LogicalType::VARCHAR,
              LogicalType::VARCHAR},
             LogicalType::BOOLEAN, UpdateItemExecute);
-        update_with_secret.stability = FunctionStability::VOLATILE;
+        duckdb_compat::SetStability(update_with_secret, FunctionStability::VOLATILE);
+        duckdb_compat::SetFallible(update_with_secret);
         update_set.AddFunction(update_with_secret);
 
         CreateScalarFunctionInfo info(std::move(update_set));
@@ -916,7 +925,12 @@ void GraphSharePointFunctions::Register(ExtensionLoader &loader) {
             "UPDATE items SET ok = graph_sharepoint_update_item('Finance', 'Budget', item_id::VARCHAR, json_object('Status', new_status), 'ms_graph') FROM items"
         };
         desc.categories = {"microsoft", "graph", "sharepoint"};
+        FunctionDescription desc_no_secret = desc;
+        desc_no_secret.parameter_names.pop_back();
+        desc_no_secret.parameter_types.pop_back();
+        info.descriptions.push_back(std::move(desc_no_secret));
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
     {
@@ -925,13 +939,15 @@ void GraphSharePointFunctions::Register(ExtensionLoader &loader) {
         ScalarFunction delete_no_secret(
             {LogicalType::VARCHAR, LogicalType::VARCHAR, LogicalType::VARCHAR},
             LogicalType::BOOLEAN, DeleteItemExecute);
-        delete_no_secret.stability = FunctionStability::VOLATILE;
+        duckdb_compat::SetStability(delete_no_secret, FunctionStability::VOLATILE);
+        duckdb_compat::SetFallible(delete_no_secret);
         delete_set.AddFunction(delete_no_secret);
         // Overload with explicit secret name
         ScalarFunction delete_with_secret(
             {LogicalType::VARCHAR, LogicalType::VARCHAR, LogicalType::VARCHAR, LogicalType::VARCHAR},
             LogicalType::BOOLEAN, DeleteItemExecute);
-        delete_with_secret.stability = FunctionStability::VOLATILE;
+        duckdb_compat::SetStability(delete_with_secret, FunctionStability::VOLATILE);
+        duckdb_compat::SetFallible(delete_with_secret);
         delete_set.AddFunction(delete_with_secret);
 
         CreateScalarFunctionInfo info(std::move(delete_set));
@@ -948,7 +964,12 @@ void GraphSharePointFunctions::Register(ExtensionLoader &loader) {
             "SELECT graph_sharepoint_delete_item('Finance', 'Budget', item_id::VARCHAR, 'ms_graph') FROM graph_sharepoint_list_read('Finance', 'Budget', secret := 'ms_graph') WHERE Title = 'OldEntry'"
         };
         desc.categories = {"microsoft", "graph", "sharepoint"};
+        FunctionDescription desc_no_secret = desc;
+        desc_no_secret.parameter_names.pop_back();
+        desc_no_secret.parameter_types.pop_back();
+        info.descriptions.push_back(std::move(desc_no_secret));
         info.descriptions.push_back(std::move(desc));
+        duckdb_compat::NameFunctionsFromDescriptions(info);
         loader.RegisterFunction(std::move(info));
     }
 

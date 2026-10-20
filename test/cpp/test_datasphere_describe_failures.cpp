@@ -1,4 +1,6 @@
 #include "catch.hpp"
+#include "test_extension_load_sql.hpp"
+#include "duckdb_compat.hpp"
 
 #include "duckdb.hpp"
 
@@ -91,7 +93,7 @@ TEST_CASE("a Datasphere describe against an unreachable tenant errors rather tha
           "[datasphere][describe_failure]") {
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     REQUIRE_FALSE(con.Query("CREATE SECRET datasphere (TYPE datasphere, PROVIDER config, "
                             "config_file '" + database.WriteUnreachableTenantConfig() + "')")
@@ -101,7 +103,7 @@ TEST_CASE("a Datasphere describe against an unreachable tenant errors rather tha
         auto result = con.Query("SELECT name FROM datasphere_describe_asset('SPACE', 'ASSET')");
         INFO("result: " << (result->HasError() ? result->GetError()
                                                : "succeeded, returned: " +
-                                                     result->GetValue(0, 0).ToString()));
+                                                     duckdb_compat::ResultValue(*result, 0, 0).ToString()));
 
         // It used to return a row here, with the literal string "error" as the asset's name.
         REQUIRE(result->HasError());
@@ -113,7 +115,7 @@ TEST_CASE("a Datasphere describe against an unreachable tenant errors rather tha
         auto result = con.Query("SELECT name FROM datasphere_describe_space('SPACE')");
         INFO("result: " << (result->HasError() ? result->GetError()
                                                : "succeeded, returned: " +
-                                                     result->GetValue(0, 0).ToString()));
+                                                     duckdb_compat::ResultValue(*result, 0, 0).ToString()));
 
         REQUIRE(result->HasError());
     }
@@ -126,14 +128,14 @@ TEST_CASE("the describe failure never reports itself as a row value",
     // future change could reintroduce the row while still erroring on some other path.
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
     REQUIRE_FALSE(con.Query("CREATE SECRET datasphere (TYPE datasphere, PROVIDER config, "
                             "config_file '" + database.WriteUnreachableTenantConfig() + "')")
                       ->HasError());
 
     auto result = con.Query("SELECT name, space_name FROM datasphere_describe_asset('SP', 'A')");
     if (!result->HasError()) {
-        const auto name = result->GetValue(0, 0).ToString();
+        const auto name = duckdb_compat::ResultValue(*result, 0, 0).ToString();
         INFO("name column: " << name);
         REQUIRE(name != "error");
         REQUIRE(name.find("Error:") == std::string::npos);

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "duckdb.hpp"
+#include "duckdb_compat.hpp"
 #include "duckdb/catalog/catalog.hpp"
 #include "duckdb/catalog/catalog_entry/schema_catalog_entry.hpp"
 #include "duckdb/catalog/catalog_entry/table_catalog_entry.hpp"
@@ -79,11 +80,17 @@ private:
 class ODataTableEntry : public duckdb::TableCatalogEntry {
 public:
     ODataTableEntry(Catalog &catalog, SchemaCatalogEntry &schema, CreateTableInfo &info);
+    // DuckDB 2.0 makes this virtual. Keep our copy: the base takes/moves the
+    // construction columns, while scan binding still needs their names.
+    const duckdb::ColumnList &GetColumns() const { return entry_columns_; }
 
     unique_ptr<BaseStatistics> GetStatistics(ClientContext &context, column_t column_id) override;
     TableFunction GetScanFunction(ClientContext &context, unique_ptr<FunctionData> &bind_data) override;
 	TableStorageInfo GetStorageInfo(ClientContext &context) override;
     void BindUpdateConstraints(Binder &binder, LogicalGet &get, LogicalProjection &proj, LogicalUpdate &update, ClientContext &context) override;
+private:
+    ODataTableEntry(Catalog &catalog, SchemaCatalogEntry &schema, CreateTableInfo &info, duckdb::ColumnList columns);
+    duckdb::ColumnList entry_columns_;
 };
 
 class ODataCatalog : public duckdb::Catalog {
@@ -102,7 +109,7 @@ public:
     duckdb::string GetDBPath() override;
     bool InMemory() override;
     bool SupportsTimeTravel() const override;
-    duckdb::string GetDefaultSchema() const override;
+    duckdb_compat::DefaultSchemaName GetDefaultSchema() const override;
     duckdb::DatabaseSize GetDatabaseSize(duckdb::ClientContext &context) override;
     duckdb::vector<duckdb::MetadataBlockInfo> GetMetadataInfo(duckdb::ClientContext &context) override;
 

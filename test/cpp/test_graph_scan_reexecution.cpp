@@ -37,6 +37,8 @@
 // lookup below is written the long way.
 
 #include "catch.hpp"
+#include "test_extension_load_sql.hpp"
+#include "duckdb_compat.hpp"
 #include "duckdb.hpp"
 #include "duckdb/catalog/catalog.hpp"
 #include "duckdb/catalog/catalog_entry/schema_catalog_entry.hpp"
@@ -44,6 +46,7 @@
 #include "duckdb/main/client_context.hpp"
 
 #include "graph_json_scan.hpp"
+#include "graph_excel_catalog.hpp"
 
 #include <set>
 #include <string>
@@ -51,6 +54,44 @@
 #include "test_database.hpp"
 
 using erpl_web::test_support::TestDatabase;
+
+namespace {
+template <class FUNCTION>
+auto ExcelGetterPointsToTable(FUNCTION &function, const duckdb::FunctionData &data,
+                              duckdb::TableCatalogEntry *expected, int)
+    -> decltype(function.get_table_entry, bool()) {
+    if (!function.get_table_entry) {
+        return false;
+    }
+    return function.get_table_entry(&data).get() == expected;
+}
+template <class FUNCTION>
+bool ExcelGetterPointsToTable(FUNCTION &, const duckdb::FunctionData &,
+                              duckdb::TableCatalogEntry *, long) {
+    // 1.x uses get_bind_info instead of get_table_entry.
+    return true;
+}
+}
+
+TEST_CASE("Excel scan exposes its owning table to the 2.0 binder", "[graph][excel]") {
+    TestDatabase database;
+    auto &con = database.Con();
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
+    auto &context = *con.context;
+    context.transaction.BeginTransaction();
+    auto &catalog = duckdb::Catalog::GetSystemCatalog(context);
+    auto &schema = catalog.GetSchema(context, DEFAULT_SCHEMA);
+    duckdb::CreateTableInfo info;
+    duckdb_compat::SetQualifiedName(info, "", duckdb_compat::Str(schema.name), "excel_getter_probe");
+    info.columns.AddColumn(duckdb::ColumnDefinition("Name", duckdb::LogicalType::VARCHAR));
+    erpl_web::ExcelTableEntry table(catalog, schema, info, "unused.xlsx", "Probe", "",
+                                    "", nullptr);
+    duckdb::unique_ptr<duckdb::FunctionData> bind_data;
+    auto scan = table.GetScanFunction(context, bind_data);
+    REQUIRE(bind_data);
+    REQUIRE(ExcelGetterPointsToTable(scan, *bind_data, &table, 0));
+    context.transaction.Commit();
+}
 
 
 // Walks the catalog rather than a hand-written list of names. A list is the mechanism
@@ -65,7 +106,7 @@ TEST_CASE("every registered erpl_odata table function declares per-execution sta
           "[graph][reexec]") {
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     // One-shot writers: the write happens in the scan, so latching on the bind data is
     // what stops a second EXECUTE from repeating it against the user's data. Deliberate,
@@ -109,13 +150,13 @@ TEST_CASE("every registered erpl_odata table function declares per-execution sta
     std::vector<std::string> missing;
     std::vector<std::string> seen;
     schema.Scan(context, duckdb::CatalogType::TABLE_FUNCTION_ENTRY, [&](duckdb::CatalogEntry &entry) {
-        const auto name = entry.name;
+        const auto name = duckdb_compat::Str(entry.name);
         if (!is_ours(name) || exempt.count(name) > 0) {
             return;
         }
         seen.push_back(name);
         for (const auto &overload : entry.Cast<duckdb::TableFunctionCatalogEntry>().functions.functions) {
-            if (overload.init_global == nullptr) {
+            if (!duckdb_compat::HasInitGlobal(overload)) {
                 missing.push_back(name);
                 return;
             }

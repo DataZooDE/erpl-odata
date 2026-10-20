@@ -15,6 +15,8 @@
 // just a profile pointing at ODataTestServer.
 
 #include "catch.hpp"
+#include "test_extension_load_sql.hpp"
+#include "duckdb_compat.hpp"
 #include "duckdb.hpp"
 
 #include "odata_test_server.hpp"
@@ -80,9 +82,10 @@ void ServeCatalog(ODataTestServer &server)
                   CannedResponse::Json(R"({"tables":[{"name":"orders"},{"name":"returns"}]})"));
 }
 
-int64_t ScalarOf(duckdb::unique_ptr<duckdb::MaterializedQueryResult> &result)
+template <class RESULT>
+int64_t ScalarOf(RESULT &result)
 {
-    return result->GetValue(0, 0).GetValue<int64_t>();
+    return duckdb_compat::ResultValue(*result, 0, 0).template GetValue<int64_t>();
 }
 
 // Prepares `sql`, executes it three times and requires `expected_rows` every time. One
@@ -114,7 +117,7 @@ TEST_CASE("bound delta_share catalog plans return every row on each execution",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     SECTION("delta_share_show_shares") {
         RequireStableAcrossExecutions(
@@ -147,7 +150,7 @@ TEST_CASE("two delta_share_show_shares scans in one query each see every row",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     const std::string scan = "delta_share_show_shares('" + profile.Path() + "')";
     auto result = con.Query("SELECT (SELECT COUNT(*) FROM " + scan + ") + "
@@ -178,7 +181,7 @@ TEST_CASE("a bound delta_share_show_shares plan re-reads a multi-chunk payload",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     RequireStableAcrossExecutions(
         con, "SELECT COUNT(*) FROM delta_share_show_shares('" + profile.Path() + "')",
@@ -196,7 +199,7 @@ TEST_CASE("a bound delta_share_show_shares plan over an empty payload stays empt
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     RequireStableAcrossExecutions(
         con, "SELECT COUNT(*) FROM delta_share_show_shares('" + profile.Path() + "')", 0);
@@ -215,7 +218,7 @@ TEST_CASE("a bound http_get plan issues its request on every execution",
 
     TestDatabase database;
     duckdb::Connection &con = database.Con();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     auto prep = con.Query("PREPARE h AS SELECT status FROM http_get('" + server.Url("/ping") + "')");
     INFO((prep->HasError() ? prep->GetError() : std::string("ok")));
@@ -227,7 +230,7 @@ TEST_CASE("a bound http_get plan issues its request on every execution",
         INFO((result->HasError() ? result->GetError() : std::string()));
         REQUIRE_FALSE(result->HasError());
         REQUIRE(result->RowCount() == 1);
-        REQUIRE(result->GetValue(0, 0).GetValue<int32_t>() == 200);
+        REQUIRE(duckdb_compat::ResultValue(*result, 0, 0).GetValue<int32_t>() == 200);
     }
 
     // One request per execution: the response is not a bind-time snapshot.

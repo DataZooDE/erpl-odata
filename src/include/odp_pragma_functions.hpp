@@ -1,6 +1,7 @@
 #pragma once
 
 #include "duckdb.hpp"
+#include "duckdb_compat.hpp"
 #include "duckdb/function/table_function.hpp"
 #include "duckdb/function/function_set.hpp"
 #include "duckdb/function/pragma_function.hpp"
@@ -47,7 +48,7 @@ duckdb::unique_ptr<duckdb::GlobalTableFunctionState> OdpListSubscriptionsInit(du
 duckdb::unique_ptr<duckdb::FunctionData> OdpListSubscriptionsBind(duckdb::ClientContext &context, 
                                                                   duckdb::TableFunctionBindInput &input,
                                                                   duckdb::vector<duckdb::LogicalType> &return_types,
-                                                                  duckdb::vector<std::string> &names);
+                                                                  duckdb_compat::BindNames &names);
 
 /**
  * @brief Scan function for odp_odata_list_subscriptions table function

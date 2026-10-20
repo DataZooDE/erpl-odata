@@ -1,4 +1,5 @@
 #include "graph_excel_copy.hpp"
+#include "duckdb_compat.hpp"
 #include "graph_excel_client.hpp"
 #include "graph_excel_secret.hpp"
 #include "graph_write_helpers.hpp"
@@ -71,9 +72,9 @@ struct ExcelTableCopyGlobalState : public GlobalFunctionData {
 // Helper: extract a single string option from COPY options map
 // ------------------------------------------------------------------
 
-static std::string GetCopyOption(const duckdb::case_insensitive_map_t<duckdb::vector<Value>> &opts,
+static std::string GetCopyOption(const duckdb_compat::CopyOptions &opts,
                                  const std::string &key) {
-    auto it = opts.find(key);
+    auto it = opts.find(duckdb_compat::Ident(key));
     if (it == opts.end() || it->second.empty()) { return ""; }
     return it->second[0].ToString();
 }
@@ -84,7 +85,7 @@ static std::string GetCopyOption(const duckdb::case_insensitive_map_t<duckdb::ve
 
 static std::string ResolveDriveIdFromCopyOptions(
     const std::shared_ptr<HttpAuthParams> &auth_params,
-    const duckdb::case_insensitive_map_t<duckdb::vector<Value>> &opts)
+    const duckdb_compat::CopyOptions &opts)
 {
     const std::string drive_raw = GetCopyOption(opts, "drive");
     const std::string site_raw  = GetCopyOption(opts, "site");
@@ -114,12 +115,12 @@ static std::string ResolveDriveIdFromCopyOptions(
 static unique_ptr<FunctionData> ExcelTableCopyBind(
     ClientContext &context,
     CopyFunctionBindInput &input,
-    const duckdb::vector<std::string> &names,
+    const duckdb_compat::CopyBindNames &names,
     const duckdb::vector<LogicalType> & /*sql_types*/)
 {
     auto bind = make_uniq<ExcelTableCopyBindData>();
     bind->file_path    = input.info.file_path;
-    bind->column_names = std::vector<std::string>(names.begin(), names.end());
+    bind->column_names = duckdb_compat::Strs(names);
 
     const auto &opts = input.info.options;
     bind->table_name  = GetCopyOption(opts, "table");
@@ -185,6 +186,15 @@ static void ExcelTableCopySink(
     gstate.row_count  += input.size();
 }
 
+static void ExcelTableCopyCombine(
+    ExecutionContext & /*context*/,
+    FunctionData & /*bind_data*/,
+    GlobalFunctionData & /*gstate*/,
+    LocalFunctionData & /*lstate*/)
+{
+    // Sink writes to the synchronized global state, so there is no local state to merge.
+}
+
 static void ExcelTableCopyFinalize(
     ClientContext & /*context*/,
     FunctionData &bind_data_p,
@@ -213,6 +223,9 @@ void RegisterExcelTableCopyFunction(duckdb::ExtensionLoader &loader) {
     fn.copy_to_initialize_global = ExcelTableCopyInitializeGlobal;
     fn.copy_to_initialize_local  = ExcelTableCopyInitializeLocal;
     fn.copy_to_sink              = ExcelTableCopySink;
+    // DuckDB 2.0 requires a combine callback for parallel COPY even though
+    // this writer accumulates no thread-local state to combine.
+    fn.copy_to_combine           = ExcelTableCopyCombine;
     fn.copy_to_finalize          = ExcelTableCopyFinalize;
     fn.extension                 = "xlsx";
 

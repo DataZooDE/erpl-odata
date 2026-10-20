@@ -17,6 +17,8 @@
 //      an ordinary, recoverable I/O outcome and must not take the database down with it.
 
 #include "catch.hpp"
+#include "test_extension_load_sql.hpp"
+#include "duckdb_compat.hpp"
 #include "duckdb.hpp"
 
 #include "odata_test_server.hpp"
@@ -46,7 +48,7 @@ TEST_CASE("a refused ODP extraction reports the service's reason and spares the 
 
     odp_test::TempDatabase db("odp_fetch_failure");
     auto &con = db.Conn();
-    REQUIRE_FALSE(con.Query("LOAD erpl_odata")->HasError());
+    REQUIRE_FALSE(con.Query(ErplOdataLoadSql())->HasError());
 
     const auto url = server.Url("/sap/opu/odata/sap/Z_TEST_SRV/FactsOf0D_NW_C01");
     auto read = con.Query("SELECT COUNT(*) FROM odp_odata_read('" + url + "')");
@@ -65,5 +67,5 @@ TEST_CASE("a refused ODP extraction reports the service's reason and spares the 
     auto after = con.Query("SELECT 42");
     INFO((after->HasError() ? after->GetError() : std::string()));
     REQUIRE_FALSE(after->HasError());
-    REQUIRE(after->GetValue(0, 0).GetValue<int32_t>() == 42);
+    REQUIRE(duckdb_compat::ResultValue(*after, 0, 0).GetValue<int32_t>() == 42);
 }
