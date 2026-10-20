@@ -224,6 +224,17 @@ if(APPLE)
    target_link_libraries(${LOADABLE_EXTENSION_NAME} ${COREFOUNDATION_FRAMEWORK} ${APPLICATIONSERVICES_FRAMEWORK} ${SECURITY_FRAMEWORK})
 endif()
 
+# GCC emits STB_GNU_UNIQUE definitions for ODR-used DuckDB class statics
+# (e.g. BufferedFileWriter::DEFAULT_OPEN_FLAGS) in our TUs; DuckDB core emits strong
+# ones. Now that the extension is statically linked (no DONT_LINK), tools such as
+# tools/plan_serializer link both and fail with "multiple definition" (seen on
+# linux_arm64). -fno-gnu-unique makes ours weak COMDAT definitions; GCC only.
+# Same as erpl-idoc; CI also passes it globally via extra_extension_config.
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    target_compile_options(${EXTENSION_NAME} PRIVATE -fno-gnu-unique)
+    target_compile_options(${LOADABLE_EXTENSION_NAME} PRIVATE -fno-gnu-unique)
+endif()
+
 # C++ unit tests are a developer-only artifact. They are only buildable from our own
 # source tree, where DuckDB is checked out as the `duckdb` git submodule: test/cpp
 # includes catch.hpp / core_functions_extension.hpp via paths relative to that submodule
