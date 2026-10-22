@@ -17,6 +17,20 @@ namespace duckdb { class BFTableFilter; class LegacyBFTableFilter; }
 namespace {
 using TestBloomFilter = std::conditional_t<duckdb_compat::NEW_TABLE_FILTERS,
                                           duckdb::LegacyBFTableFilter, duckdb::BFTableFilter>;
+// DuckDB 2.0.0 takes the bloom filter as shared_ptr<const BloomFilter>; earlier lines
+// (and the 2.0 pre-release) take a BloomFilter&. Pick whichever constructor exists.
+template <class F = TestBloomFilter>
+auto MakeTestBloomFilter(int)
+    -> decltype(duckdb::make_uniq<F>(duckdb::shared_ptr<const duckdb::BloomFilter>(), false, std::string(),
+                                     duckdb::LogicalType())) {
+	return duckdb::make_uniq<F>(duckdb::make_shared_ptr<duckdb::BloomFilter>(), false, "Col",
+	                            duckdb::LogicalType(duckdb::LogicalTypeId::INTEGER));
+}
+template <class F = TestBloomFilter>
+duckdb::unique_ptr<F> MakeTestBloomFilter(long) {
+	static duckdb::BloomFilter bloom;
+	return duckdb::make_uniq<F>(bloom, false, "Col", duckdb::LogicalType(duckdb::LogicalTypeId::INTEGER));
+}
 }
 #endif
 #include "duckdb/planner/filter/optional_filter.hpp"
@@ -380,18 +394,14 @@ TEST_CASE("An optional filter wrapping a bloom filter is skipped, not thrown", "
 	// correctness". A hash join pushes an optional filter wrapping a bloom filter, so
 	// translating the child eagerly and letting it reach the default: arm would make an
 	// ordinary join fail outright.
-	duckdb::BloomFilter bloom;
-	auto bf_filter = duckdb::make_uniq<TestBloomFilter>(bloom, false, "Col",
-	                                                          duckdb::LogicalType(duckdb::LogicalTypeId::INTEGER));
+	auto bf_filter = MakeTestBloomFilter(0);
 	auto optional_filter = duckdb::make_uniq<duckdb_compat::OptionalFilter>(std::move(bf_filter));
 
 	REQUIRE(TranslateOne(std::move(optional_filter), ODataVersion::V4) == "");
 }
 
 TEST_CASE("A bare bloom filter is skipped rather than throwing", "[odata_filter]") {
-	duckdb::BloomFilter bloom;
-	auto bf_filter = duckdb::make_uniq<TestBloomFilter>(bloom, false, "Col",
-	                                                          duckdb::LogicalType(duckdb::LogicalTypeId::INTEGER));
+	auto bf_filter = MakeTestBloomFilter(0);
 	REQUIRE(TranslateOne(std::move(bf_filter), ODataVersion::V4) == "");
 }
 #endif  // ERPL_TEST_BLOOM_FILTER
