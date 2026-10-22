@@ -545,21 +545,13 @@ static inline bool has_format_param(const std::string &query) {
 }
 
 std::string ODataUrlCodec::encodeQueryValue(const std::string &value) {
-#ifdef DUCKDB_HAS_EXTENSION_CALLBACK_MANAGER
     // DuckDB v1.5+: encode_query_component moved to top-level namespace
     return duckdb_httplib_openssl::encode_query_component(value, false);
-#else
-    return duckdb_httplib_openssl::detail::encode_query_param(value);
-#endif
 }
 
 std::string ODataUrlCodec::decodeQueryValue(const std::string &value) {
-#ifdef DUCKDB_HAS_EXTENSION_CALLBACK_MANAGER
     // DuckDB v1.5+: decode_query_component moved to top-level namespace
     return duckdb_httplib_openssl::decode_query_component(value, false);
-#else
-    return duckdb_httplib_openssl::detail::decode_url(value, false);
-#endif
 }
 
 void ODataUrlCodec::ensureJsonFormat(HttpUrl &url) {

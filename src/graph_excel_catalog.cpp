@@ -218,13 +218,8 @@ public:
 		return duckdb::make_uniq<duckdb::GlobalSourceState>();
 	}
 
-#ifdef DUCKDB_HAS_EXTENSION_CALLBACK_MANAGER
 	duckdb::SourceResultType GetDataInternal(duckdb::ExecutionContext &context, duckdb::DataChunk &chunk,
 	                                         duckdb::OperatorSourceInput &input) const override {
-#else
-	duckdb::SourceResultType GetData(duckdb::ExecutionContext &context, duckdb::DataChunk &chunk,
-	                                 duckdb::OperatorSourceInput &input) const override {
-#endif
 		auto &g = sink_state->Cast<ExcelWriteGlobalState>();
 		duckdb_compat::SetChildCardinality(chunk, 1);
 		chunk.SetValue(0, 0, duckdb::Value::BIGINT(static_cast<int64_t>(g.affected_count)));
