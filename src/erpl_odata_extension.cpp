@@ -6,9 +6,7 @@
 #include <duckdb/parser/parsed_data/create_table_function_info.hpp>
 #include "duckdb/function/pragma_function.hpp"
 #include "duckdb/main/extension/extension_loader.hpp"
-#ifdef DUCKDB_HAS_EXTENSION_CALLBACK_MANAGER
 #include "duckdb/main/extension_callback_manager.hpp"
-#endif
 
 #include "erpl_odata_extension.hpp"
 #include "datazoo/oauth2/http_client.hpp"
@@ -513,15 +511,9 @@ static void RegisterODataFunctions(ExtensionLoader &loader)
     }
     
 
-#ifdef DUCKDB_HAS_EXTENSION_CALLBACK_MANAGER
     auto &callback_manager = ExtensionCallbackManager::Get(loader.GetDatabaseInstance());
     callback_manager.Register("odata", shared_ptr<StorageExtension>(erpl_web::CreateODataStorageExtension().release()));
     callback_manager.Register("delta_share", shared_ptr<StorageExtension>(erpl_web::CreateDeltaShareStorageExtension().release()));
-#else
-    auto &config = DBConfig::GetConfig(loader.GetDatabaseInstance());
-    config.storage_extensions["odata"] = erpl_web::CreateODataStorageExtension();
-    config.storage_extensions["delta_share"] = erpl_web::CreateDeltaShareStorageExtension();
-#endif
 }
 
 static void RegisterDatasphereFunctions(ExtensionLoader &loader)
@@ -777,13 +769,8 @@ static void RegisterSacFunctions(ExtensionLoader &loader)
     erpl_web::CreateSacSecretFunctions::Register(loader);
 
     // Register SAC storage extension (handles ATTACH support)
-#ifdef DUCKDB_HAS_EXTENSION_CALLBACK_MANAGER
     auto &callback_manager = ExtensionCallbackManager::Get(loader.GetDatabaseInstance());
     callback_manager.Register("sac", shared_ptr<StorageExtension>(erpl_web::CreateSacStorageExtension().release()));
-#else
-    auto &config = DBConfig::GetConfig(loader.GetDatabaseInstance());
-    config.storage_extensions["sac"] = erpl_web::CreateSacStorageExtension();
-#endif
 }
 
 static void RegisterDeltaShareFunctions(ExtensionLoader &loader)
@@ -892,13 +879,8 @@ static void RegisterBusinessCentralFunctions(ExtensionLoader &loader)
     }
 
     // Register BC storage extension (enables ATTACH 'secret' AS bc (TYPE business_central, COMPANY '...'))
-#ifdef DUCKDB_HAS_EXTENSION_CALLBACK_MANAGER
     auto &bc_callback_manager = ExtensionCallbackManager::Get(loader.GetDatabaseInstance());
     bc_callback_manager.Register("business_central", shared_ptr<StorageExtension>(erpl_web::CreateBcStorageExtension().release()));
-#else
-    auto &bc_config = DBConfig::GetConfig(loader.GetDatabaseInstance());
-    bc_config.storage_extensions["business_central"] = erpl_web::CreateBcStorageExtension();
-#endif
 }
 
 static void RegisterDataverseFunctions(ExtensionLoader &loader)
@@ -955,13 +937,8 @@ static void RegisterGraphExcelFunctions(ExtensionLoader &loader)
     erpl_web::RegisterExcelTableCopyFunction(loader);
 
     // Register excel_workbook ATTACH storage extension
-#ifdef DUCKDB_HAS_EXTENSION_CALLBACK_MANAGER
     auto &callback_manager = ExtensionCallbackManager::Get(loader.GetDatabaseInstance());
     callback_manager.Register("excel_workbook", shared_ptr<StorageExtension>(erpl_web::CreateExcelStorageExtension().release()));
-#else
-    auto &config = DBConfig::GetConfig(loader.GetDatabaseInstance());
-    config.storage_extensions["excel_workbook"] = erpl_web::CreateExcelStorageExtension();
-#endif
 }
 
 static void RegisterGraphSharePointFunctions(ExtensionLoader &loader)
@@ -972,13 +949,8 @@ static void RegisterGraphSharePointFunctions(ExtensionLoader &loader)
     // Register COPY TO for SharePoint lists (FORMAT ms_sharepoint_list)
     erpl_web::RegisterSharePointListCopyFunction(loader);
 
-#ifdef DUCKDB_HAS_EXTENSION_CALLBACK_MANAGER
     auto &callback_manager = ExtensionCallbackManager::Get(loader.GetDatabaseInstance());
     callback_manager.Register("sharepoint_lists", shared_ptr<StorageExtension>(erpl_web::CreateSharePointStorageExtension().release()));
-#else
-    auto &config = DBConfig::GetConfig(loader.GetDatabaseInstance());
-    config.storage_extensions["sharepoint_lists"] = erpl_web::CreateSharePointStorageExtension();
-#endif
 }
 
 static void RegisterGraphPlannerFunctions(ExtensionLoader &loader)

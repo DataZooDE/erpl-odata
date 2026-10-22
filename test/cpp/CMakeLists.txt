@@ -12,13 +12,11 @@ include_directories(./include
                     ../../duckdb/extension/parquet/include
                     ${OPENSSL_INCLUDE_DIR})
 
-# On DuckDB v1.5+, LoadExtension/LoadAllExtensions are stubs in libduckdb_static.a
+# On DuckDB v1.5, LoadExtension/LoadAllExtensions are stubs in libduckdb_static.a
 # that return NOT_LOADED for all extensions. We provide a custom loader that maps
 # extension names to statically-linked Load functions.
-# On DuckDB v1.4.x, these functions are already fully implemented in libduckdb_static.a
-# using the generated loader; including our file would cause duplicate symbol errors.
 set(TEST_SOURCES "")
-if(DUCKDB_MAJOR_VERSION LESS 2 AND EXISTS "${CMAKE_SOURCE_DIR}/src/include/duckdb/main/extension_callback_manager.hpp")
+if(DUCKDB_MAJOR_VERSION LESS 2)
     list(APPEND TEST_SOURCES erpl_odata_extension_loader.cpp)
 endif()
 
@@ -53,28 +51,17 @@ if(DUCKDB_MAJOR_VERSION GREATER_EQUAL 2)
 endif()
 target_compile_definitions(erpl_odata_tests PRIVATE ODATA_TEST_STATIC_ERPL=1)
 target_compile_definitions(erpl_odata_tests PRIVATE ERPL_ODATA_TEST_SEAMS=1)
-if(EXISTS "${CMAKE_SOURCE_DIR}/src/include/duckdb/planner/filter/bloom_filter.hpp")
-    target_compile_definitions(erpl_odata_tests PRIVATE ERPL_TEST_BLOOM_FILTER=1)
-endif()
-if(DUCKDB_MAJOR_VERSION LESS 2 AND EXISTS "${CMAKE_SOURCE_DIR}/src/include/duckdb/main/extension_callback_manager.hpp")
+if(DUCKDB_MAJOR_VERSION LESS 2)
     target_compile_definitions(erpl_odata_tests PRIVATE ERPL_TEST_HAS_LOADED_EXTENSION_TEST_PATHS=1)
 endif()
-if(EXISTS "${CMAKE_SOURCE_DIR}/src/include/duckdb/main/extension_callback_manager.hpp")
-    # DuckDB v1.5+: link extension libraries explicitly (custom loader calls their Load fns)
-    target_link_libraries(erpl_odata_tests
-                          ${EXTENSION_NAME}
-                          core_functions_extension
-                          json_extension
-                          parquet_extension
-                          OpenSSL::SSL OpenSSL::Crypto
-                          tinyxml2::tinyxml2)
-else()
-    # DuckDB v1.4.x: generated loader handles extensions; no explicit extension libs needed
-    target_link_libraries(erpl_odata_tests
-                          ${EXTENSION_NAME}
-                          OpenSSL::SSL OpenSSL::Crypto
-                          tinyxml2::tinyxml2)
-endif()
+# Link extension libraries explicitly (the custom loader calls their Load fns)
+target_link_libraries(erpl_odata_tests
+                      ${EXTENSION_NAME}
+                      core_functions_extension
+                      json_extension
+                      parquet_extension
+                      OpenSSL::SSL OpenSSL::Crypto
+                      tinyxml2::tinyxml2)
 
 # Register with CTest and inject sanitizer env overrides
 include(CTest)

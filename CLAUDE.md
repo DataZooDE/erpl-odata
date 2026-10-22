@@ -132,7 +132,7 @@ make release    # Full reconfigure + release build
 
 **C++ test linking:** `make test_cpp` uses the statically linked extension and a workspace
 HOME, with no ODATA_TEST_HOME override needed. The test target does not link test_helpers,
-which pulled a second `libduckdb.so` into the 1.4 binary and caused a teardown double free.
+which pulled a second `libduckdb.so` into the (former) 1.4 test binary and caused a teardown double free.
 `ASAN_OPTIONS=detect_odr_violation=0` remains in the target for sanitizer builds.
 
 **Why C++ tests must set `allocator_background_threads = true` in `DBConfig`:**
@@ -607,7 +607,7 @@ This extension uses **extension-ci-tools** reusable workflows for automated mult
 
 **Primary workflow:** `.github/workflows/MainDistributionPipeline.yml`
 - Calls `duckdb/extension-ci-tools/.github/workflows/_extension_distribution.yml@main`
-- Builds for DuckDB v1.4.5 and v1.5.6 (configured via `duckdb_version` parameter)
+- Builds for DuckDB v1.5.6 (built, smoke-tested and deployed) and DuckDB 2.0 (`duckdb-next-build`, build + tests only, not deployed), configured via the `duckdb_version` parameter
 - Generates platform-specific binaries as GitHub Actions artifacts
 - Deploys to S3 for distribution
 
@@ -627,18 +627,13 @@ The build matrix is defined in `extension-ci-tools/config/distribution_matrix.js
 
 **Current configuration excludes** (see `exclude_archs` in MainDistributionPipeline.yml):
 - `windows_amd64_rtools`, `windows_amd64_mingw` - Excluded for faster builds
-- `windows_amd64` - Excluded **on the v1.4.5 legs only**. That leg's pinned vcpkg commit
-  acquires `msys2-runtime 3.5.4-2` to build openssl, and MSYS2 has dropped that build from
-  every mirror (all six 404), so the leg fails before compiling anything and re-running
-  cannot help. v1.5.6 still builds and ships `windows_amd64`. Restore it by bumping the
-  v1.4.5 `vcpkg_commit`. See GitHub #174.
 - `wasm_mvp`, `wasm_eh`, `wasm_threads` - WebAssembly variants excluded
 - `linux_arm64`, `linux_amd64_musl` - **NOT excluded.** They are built on every leg. The
   `exclude_archs` lists in `MainDistributionPipeline.yml` name only the rtools/mingw/wasm
-  variants, plus `windows_amd64` on v1.4.5. This bullet used to claim they were excluded
+  variants. This bullet used to claim they were excluded
   "to reduce build time", which sent at least one session diagnosing an arm64 CI failure
   from a false premise. Read `exclude_archs` rather than this table when it matters.
-  Known flake: the v1.4.5 `linux_arm64` leg intermittently fails in its container's first
+  Known flake: a `linux_arm64` leg (seen on the former v1.4.5 leg) intermittently fails in its container's first
   `yum install` when the AlmaLinux mirrors 404 on stale repodata, and fail-fast then
   cancels its two sibling Linux jobs - so one infrastructure failure shows as three red
   checks that have nothing to do with the change. Confirm from the log before touching
@@ -1023,7 +1018,7 @@ The extension-ci-tools repository provides centralized CI/CD:
 - **Automatic updates** when DuckDB changes build system
 - **Phased deprecation:** Old versions removed systematically
 
-This project currently targets **DuckDB v1.4.5 and v1.5.6** (check `.github/workflows/` and `extension-ci-tools` branch).
+This project currently targets **DuckDB v1.5.6 and 2.0** (check `.github/workflows/` and `extension-ci-tools` branch). DuckDB 1.4.x is no longer supported.
 
 ## Codebase Architecture
 
