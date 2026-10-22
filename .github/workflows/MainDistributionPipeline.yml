@@ -67,7 +67,7 @@ jobs:
     name: Build extension binaries (v2.0 pre-release)
     uses: duckdb/extension-ci-tools/.github/workflows/_extension_distribution.yml@v2.0-cyanoptera
     with:
-      duckdb_version: b15358c371daf10dad799a43b6167f6ccdce84d8
+      duckdb_version: d54cbbe3df17e8e5ce68312f483b4155836112aa
       extension_name: erpl_odata
       ci_tools_version: v2.0-cyanoptera
       vcpkg_commit: 84bab45d415d22042bd0b9081aea57f362da3f35
