@@ -18,11 +18,13 @@ namespace {
 using TestBloomFilter = std::conditional_t<duckdb_compat::NEW_TABLE_FILTERS,
                                           duckdb::LegacyBFTableFilter, duckdb::BFTableFilter>;
 // DuckDB 2.0.0 takes the bloom filter as shared_ptr<const BloomFilter>; earlier lines
-// (and the 2.0 pre-release) take a BloomFilter&. Pick whichever constructor exists.
+// (and the 2.0 pre-release) take a BloomFilter&. Pick whichever constructor exists; the
+// probe names F's constructor directly (make_uniq is unconstrained, so SFINAE would not fire).
 template <class F = TestBloomFilter>
 auto MakeTestBloomFilter(int)
-    -> decltype(duckdb::make_uniq<F>(duckdb::shared_ptr<const duckdb::BloomFilter>(), false, std::string(),
-                                     duckdb::LogicalType())) {
+    -> decltype(F(std::declval<duckdb::shared_ptr<const duckdb::BloomFilter>>(), false, std::string(),
+                  duckdb::LogicalType()),
+                duckdb::unique_ptr<F>()) {
 	return duckdb::make_uniq<F>(duckdb::make_shared_ptr<duckdb::BloomFilter>(), false, "Col",
 	                            duckdb::LogicalType(duckdb::LogicalTypeId::INTEGER));
 }
