@@ -55,9 +55,15 @@ FROM http_patch('https://httpbin.org/patch', '{"patch": "value"}', 'application/
 200
 
 # Test HTTP DELETE
+# Uses the (VARCHAR, VARCHAR, VARCHAR) overload so the test does not depend on the json
+# extension. The two-argument overload takes (VARCHAR, JSON): '{}'::JSON resolves the
+# JSON type and so autoloads json, which the community extensions build cannot install
+# ("Extension Autoloading Error", duckdb/community-extensions#3247); a bare '{}' does
+# not bind to it on DuckDB 1.5 without json loaded. The JSON overload is covered,
+# behind `require json`, in test/sql/web_http_json.test.
 query I
 SELECT CASE WHEN status IN (200, 502) THEN 200 ELSE status END
-FROM http_delete('https://httpbin.org/status/200', '{}'::JSON) LIMIT 1;
+FROM http_delete('https://httpbin.org/status/200', '{}', 'application/json') LIMIT 1;
 ----
 200
 
