@@ -1,4 +1,6 @@
 #include "business_central_client.hpp"
+#include "business_central_errors.hpp"
+#include "duckdb/common/error_data.hpp"
 #include "odata_url_helpers.hpp"
 #include "tracing.hpp"
 #include "duckdb/common/exception.hpp"
@@ -200,6 +202,22 @@ std::string BusinessCentralClientFactory::ResolveCompanyId(
     throw duckdb::InvalidInputException(
         "No company found with name '%s'. Use bc_show_companies() to list available companies, "
         "or pass the company GUID directly.", name_or_id.c_str());
+}
+
+void RethrowWithBusinessCentralContext(const std::string &environment, const std::string &company) {
+    try {
+        throw;
+    } catch (const std::exception &e) {
+        const auto raw = duckdb::ErrorData(e).RawMessage();
+        if (raw.rfind(BUSINESS_CENTRAL_ERROR_PREFIX, 0) == 0) {
+            throw;  // already described
+        }
+        const auto failure = ParseBusinessCentralHttpFailure(raw);
+        if (failure.status < 300) {
+            throw;  // not an HTTP failure: nothing to add
+        }
+        throw duckdb::IOException(DescribeBusinessCentralFailure(failure, environment, company));
+    }
 }
 
 } // namespace erpl_web

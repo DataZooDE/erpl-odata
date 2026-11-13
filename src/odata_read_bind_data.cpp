@@ -1,4 +1,6 @@
 #include "duckdb/function/table_function.hpp"
+#include "duckdb/common/error_data.hpp"
+#include "duckdb/common/exception.hpp"
 
 #include "datazoo/oauth2/http_client.hpp"
 #include "odata_edm.hpp"
@@ -664,8 +666,10 @@ ODataReadBindData::FromServiceClient(std::shared_ptr<ODataServiceClient> client,
                        "continuing without prebuffer");
     }
   } else {
-    // Fallback: fetch now and buffer entries
-    try {
+    // Fallback: fetch now and buffer entries. A failure propagates: swallowing it
+    // returned an empty listing, so a service that does not exist (a 404 for a wrong
+    // Business Central environment) read as "no entity sets" (GitHub #277).
+    {
       auto response = client->Get();
       auto entries = response->EntitySets();
 
@@ -680,9 +684,6 @@ ODataReadBindData::FromServiceClient(std::shared_ptr<ODataServiceClient> client,
       bind_data->row_buffer->AddRows(std::move(rows));
       bind_data->row_buffer->SetHasNextPage(false);
       bind_data->first_page_cached_ = true;
-    } catch (...) {
-      ERPL_TRACE_DEBUG("ODATA_READ_BIND",
-                       "FromServiceClient fallback fetch failed");
     }
     }
     
@@ -733,9 +734,13 @@ const std::vector<std::string> &ODataReadBindData::MetadataColumnNames() {
     ERPL_TRACE_INFO("ODATA_READ_BIND",
                     "Calling odata_client->GetResultNames() for metadata");
     all_result_names = odata_client->GetResultNames();
+    metadata_error_.clear();
   } catch (const std::exception &e) {
+    // Tolerated here: a data page may still name the columns. EnsureBaseSchemaResolved
+    // raises it if nothing else does (GitHub #277).
+    metadata_error_ = duckdb::ErrorData(e).RawMessage();
     ERPL_TRACE_WARN("ODATA_READ_BIND",
-                    std::string("Metadata column names unavailable: ") + e.what());
+                    "Metadata column names unavailable: " + metadata_error_);
   }
   return all_result_names;
 }
@@ -800,9 +805,31 @@ void ODataReadBindData::EnsureBaseSchemaResolved() {
   }
 
   const auto metadata_names = MetadataColumnNames();
-  const auto metadata_types = MetadataColumnTypes();
+  // Types are looked up by metadata name below, so without names there is nothing to
+  // type - and a failed $metadata would only be requested (and retried) a second time.
+  const auto metadata_types = metadata_names.empty()
+                                  ? std::vector<duckdb::LogicalType>()
+                                  : MetadataColumnTypes();
 
   base_result_names = ReconcileSchemaOrder(metadata_names, extracted_column_names);
+
+  // GitHub #277: with neither $metadata nor a data row to name them there are no columns,
+  // and handing DuckDB an empty schema surfaces as "INTERNAL Error: Table function must
+  // return at least one column" - which hides the real cause (a 404, a 401, a wrong
+  // environment) and invalidates the whole database instance. Say what failed instead.
+  if (base_result_names.empty()) {
+    const auto url = odata_client ? odata_client->Url() : std::string("<unknown>");
+    if (!metadata_error_.empty()) {
+      throw duckdb::IOException(
+          "Cannot determine the columns of '%s': its $metadata could not be read, and there "
+          "is no data row to take them from. %s",
+          url, metadata_error_);
+    }
+    throw duckdb::IOException(
+        "Cannot determine the columns of '%s': its $metadata declares no properties for it, "
+        "and there is no data row to take them from. Check that the URL names an entity set.",
+        url);
+  }
 
   base_result_types.clear();
   base_result_types.reserve(base_result_names.size());

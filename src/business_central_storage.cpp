@@ -117,8 +117,13 @@ static duckdb::unique_ptr<duckdb::Catalog> BcAttach(
 
     auto auth_info = ResolveBusinessCentralAuth(context, secret_name);
 
-    auto company_id = BusinessCentralClientFactory::ResolveCompanyId(
-        company_param, auth_info.tenant_id, auth_info.environment, auth_info.auth_params);
+    std::string company_id;
+    try {
+        company_id = BusinessCentralClientFactory::ResolveCompanyId(
+            company_param, auth_info.tenant_id, auth_info.environment, auth_info.auth_params);
+    } catch (...) {
+        RethrowWithBusinessCentralContext(auth_info.environment, company_param);
+    }
 
     auto base_url = BusinessCentralUrlBuilder::BuildApiUrl(auth_info.tenant_id, auth_info.environment);
     auto company_url = BusinessCentralUrlBuilder::BuildCompanyUrl(base_url, company_id);

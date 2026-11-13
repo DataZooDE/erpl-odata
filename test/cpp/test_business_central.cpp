@@ -1,5 +1,6 @@
 #include "catch.hpp"
 #include "business_central_client.hpp"
+#include "business_central_errors.hpp"
 
 using namespace erpl_web;
 
@@ -117,4 +118,71 @@ TEST_CASE("Business Central URL Builder - Full URL chain", "[business_central][u
         auto metadata_url = BusinessCentralUrlBuilder::BuildMetadataUrl(base_url);
         REQUIRE(metadata_url == "https://api.businesscentral.dynamics.com/v2.0/contoso-tenant/production/api/v2.0/$metadata");
     }
+}
+
+// =============================================================================
+// Failure reporting (GitHub #277). The bodies are the ones Business Central really
+// returned for an environment that does not exist, captured 2026-11-13.
+// =============================================================================
+
+TEST_CASE("Business Central failure - $metadata 404 NoEnvironment (XML body)", "[business_central][errors]") {
+    const std::string text =
+        "Cannot determine the columns of 'https://api.businesscentral.dynamics.com/v2.0/t/Production/api/v2.0/companies': "
+        "its $metadata could not be read, and there is no data row to take them from. "
+        "Failed to get OData metadata from https://api.businesscentral.dynamics.com/v2.0/t/Production/api/v2.0/$metadata (HTTP 404)\n"
+        "Response: <error xmlns=\"http://docs.oasis-open.org/odata/ns/metadata\"><code>NoEnvironment</code>"
+        "<message>Environment does not exist.</message></error>";
+
+    auto failure = ParseBusinessCentralHttpFailure(text);
+    CHECK(failure.status == 404);
+    CHECK(failure.code == "NoEnvironment");
+    CHECK(failure.message == "Environment does not exist.");
+
+    auto message = DescribeBusinessCentralFailure(failure, "Production", "");
+    CHECK(message.rfind(BUSINESS_CENTRAL_ERROR_PREFIX, 0) == 0);
+    CHECK(message.find("environment 'Production' does not exist") != std::string::npos);
+    CHECK(message.find("HTTP 404, NoEnvironment: Environment does not exist.") != std::string::npos);
+    CHECK(message.find("ENVIRONMENT of the business_central secret") != std::string::npos);
+}
+
+TEST_CASE("Business Central failure - data request 404 NoEnvironment (JSON body)", "[business_central][errors]") {
+    const std::string text =
+        "Failed to get OData response from https://api.businesscentral.dynamics.com/v2.0/t/Production/api/v2.0/companies: HTTP 404\n"
+        "Content: \n{\"error\": {\"code\": \"NoEnvironment\",\"message\": \"Environment does not exist.\"}}\n";
+
+    auto failure = ParseBusinessCentralHttpFailure(text);
+    CHECK(failure.status == 404);
+    CHECK(failure.code == "NoEnvironment");
+    CHECK(failure.message == "Environment does not exist.");
+    CHECK(DescribeBusinessCentralFailure(failure, "Production", "CRONUS").find("'Production' does not exist") !=
+          std::string::npos);
+}
+
+TEST_CASE("Business Central failure - status-specific guidance", "[business_central][errors]") {
+    BusinessCentralHttpFailure failure;
+
+    failure.status = 401;
+    auto unauthorized = DescribeBusinessCentralFailure(failure, "sandbox", "");
+    CHECK(unauthorized.find("HTTP 401") != std::string::npos);
+    CHECK(unauthorized.find("environment 'sandbox'") != std::string::npos);
+    CHECK(unauthorized.find("CLIENT_SECRET") != std::string::npos);
+
+    failure.status = 403;
+    CHECK(DescribeBusinessCentralFailure(failure, "sandbox", "").find("permission sets") != std::string::npos);
+
+    failure.status = 404;
+    auto not_found = DescribeBusinessCentralFailure(failure, "sandbox", "CRONUS DE");
+    CHECK(not_found.find("company 'CRONUS DE'") != std::string::npos);
+    CHECK(not_found.find("bc_show_companies()") != std::string::npos);
+
+    failure.status = 503;
+    CHECK(DescribeBusinessCentralFailure(failure, "sandbox", "").find("HTTP 503") != std::string::npos);
+}
+
+TEST_CASE("Business Central failure - text without an HTTP status", "[business_central][errors]") {
+    auto failure = ParseBusinessCentralHttpFailure("No company found with name 'X'. Use bc_show_companies()");
+    CHECK(failure.status == 0);
+    CHECK(failure.code.empty());
+    // "HTTP GET to" is not a status.
+    CHECK(ParseBusinessCentralHttpFailure("Failed to read connection error for HTTP GET to 'x'").status == 0);
 }

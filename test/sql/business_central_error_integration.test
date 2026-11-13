@@ -1,0 +1,64 @@
+# name: test/sql/business_central_error_integration.test
+# description: A Business Central environment that does not exist is a clear error, not an INTERNAL one or an empty result (GitHub #277)
+# group: [erpl_odata]
+
+require erpl_odata
+
+require-env ERPL_BC_TENANT_ID
+
+require-env ERPL_BC_CLIENT_ID
+
+require-env ERPL_BC_CLIENT_SECRET
+
+# Real credentials, deliberately wrong environment: Business Central answers every request
+# with 404 <code>NoEnvironment</code>. Before #277 bc_show_companies and bc_read raised
+# "INTERNAL Error: Table function must return at least one column" (which also invalidates
+# the database instance) and bc_show_entities returned zero rows.
+statement ok
+CREATE SECRET bc_no_env (
+    TYPE business_central,
+    PROVIDER client_credentials,
+    tenant_id '${ERPL_BC_TENANT_ID}',
+    environment 'erpl_odata_no_such_environment',
+    client_id '${ERPL_BC_CLIENT_ID}',
+    client_secret '${ERPL_BC_CLIENT_SECRET}'
+);
+
+statement error
+SELECT * FROM bc_show_companies(secret := 'bc_no_env');
+----
+IO Error: Business Central environment 'erpl_odata_no_such_environment' does not exist (HTTP 404, NoEnvironment
+
+# A company GUID skips company discovery, so this reaches the $metadata-only bind path.
+statement error
+SELECT * FROM bc_read('customers', company := '00000000-0000-0000-0000-000000000001', secret := 'bc_no_env');
+----
+IO Error: Business Central environment 'erpl_odata_no_such_environment' does not exist (HTTP 404, NoEnvironment
+
+# A company NAME goes through company discovery first.
+statement error
+SELECT * FROM bc_read('customers', company := 'CRONUS', secret := 'bc_no_env');
+----
+IO Error: Business Central environment 'erpl_odata_no_such_environment' does not exist (HTTP 404, NoEnvironment
+
+statement error
+SELECT * FROM bc_show_entities(secret := 'bc_no_env');
+----
+IO Error: Business Central environment 'erpl_odata_no_such_environment' does not exist (HTTP 404, NoEnvironment
+
+statement error
+SELECT * FROM bc_describe('customers', secret := 'bc_no_env');
+----
+IO Error: Business Central environment 'erpl_odata_no_such_environment' does not exist (HTTP 404, NoEnvironment
+
+# The errors above are ordinary ones: the instance is still usable.
+query I
+SELECT 42;
+----
+42
+
+# ATTACH resolves a company NAME at attach time.
+statement error
+ATTACH 'bc_no_env' AS bc_no_env_db (TYPE business_central, COMPANY 'CRONUS', READ_ONLY);
+----
+IO Error: Business Central environment 'erpl_odata_no_such_environment' does not exist (HTTP 404, NoEnvironment
