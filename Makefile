@@ -131,6 +131,7 @@ test_debug_ms_write: unittest
 #   source .env.business_central && make test_debug_bc
 test_debug_bc: unittest
 	./build/debug/test/unittest "test/sql/business_central_integration.test"
+	./build/debug/test/unittest "test/sql/business_central_error_integration.test"
 
 # Regression test for GitHub #45: when erpl_odata is consumed as a dependency (the duckdb
 # submodule is absent from the fetched source), its dev-only C++ test target must NOT be

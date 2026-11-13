@@ -78,4 +78,10 @@ public:
         std::shared_ptr<HttpAuthParams> auth_params);
 };
 
+// Call ONLY from inside a catch block. If the exception being handled carries an HTTP
+// status, throws an IOException that names the status, Business Central's error code, the
+// environment and company, and what to check (GitHub #277). Otherwise rethrows it unchanged.
+[[noreturn]] void RethrowWithBusinessCentralContext(const std::string &environment,
+                                                   const std::string &company);
+
 } // namespace erpl_web

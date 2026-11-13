@@ -152,6 +152,7 @@ set(EXTENSION_SOURCES
     src/microsoft_entra_secret.cpp
     src/business_central_secret.cpp
     src/business_central_client.cpp
+    src/business_central_errors.cpp
     src/business_central_functions.cpp
     src/business_central_catalog.cpp
     src/business_central_storage.cpp

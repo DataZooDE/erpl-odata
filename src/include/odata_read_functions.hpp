@@ -193,6 +193,9 @@ private:
     std::vector<std::string> base_result_names;
     std::vector<duckdb::LogicalType> base_result_types;
     bool base_schema_resolved_ = false;
+    // Why $metadata could not be read, if it could not (empty otherwise). Reported when
+    // the schema would otherwise resolve to zero columns (GitHub #277).
+    std::string metadata_error_;
 
     // Projection, settled in ActivateColumns during global-state init.
     std::vector<duckdb::column_t> active_column_ids;
