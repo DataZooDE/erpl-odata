@@ -52,6 +52,14 @@ release_win: ${EXTENSION_CONFIG_STEP}
 	cmake $(GENERATOR) $(BUILD_FLAGS) $(EXT_RELEASE_FLAGS) $(VCPKG_MANIFEST_FLAGS) -DCMAKE_BUILD_TYPE=Release -S $(DUCKDB_SRCDIR) -B build/release
 	cmake --build build/release --config Release --parallel
 
+# Every live target runs its files through scripts/run_live_sql.sh, never through the bare
+# runner. DuckDB's unittest SKIPS (exit 0) any file whose error contains "HTTP" or
+# "Unable to connect" - which is nearly every real failure against a live service - so a
+# Graph 500 read as a green skip (GitHub #276). The script disables that skip list, runs
+# each file on its own, and fails any skip that is not a require-env whose variable is
+# genuinely unset. Without credentials every file still skips cleanly.
+LIVE_SQL = scripts/run_live_sql.sh
+
 # Run the SAP integration tests against the local A4H sandbox.
 #
 # The ODP cases additionally need a provisioned ODP service, which a stock system does
@@ -79,7 +87,7 @@ ERPL_SAP_ODP_ENV := $(if $(ERPL_SAP_ODP_SERVICE),ERPL_SAP_ODP_SERVICE='$(ERPL_SA
 
 test_debug_sap: unittest
 	env $(ERPL_SAP_ODP_UNSET) ERPL_SAP_BASE_URL='http://localhost:50000' ERPL_SAP_PASSWORD='ABAPtr2023#00' \
-		$(ERPL_SAP_ODP_ENV) ./build/debug/test/unittest "[sap]"
+		$(ERPL_SAP_ODP_ENV) $(LIVE_SQL) test/sql/sap/*.test
 
 # Run Microsoft 365 / Graph API integration tests against a real tenant.
 # Requires environment variables sourced from an Azure App Registration with
@@ -97,27 +105,29 @@ test_debug_sap: unittest
 # Usage:
 #   source .env.microsoft && make test_debug_ms
 test_debug_ms: unittest
-	./build/debug/test/unittest "test/sql/graph_entra_integration.test"
-	./build/debug/test/unittest "test/sql/graph_planner_integration.test"
-	./build/debug/test/unittest "test/sql/graph_sharepoint_integration.test"
-	./build/debug/test/unittest "test/sql/graph_excel_integration.test"
-	./build/debug/test/unittest "test/sql/graph_outlook_integration.test"
-	./build/debug/test/unittest "test/sql/graph_teams_integration.test"
-	./build/debug/test/unittest "test/sql/graph_excel_error_integration.test"
-	./build/debug/test/unittest "test/sql/graph_sharepoint_error_integration.test"
-	./build/debug/test/unittest "test/sql/graph_sharepoint_typed_read_integration.test"
+	$(LIVE_SQL) \
+		test/sql/graph_entra_integration.test \
+		test/sql/graph_planner_integration.test \
+		test/sql/graph_sharepoint_integration.test \
+		test/sql/graph_excel_integration.test \
+		test/sql/graph_outlook_integration.test \
+		test/sql/graph_teams_integration.test \
+		test/sql/graph_excel_error_integration.test \
+		test/sql/graph_sharepoint_error_integration.test \
+		test/sql/graph_sharepoint_typed_read_integration.test
 
 # The Microsoft integration tests that CREATE, UPDATE or DELETE data in the tenant. They are
 # kept out of test_debug_ms so a read-only run never mutates anything; they additionally need
 # the dedicated ERPL_MS_SHAREPOINT_TESTLIST_* / ERPL_MS_EXCEL_* targets to be sacrificial.
 .PHONY: test_debug_ms_write
 test_debug_ms_write: unittest
-	./build/debug/test/unittest "test/sql/graph_excel_write_integration.test"
-	./build/debug/test/unittest "test/sql/graph_sharepoint_write_integration.test"
-	./build/debug/test/unittest "test/sql/graph_sharepoint_scalar_write_integration.test"
-	./build/debug/test/unittest "test/sql/graph_sharepoint_attach_rw_integration.test"
-	./build/debug/test/unittest "test/sql/graph_excel_workbook_attach_integration.test"
-	./build/debug/test/unittest "test/sql/graph_excel_workbook_attach_name_integration.test"
+	$(LIVE_SQL) \
+		test/sql/graph_excel_write_integration.test \
+		test/sql/graph_sharepoint_write_integration.test \
+		test/sql/graph_sharepoint_scalar_write_integration.test \
+		test/sql/graph_sharepoint_attach_rw_integration.test \
+		test/sql/graph_excel_workbook_attach_integration.test \
+		test/sql/graph_excel_workbook_attach_name_integration.test
 
 # Run Business Central integration tests against a live BC environment.
 # Requires environment variables sourced from an Azure App Registration registered in BC.
@@ -130,7 +140,7 @@ test_debug_ms_write: unittest
 # Usage:
 #   source .env.business_central && make test_debug_bc
 test_debug_bc: unittest
-	./build/debug/test/unittest "test/sql/business_central_integration.test"
+	$(LIVE_SQL) test/sql/business_central_integration.test
 
 # Regression test for GitHub #45: when erpl_odata is consumed as a dependency (the duckdb
 # submodule is absent from the fetched source), its dev-only C++ test target must NOT be
