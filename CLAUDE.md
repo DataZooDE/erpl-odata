@@ -122,7 +122,8 @@ make release    # Full reconfigure + release build
   investigation in GitHub #172, where the same ODP delta case passed from
   `./build/debug/duckdb` and failed under `unittest` with no source difference at all.
   `test_debug_sap`, `test_debug_ms` and `test_debug_bc` depend on this target, so prefer
-  them over invoking the runner by hand.
+  them over invoking the runner by hand (they also guard against HTTP errors being reported
+  as skips — see "Live SQL tests" below).
 - `./build/debug/test/unittest "[test_category]"` - Run SQL tests by category (e.g., `"[sap]"`).
   Run `make unittest` first — see above.
 
@@ -154,6 +155,36 @@ the manual `ThreadFlush` call entirely.
 **Note (DuckDB v1.5.1+):** `config.options.allocator_background_threads` was removed; use
 `config.SetOption("allocator_background_threads", duckdb::Value::BOOLEAN(true))` instead.
 The setting is now a generic DBConfig setting stored via `user_settings`.
+
+### Live SQL tests: an HTTP failure is reported as a SKIP by the bare runner
+
+DuckDB's `unittest` has a built-in error-message skip list
+(`TestConfiguration::ErrorMessagesToBeSkipped()` in `duckdb/test/helpers/test_config.cpp`):
+unless a `--test-config` overrides `skip_error_messages`, **any error whose text contains
+`HTTP` or `Unable to connect` turns the whole file into a skip, and a skip exits 0.** Almost
+every real failure of a live test carries `HTTP` in its message, so a Graph 500 on
+`sites?search` printed `All tests were skipped` / `skip on error_message matching 'HTTP': 1`
+in the middle of a green `make test_debug_ms` (GitHub #276). The same run hid an Outlook
+failure the same way.
+
+`test_debug_ms`, `test_debug_ms_write`, `test_debug_bc` and `test_debug_sap` therefore run
+their files through `scripts/run_live_sql.sh` (ported from duckdb-gdrive's
+`run_live_tests.sh`), never through the bare runner:
+
+- it passes a `--test-config` whose `skip_error_messages` is a never-matching sentinel, which
+  replaces the default list, so an HTTP error fails with its real message;
+- it runs each file separately and accepts a skip **only** when every printed reason is a
+  `require-env VAR [VALUE]` that is genuinely unmet in the environment — i.e. the file's
+  credentials are absent. Any other skip (error-message, unmet `require <extension>`) fails,
+  as does `No test cases matched` (also exit 0).
+
+So a developer without credentials still gets a clean run (every file skips on
+`require-env`), and one with credentials cannot get a false green. When adding a live test
+file, add it to the target's file list — and if you ever invoke `./build/debug/test/unittest`
+on a live file by hand, read the summary line: `All tests were skipped` is not a pass. Note the
+`unittest` binary registers test files from **its own** source tree at startup, so a file
+that exists only in another worktree reports `No test cases matched` (the script fails that).
+`UNITTEST=<path>` points the script at another runner.
 
 ### C++ tests are compiled on Windows CI — write them portably
 
