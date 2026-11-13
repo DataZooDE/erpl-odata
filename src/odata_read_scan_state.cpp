@@ -487,6 +487,7 @@ duckdb::unique_ptr<ODataReadBindData> ODataReadBindData::CloneForScan() const {
   clone->base_result_names = base_result_names;
   clone->base_result_types = base_result_types;
   clone->base_schema_resolved_ = base_schema_resolved_;
+  clone->metadata_error_ = metadata_error_;
   clone->input_parameters = input_parameters;
   clone->expand_clause = expand_clause;
   clone->has_expanded_data = has_expanded_data;

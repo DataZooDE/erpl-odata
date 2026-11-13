@@ -56,20 +56,24 @@ static unique_ptr<FunctionData> BcShowCompaniesBind(
     // Resolve auth
     auto auth_info = ResolveBusinessCentralAuth(context, secret_name);
 
-    // Create OData client for companies endpoint
-    auto client = BusinessCentralClientFactory::CreateCompaniesClient(
-        auth_info.tenant_id,
-        auth_info.environment,
-        auth_info.auth_params
-    );
-
-    // Create bind data using OData infrastructure
     auto bind_data = make_uniq<BcShowCompaniesBindData>();
-    bind_data->odata_bind_data = ODataReadBindData::FromEntitySetClient(client);
+    try {
+        // Create OData client for companies endpoint
+        auto client = BusinessCentralClientFactory::CreateCompaniesClient(
+            auth_info.tenant_id,
+            auth_info.environment,
+            auth_info.auth_params
+        );
 
-    // Get schema from OData
-    duckdb_compat::AssignBindNames(names, bind_data->odata_bind_data->GetResultNames());
-    return_types = bind_data->odata_bind_data->GetResultTypes();
+        // Create bind data using OData infrastructure
+        bind_data->odata_bind_data = ODataReadBindData::FromEntitySetClient(client);
+
+        // Get schema from OData
+        duckdb_compat::AssignBindNames(names, bind_data->odata_bind_data->GetResultNames());
+        return_types = bind_data->odata_bind_data->GetResultTypes();
+    } catch (...) {
+        RethrowWithBusinessCentralContext(auth_info.environment, "");
+    }
 
     ERPL_TRACE_INFO("BC_FUNC", "bc_show_companies bound with " + std::to_string(names.size()) + " columns");
     return std::move(bind_data);
@@ -140,20 +144,24 @@ static unique_ptr<FunctionData> BcShowEntitiesBind(
     // Resolve auth
     auto auth_info = ResolveBusinessCentralAuth(context, secret_name);
 
-    // Create catalog client
-    auto client = BusinessCentralClientFactory::CreateCatalogClient(
-        auth_info.tenant_id,
-        auth_info.environment,
-        auth_info.auth_params
-    );
-
-    // Create bind data from service client (lists entity sets)
     auto bind_data = make_uniq<BcShowEntitiesBindData>();
-    bind_data->odata_bind_data = ODataReadBindData::FromServiceClient(client);
+    try {
+        // Create catalog client
+        auto client = BusinessCentralClientFactory::CreateCatalogClient(
+            auth_info.tenant_id,
+            auth_info.environment,
+            auth_info.auth_params
+        );
 
-    // Get schema
-    duckdb_compat::AssignBindNames(names, bind_data->odata_bind_data->GetResultNames());
-    return_types = bind_data->odata_bind_data->GetResultTypes();
+        // Create bind data from service client (lists entity sets)
+        bind_data->odata_bind_data = ODataReadBindData::FromServiceClient(client);
+
+        // Get schema
+        duckdb_compat::AssignBindNames(names, bind_data->odata_bind_data->GetResultNames());
+        return_types = bind_data->odata_bind_data->GetResultTypes();
+    } catch (...) {
+        RethrowWithBusinessCentralContext(auth_info.environment, "");
+    }
 
     ERPL_TRACE_INFO("BC_FUNC", "bc_show_entities bound");
     return std::move(bind_data);
@@ -233,7 +241,13 @@ static unique_ptr<FunctionData> BcDescribeBind(
     );
 
     // Get metadata
-    auto metadata = client->GetMetadata();
+    auto metadata = [&]() {
+        try {
+            return client->GetMetadata();
+        } catch (...) {
+            RethrowWithBusinessCentralContext(auth_info.environment, "");
+        }
+    }();
 
     // Find the entity type
     auto bind_data = make_uniq<BcDescribeBindData>();
@@ -357,44 +371,48 @@ static unique_ptr<FunctionData> BcReadBind(
     // Resolve auth
     auto auth_info = ResolveBusinessCentralAuth(context, secret_name);
 
-    // Resolve company name to GUID if a human-readable name was given
-    auto company_id = BusinessCentralClientFactory::ResolveCompanyId(
-        company_param, auth_info.tenant_id, auth_info.environment, auth_info.auth_params);
-
-    // Build URLs. The API base is the OData service root; BC serves $metadata
-    // there, NOT under companies({id}) — which is the default derived by
-    // stripping the last path segment from the entity set URL.
-    auto base_url = BusinessCentralUrlBuilder::BuildApiUrl(auth_info.tenant_id, auth_info.environment);
-    auto company_url = BusinessCentralUrlBuilder::BuildCompanyUrl(base_url, company_id);
-    auto entity_set_url = BusinessCentralUrlBuilder::BuildEntitySetUrl(company_url, entity_name);
-    auto metadata_url = base_url + "/$metadata";
-
-    // Create the OData client directly so we can pin the metadata URL to the
-    // service root before GetResultNames() triggers DetectODataVersion().
-    // FromEntitySetRoot's "conventional V4 path" would compute the wrong URL
-    // (companies(id)/$metadata) at bind time when current_response is still null.
-    HttpParams http_params;
-    http_params.url_encode = false;
-    auto http_client = std::make_shared<HttpClient>(http_params);
-    HttpUrl es_url(entity_set_url);
-    ODataUrlCodec::ensureJsonFormat(es_url);
-    auto odata_client = std::make_shared<ODataEntitySetClient>(http_client, es_url, auth_info.auth_params);
-    odata_client->SetMetadataContextUrl(metadata_url);
-
     auto bind_data = make_uniq<BcReadBindData>();
-    bind_data->odata_bind_data = ODataReadBindData::FromEntitySetClient(odata_client);
+    try {
+        // Resolve company name to GUID if a human-readable name was given
+        auto company_id = BusinessCentralClientFactory::ResolveCompanyId(
+            company_param, auth_info.tenant_id, auth_info.environment, auth_info.auth_params);
 
-    // Handle expand parameter — must call ProcessExpandClause (not just SetExpandClause)
-    // so that ConsumeExpand feeds $expand into the predicate pushdown helper URL builder
-    // and the expanded data schema paths are set up for column extraction.
-    if (duckdb_compat::FindNamedParameter(input.named_parameters, "expand") != nullptr) {
-        auto expand_clause = input.named_parameters.at(duckdb_compat::Ident("expand")).GetValue<string>();
-        ODataReadBindHelpers::ProcessExpandClause(bind_data->odata_bind_data.get(), expand_clause);
+        // Build URLs. The API base is the OData service root; BC serves $metadata
+        // there, NOT under companies({id}) — which is the default derived by
+        // stripping the last path segment from the entity set URL.
+        auto base_url = BusinessCentralUrlBuilder::BuildApiUrl(auth_info.tenant_id, auth_info.environment);
+        auto company_url = BusinessCentralUrlBuilder::BuildCompanyUrl(base_url, company_id);
+        auto entity_set_url = BusinessCentralUrlBuilder::BuildEntitySetUrl(company_url, entity_name);
+        auto metadata_url = base_url + "/$metadata";
+
+        // Create the OData client directly so we can pin the metadata URL to the
+        // service root before GetResultNames() triggers DetectODataVersion().
+        // FromEntitySetRoot's "conventional V4 path" would compute the wrong URL
+        // (companies(id)/$metadata) at bind time when current_response is still null.
+        HttpParams http_params;
+        http_params.url_encode = false;
+        auto http_client = std::make_shared<HttpClient>(http_params);
+        HttpUrl es_url(entity_set_url);
+        ODataUrlCodec::ensureJsonFormat(es_url);
+        auto odata_client = std::make_shared<ODataEntitySetClient>(http_client, es_url, auth_info.auth_params);
+        odata_client->SetMetadataContextUrl(metadata_url);
+
+        bind_data->odata_bind_data = ODataReadBindData::FromEntitySetClient(odata_client);
+
+        // Handle expand parameter — must call ProcessExpandClause (not just SetExpandClause)
+        // so that ConsumeExpand feeds $expand into the predicate pushdown helper URL builder
+        // and the expanded data schema paths are set up for column extraction.
+        if (duckdb_compat::FindNamedParameter(input.named_parameters, "expand") != nullptr) {
+            auto expand_clause = input.named_parameters.at(duckdb_compat::Ident("expand")).GetValue<string>();
+            ODataReadBindHelpers::ProcessExpandClause(bind_data->odata_bind_data.get(), expand_clause);
+        }
+
+        // Get schema from OData (includes expanded columns if expand was set)
+        duckdb_compat::AssignBindNames(names, bind_data->odata_bind_data->GetResultNames());
+        return_types = bind_data->odata_bind_data->GetResultTypes();
+    } catch (...) {
+        RethrowWithBusinessCentralContext(auth_info.environment, company_param);
     }
-
-    // Get schema from OData (includes expanded columns if expand was set)
-    duckdb_compat::AssignBindNames(names, bind_data->odata_bind_data->GetResultNames());
-    return_types = bind_data->odata_bind_data->GetResultTypes();
 
     ERPL_TRACE_INFO("BC_FUNC", "bc_read bound for entity: " + entity_name + " with " + std::to_string(names.size()) + " columns");
     return std::move(bind_data);
