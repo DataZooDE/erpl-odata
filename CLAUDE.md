@@ -165,7 +165,10 @@ unless a `--test-config` overrides `skip_error_messages`, **any error whose text
 every real failure of a live test carries `HTTP` in its message, so a Graph 500 on
 `sites?search` printed `All tests were skipped` / `skip on error_message matching 'HTTP': 1`
 in the middle of a green `make test_debug_ms` (GitHub #276). The same run hid an Outlook
-failure the same way.
+failure the same way. Worse, under the default list a **`statement error` whose expected text
+does NOT match passes outright** when the actual error contains `HTTP`
+(`result_helper.cpp`: the mismatch is only reported `if (!SkipErrorMessage(...))`) — so an
+error-message assertion against a live service proves nothing unless the list is overridden.
 
 `test_debug_ms`, `test_debug_ms_write`, `test_debug_bc` and `test_debug_sap` therefore run
 their files through `scripts/run_live_sql.sh` (ported from duckdb-gdrive's
