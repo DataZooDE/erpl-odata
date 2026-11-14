@@ -63,11 +63,11 @@ jobs:
           set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-gnu-unique")
         endif()
 
-  duckdb-next-build:
-    name: Build extension binaries (v2.0 pre-release)
+  duckdb-v200-build:
+    name: Build extension binaries (v2.0.0)
     uses: duckdb/extension-ci-tools/.github/workflows/_extension_distribution.yml@v2.0-cyanoptera
     with:
-      duckdb_version: d54cbbe3df17e8e5ce68312f483b4155836112aa
+      duckdb_version: v2.0.0
       extension_name: erpl_odata
       ci_tools_version: v2.0-cyanoptera
       vcpkg_commit: 84bab45d415d22042bd0b9081aea57f362da3f35
@@ -76,6 +76,30 @@ jobs:
         if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
           set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-gnu-unique")
         endif()
+
+  # The 2.0 line used to stop at the build (it was a pre-release), so get.erpl.io never
+  # received v2.0.0 binaries and INSTALL ... FROM 'http://get.erpl.io' failed on DuckDB 2.0.
+  duckdb-v200-smoke-test:
+    name: Smoke test (v2.0.0)
+    needs: duckdb-v200-build
+    uses: ./.github/workflows/_extension_smoke_test.yml
+    with:
+      duckdb_version: v2.0.0
+      extension_name: erpl_odata
+      exclude_archs: 'windows_amd64_rtools;windows_amd64_mingw;wasm_mvp;wasm_eh;wasm_threads;'
+
+  duckdb-v200-deploy:
+    name: Deploy extension binaries (v2.0.0)
+    needs: [duckdb-v200-build, duckdb-v200-smoke-test]
+    uses: ./.github/workflows/_extension_deploy.yml
+    secrets: inherit
+    with:
+      duckdb_version: v2.0.0
+      extension_name: erpl_odata
+      exclude_archs: 'windows_amd64_rtools;windows_amd64_mingw;wasm_mvp;wasm_eh;wasm_threads;'
+      deploy_latest: ${{ startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' }}
+      # Versioned paths only from the tag run; see the v1.5.6 deploy job below for why.
+      deploy_versioned: ${{ startsWith(github.ref, 'refs/tags/v') }}
 
   duckdb-v155-smoke-test:
     name: Smoke test (v1.5.6)
