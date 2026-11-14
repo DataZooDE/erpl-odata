@@ -474,7 +474,9 @@ def probe_named_parameters(runner, function_name, max_arity):
                     break
                 found.add(m.group(1))
         return found
-    return found
+    # Never reached the binder (timeout, crash, unexpected overloads): unknown, so the
+    # caller skips parameter checks for this function rather than flag every parameter.
+    return None
 
 
 def query_surface(runner):
@@ -490,9 +492,13 @@ def query_surface(runner):
             continue
         if row["function_type"] == "table":
             arity[row["function_name"]] = max(arity.get(row["function_name"], 0), int(row["n"] or 0))
-    with ThreadPoolExecutor(max_workers=os.cpu_count() or 4) as pool:
+    with ThreadPoolExecutor(max_workers=min(8, os.cpu_count() or 4)) as pool:
         futures = {name: pool.submit(probe_named_parameters, runner, name, n) for name, n in arity.items()}
         params = {name: f.result() for name, f in futures.items()}
+    unknown = sorted(name for name, found in params.items() if found is None)
+    if unknown:
+        print("WARNING: named parameters unknown (probe failed) for: " + ", ".join(unknown), file=sys.stderr)
+    params = {name: found for name, found in params.items() if found is not None}
     names = set(runner.query_lines("SELECT DISTINCT function_name FROM duckdb_functions();\n"))
     names |= set(runner.query_lines("SELECT name FROM duckdb_settings();\n"))
     # Identifiers that are not functions but legitimately appear in docs
