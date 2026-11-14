@@ -1,0 +1,8 @@
+# name<TAB>reason
+# Identifiers with an erpl prefix that docs legitimately mention but that are not a
+# registered function, pragma, setting, secret type or extension.
+erpl_web	former name of the extension, and the schema that holds ODP subscription state
+graph_excel_table	COPY ... TO format name (FORMAT graph_excel_table), not a function
+graph_sharepoint_list	COPY ... TO format name (FORMAT graph_sharepoint_list), not a function
+odata_context	output column of datasphere_describe_asset, not a function
+odata_metadata_etag	output column of datasphere_describe_asset, not a function

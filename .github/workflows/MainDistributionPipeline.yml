@@ -86,6 +86,72 @@ jobs:
       extension_name: erpl_odata
       exclude_archs: 'windows_amd64_rtools;windows_amd64_mingw;wasm_mvp;wasm_eh;wasm_threads;'
 
+  # README.md, docs/ and the Claude Code skills (plugins/erpl-odata) are checked against
+  # the freshly built extension: every function, setting and named parameter they mention
+  # must exist, and every SQL snippet that can run offline must run. Blocks that would reach
+  # a live system are parsed only. Uses the stock v1.5.6 CLI plus the linux_amd64 artifact,
+  # so it adds a minute after the build rather than a build of its own.
+  docs-check:
+    name: Docs and skills check (v1.5.6)
+    needs: duckdb-v155-build
+    timeout-minutes: 20
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download extension artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: erpl_odata-v1.5.6-extension-linux_amd64
+          path: ./extension_artifact
+
+      - name: Download DuckDB CLI
+        run: |
+          curl -fsSL -o duckdb_cli.zip https://github.com/duckdb/duckdb/releases/download/v1.5.6/duckdb_cli-linux-amd64.zip
+          unzip -q duckdb_cli.zip -d duckdb_cli
+
+      - name: Validate plugin manifests and skill frontmatter
+        run: |
+          python3 - <<'EOF'
+          import json, os, re, sys
+          errors = []
+          market = json.load(open(".claude-plugin/marketplace.json"))
+          for plugin in market["plugins"]:
+              root = os.path.normpath(plugin["source"])
+              manifest = json.load(open(os.path.join(root, ".claude-plugin", "plugin.json")))
+              if manifest["name"] != plugin["name"]:
+                  errors.append(f"{root}: plugin.json name {manifest['name']} != marketplace entry {plugin['name']}")
+              skills = os.path.join(root, "skills")
+              for skill in sorted(os.listdir(skills)):
+                  text = open(os.path.join(skills, skill, "SKILL.md"), encoding="utf-8").read()
+                  front = re.match(r"^---\n(.*?)\n---\n", text, re.S)
+                  if not front:
+                      errors.append(f"{skill}: SKILL.md has no frontmatter"); continue
+                  name = re.search(r"^name:\s*(\S+)", front.group(1), re.M)
+                  if not name or name.group(1) != skill:
+                      errors.append(f"{skill}: frontmatter name must equal the directory name")
+                  if not re.search(r"^description:", front.group(1), re.M):
+                      errors.append(f"{skill}: frontmatter has no description")
+          print("\n".join(errors) or "plugin manifests and skills OK")
+          sys.exit(1 if errors else 0)
+          EOF
+
+      - name: Check docs and skills
+        # The script directly, not `make check_docs`: the Makefile includes the
+        # extension-ci-tools submodule, which this job does not check out.
+        run: |
+          python3 scripts/check_doc_snippets.py \
+            --binary "$(pwd)/duckdb_cli/duckdb" \
+            --extension "$(pwd)/extension_artifact/erpl_odata.duckdb_extension"
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: doc-snippets-report
+          path: build/doc-snippets.tsv
+          if-no-files-found: ignore
+
   duckdb-v155-deploy:
     name: Deploy extension binaries (v1.5.6)
     needs: [duckdb-v155-build, duckdb-v155-smoke-test]
