@@ -1,7 +1,7 @@
 # Updating to a new DuckDB release
 
 erpl-odata builds **one source tree** against several DuckDB lines at once: currently
-v1.4.5 LTS (andium), v1.5.6 (variegata) and the v2.0 pre-release (cyanoptera). API
+v2.0.0 (cyanoptera) and v1.5.6 (variegata); 1.4.x LTS support was dropped in #274. API
 differences between the lines are absorbed by the header-only shims in the
 `duckdb-compat` submodule (`duckdb_compat::...`), not by version checks at call sites.
 
@@ -11,13 +11,14 @@ differences between the lines are absorbed by the header-only shims in the
    - `duckdb`: check out the new tag (`git -C duckdb checkout v1.5.x`). This is the
      version local builds (`make dev`, `make release`) compile against.
    - `extension-ci-tools`: check out the branch matching that release line
-     (`v1.5-variegata`, `v1.4-andium`, `v2.0-cyanoptera`).
+     (`v2.0-cyanoptera`, `v1.5-variegata`).
 2. **CI** (`.github/workflows/MainDistributionPipeline.yml`)
    - set `duckdb_version` and `ci_tools_version` of the affected build job, and the
      `@<branch>` of its reusable `_extension_distribution.yml`;
    - keep the smoke-test and deploy jobs of that line on the same `duckdb_version`;
-   - the `docs-check` job downloads the v1.5.6 CLI and the matching artifact name; move it
-     with the v1.5 line.
+   - the `docs-check` job downloads a stock CLI and the matching artifact; keep both on the
+     same release. From 2.0 on the CLI asset is `duckdb-cli-<os>-<arch>.tar.gz`, not
+     `duckdb_cli-<os>-<arch>.zip`.
 3. **Build and test locally**: `make dev && make test_debug`, then `make release &&
    make test_cpp`.
 4. **Docs and skills**: `make check_docs`. Update the DuckDB versions named in `README.md`

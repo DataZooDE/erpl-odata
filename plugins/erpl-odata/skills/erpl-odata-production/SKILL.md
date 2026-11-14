@@ -21,7 +21,7 @@ user-invocable: false
 
 # ERPL-OData — Production Pipelines and Operations
 
-**Extension:** `erpl_odata` v2026.10.24 | **DuckDB:** v1.4.5 LTS / v1.5.6 / v2.0
+**Extension:** `erpl_odata` v2026.10.24 | **DuckDB:** v2.0.0 / v1.5.6
 
 The error-to-fix playbook is in `references/troubleshooting.md`. Read it first when a
 job fails.

@@ -17,7 +17,7 @@ user-invocable: false
 
 # ERPL-OData — Setup, Connecting and Authentication
 
-**Extension:** `erpl_odata` v2026.10.24 (formerly `erpl_web`) | **DuckDB:** v1.4.5 LTS / v1.5.6 / v2.0
+**Extension:** `erpl_odata` v2026.10.24 (formerly `erpl_web`) | **DuckDB:** v2.0.0 / v1.5.6
 
 This skill gets a user from zero to a first authenticated query. The per-source
 skills listed under "Where to go next" take over from there.
