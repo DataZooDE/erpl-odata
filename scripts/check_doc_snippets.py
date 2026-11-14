@@ -369,6 +369,8 @@ def parse_check(runner, block_text):
         except ValueError:
             continue
         if parsed.get("error"):
+            if "Only SELECT statements" in parsed.get("error_message", ""):
+                continue  # WITH ... INSERT/DELETE: valid, just not serialisable
             return 0, "parse error: %s (in: %s)" % (parsed.get("error_message", "")[:150], stmt[:60])
     return len(stmts), ""
 
@@ -548,7 +550,8 @@ def main():
     all_block_keys, all_mentioned, seen_unknown = set(), set(), set()
 
     def add(status, rel, line, first, detail):
-        rows.append((status, rel, str(line), first, detail))
+        clean = lambda v: " ".join(str(v).split())  # one TSV row per finding
+        rows.append((status, rel, str(line), clean(first), clean(detail)))
         counts[status] += 1
 
     for rel_path in files:
