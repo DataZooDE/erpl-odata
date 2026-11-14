@@ -113,6 +113,9 @@ make release    # Full reconfigure + release build
   deliberately NOT gated on the extension build so a broken CSRF check is reported in a
   minute rather than behind a ~25-minute Windows leg. See GitHub #245.
 - `make test_build_guard` - Regression test for GitHub #45 (pure CMake, no build needed). Verifies the dev-only C++ test target stays gated on the in-tree `duckdb` submodule so consumers who statically link erpl_odata (via `duckdb_extension_load`/FetchContent, where the submodule is absent) don't try to compile `test/cpp` and hit `catch.hpp file not found`. Run after touching the `add_subdirectory(test)` guard in `CMakeLists.txt`.
+- `make check_docs` - Check every SQL snippet and every function, setting and named-parameter
+  name in `README.md`, `docs/` and the Claude Code skills against the built extension. See
+  "Claude Code plugin" below. `make validate_plugin` validates the plugin manifests.
 - `make unittest` - Relink **only** `./build/debug/test/unittest`, the SQLLogicTest runner.
   `duckdb`, `unittest` and `erpl_odata_tests` are **separate ninja targets**: building one
   does not build the others. A session that builds a single target after a source change
@@ -1147,12 +1150,38 @@ HTTP responses are parsed into `ODataContent` objects that provide both raw cont
 - OAuth2 flows require local callback server; tests should verify this works in isolation
 - SAP tests can use environment variables (e.g., `ERPL_SAP_BASE_URL`, `ERPL_SAP_PASSWORD`)
 
-## Current Modified Files (from git status)
-- `src/erpl_odata_extension.cpp` - May have recent extension initialization changes
-- `src/include/sac_catalog.hpp` - SAC catalog interface updates
-- `src/sac_catalog.cpp` - SAC catalog implementation
+## Claude Code plugin (user-facing skills)
 
-Recent work focused on fixing extension entry point initialization and removing invalid parameters.
+The repository is also a Claude Code marketplace: `.claude-plugin/marketplace.json` points at
+`plugins/erpl-odata/`, which holds one skill per **usage scenario** (setup, OData/REST, SAP
+Gateway, SAP ODP replication, Datasphere/SAC, Microsoft 365, Dynamics/Delta Sharing,
+production). Users install it with `/plugin marketplace add DataZooDE/erpl-odata` and
+`/plugin install erpl-odata@erpl-odata`.
+
+- **Load the skills while working here:** `claude --plugin-dir ./plugins/erpl-odata`.
+- **Changing the SQL surface means changing the skills.** A new or renamed function, named
+  parameter, secret type, setting or output column must be reflected in the affected
+  `SKILL.md` (and `references/*.md`) and in `README.md` in the same PR.
+- **`make check_docs`** runs `scripts/check_doc_snippets.py` over `README.md`, `docs/` and the
+  skills against whichever of `build/release/duckdb` / `build/debug/duckdb` was built last.
+  It fails on an unknown function/setting name, on an unknown **named parameter** (read from
+  DuckDB's own binder error, because `duckdb_functions()` lists erpl's named parameters as
+  `col2`, `col3`, ...), and on any offline SQL block that errors. Blocks that would reach a
+  live system are parsed, not run. CI runs it in the `docs-check` job against the stock
+  v1.5.6 CLI and the built artifact, so a stale skill fails the PR.
+  Support files live in `scripts/doc_snippets/`: `expected_errors.txt` (blocks that must
+  fail), `synopsis.txt` (signature placeholders), `removed_names.txt` (erpl-prefixed words
+  that are not functions, such as COPY format names), `fixtures.sql` (prepended to every
+  block; it attaches a file database because ODP state refuses `:memory:`).
+- **`make validate_plugin`** runs `claude plugin validate` on the marketplace and the plugin.
+- **Do not reach for `LATERAL` in examples.** erpl table functions only accept constant
+  arguments; `LATERAL http_get(t.url)` fails at bind time. The skills document the
+  generate-statements-then-`.read` pattern instead.
+- Skills defer to the sibling DataZoo plugins (flapi, anofox-tabular, anofox-forecast; and
+  anofox-visualization's repo-local `build-dashboard` skill) and to duckdb-sharepoint for
+  SharePoint *files*; name their skills, do not copy them.
+- User-facing documentation also lives in `../erpl-landingpage/docs/erpl-odata/`
+  (`claude-code.md` covers the plugin); behaviour changes need a PR there too.
 
 ## When Claude Code Gets Stuck: Consulting Codex
 

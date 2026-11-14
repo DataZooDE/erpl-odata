@@ -140,6 +140,27 @@ test_debug_bc: unittest
 test_build_guard:
 	cmake -DREPO_DIR='${PROJ_DIR}' -P test/cmake/test_cpp_tests_guard.cmake
 
+# Check every SQL snippet and every function/setting/named-parameter name in README.md,
+# docs/ and the Claude Code skills (plugins/erpl-odata/skills) against the built extension.
+# Uses whichever of build/release/duckdb and build/debug/duckdb was built last (both link
+# erpl_odata statically), so run `make dev` or `make release` first. Blocks that would reach
+# a live system are parsed, not executed. Override the binary with
+# DOCS_DUCKDB=/path/to/duckdb, and add DOCS_EXTENSION=/path/to/erpl_odata.duckdb_extension to
+# check a stock DuckDB CLI against a loadable build (this is what CI does).
+# Pass FILES="a.md b.md" to check only some files. The report is build/doc-snippets.tsv.
+.PHONY: check_docs
+check_docs:
+	python3 scripts/check_doc_snippets.py \
+		$(if $(DOCS_DUCKDB),--binary '$(DOCS_DUCKDB)') \
+		$(if $(DOCS_EXTENSION),--extension '$(DOCS_EXTENSION)') \
+		$(FILES)
+
+# Validate the Claude Code marketplace and plugin manifests and the skills' frontmatter.
+.PHONY: validate_plugin
+validate_plugin:
+	claude plugin validate .
+	claude plugin validate plugins/erpl-odata
+
 # Build and run datazoo-oauth2's own Catch2 suite.
 #
 # That target is guarded on the submodule being the TOP-LEVEL cmake project, and erpl-odata

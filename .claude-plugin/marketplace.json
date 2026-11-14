@@ -1,0 +1,30 @@
+{
+  "name": "erpl-odata",
+  "description": "Claude Code skills for erpl_odata, the DuckDB extension for OData, SAP (Gateway, ODP, Datasphere, SAC), Microsoft 365, Dynamics 365, Delta Sharing and REST APIs.",
+  "owner": {
+    "name": "DataZoo GmbH",
+    "url": "https://github.com/DataZooDE"
+  },
+  "plugins": [
+    {
+      "name": "erpl-odata",
+      "source": "./plugins/erpl-odata",
+      "description": "Skills for the erpl_odata DuckDB extension: connecting and authenticating, exploring OData v2/v4 and REST APIs, SAP Gateway services, SAP ODP full and delta replication, SAP Datasphere and Analytics Cloud, Microsoft 365 (Excel, SharePoint lists, Planner, Outlook, Teams, Entra ID), Dynamics 365 Business Central and Dataverse, Delta Sharing, and running extractions in production.",
+      "keywords": [
+        "duckdb",
+        "odata",
+        "sap",
+        "odp",
+        "datasphere",
+        "sap-analytics-cloud",
+        "microsoft-graph",
+        "business-central",
+        "dataverse",
+        "delta-sharing",
+        "rest",
+        "sql",
+        "claude-code"
+      ]
+    }
+  ]
+}
