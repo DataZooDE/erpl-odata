@@ -1,0 +1,9 @@
+{
+  "name": "erpl-odata",
+  "description": "Skills for the erpl_odata DuckDB extension: connecting and authenticating, exploring OData v2/v4 and REST APIs, SAP Gateway services, SAP ODP full and delta replication, SAP Datasphere and Analytics Cloud, Microsoft 365 (Excel, SharePoint lists, Planner, Outlook, Teams, Entra ID), Dynamics 365 Business Central and Dataverse, Delta Sharing, and running extractions in production.",
+  "version": "2026.10.24",
+  "author": { "name": "DataZoo GmbH", "url": "https://github.com/DataZooDE" },
+  "homepage": "https://erpl.io",
+  "repository": "https://github.com/DataZooDE/erpl-odata",
+  "license": "BUSL-1.1"
+}
