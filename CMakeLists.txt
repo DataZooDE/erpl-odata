@@ -28,11 +28,6 @@ if(MSVC)
     add_compile_definitions(NOMINMAX)
 endif()
 
-# Detect DuckDB v1.5+ API availability (ExtensionCallbackManager replaces DBConfig::storage_extensions)
-if(EXISTS "${CMAKE_SOURCE_DIR}/src/include/duckdb/main/extension_callback_manager.hpp")
-    add_compile_definitions(DUCKDB_HAS_EXTENSION_CALLBACK_MANAGER=1)
-endif()
-
 # Try to find mold binary
 include(CheckCXXCompilerFlag)
 find_program(MOLD_LINKER mold)
@@ -92,7 +87,7 @@ target_link_libraries(posthog_telemetry PRIVATE OpenSSL::SSL OpenSSL::Crypto)
 # both again, and every translation unit that sees both headers fails with a
 # macro redefinition and a type conflict.
 # ---------------------------------------------------------------------------
-# duckdb-compat: one source tree for DuckDB 1.4 LTS, 1.5 and 2.0. Header-only
+# duckdb-compat: one source tree for DuckDB 1.5.6 and 2.0. Header-only
 # API-shape shims (DataZooDE/duckdb-compat); no `#if` on DuckDB versions at
 # call sites. Must come before datazoo-oauth2, which takes its include path.
 # Include path only -- DuckDB export()s extension targets, so linking the
@@ -243,8 +238,7 @@ endif()
 # duckdb submodule is absent — so those headers cannot be found and the test target
 # fails to compile (GitHub #45). BUILD_UNITTESTS does NOT distinguish the two cases: it
 # is TRUE in both our build and a consumer's main DuckDB build. Gate on the submodule's
-# presence (same if(EXISTS ...) idiom used for extension_callback_manager.hpp above),
-# while still honoring BUILD_UNITTESTS so developers can opt out.
+# presence with if(EXISTS ...), while still honoring BUILD_UNITTESTS so developers can opt out.
 if(BUILD_UNITTESTS AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/duckdb/third_party/catch/catch.hpp")
     add_subdirectory(test)
 else()

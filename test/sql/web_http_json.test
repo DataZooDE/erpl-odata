@@ -1,0 +1,21 @@
+# name: test/sql/web_http_json.test
+# description: The (VARCHAR, JSON) overload of the mutating HTTP functions
+# group: [erpl_odata_http]
+
+# Kept apart from web_http.test because it needs the json extension: the ::JSON cast
+# resolves the JSON type, which autoloads json. Builds without a loadable json (the
+# community extensions build) skip this file instead of failing on the autoload
+# (duckdb/community-extensions#3247).
+require erpl_odata
+
+require json
+
+statement ok
+SET erpl_trace_enabled=false;
+
+# Note: httpbin.org can return 502 if temporarily unavailable
+query I
+SELECT CASE WHEN status IN (200, 502) THEN 200 ELSE status END
+FROM http_delete('https://httpbin.org/status/200', '{}'::JSON) LIMIT 1;
+----
+200

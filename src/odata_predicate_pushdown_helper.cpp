@@ -873,7 +873,9 @@ std::string ODataPredicatePushdownHelper::TranslateFilter(const duckdb::TableFil
             // was pushed there is no residual filter left to restore them.
             // See GitHub #59.
             auto &filter_data = *filter.Cast<duckdb_compat::DynamicFilter>().filter_data;
-            duckdb::lock_guard<duckdb::mutex> filter_guard(filter_data.lock);
+            // The lock is a mutex before 2.0 and an annotated_shared_mutex (a
+            // std::shared_mutex) in 2.0.0; lock_guard on its own type fits both.
+            std::lock_guard<typename std::decay<decltype(filter_data.lock)>::type> filter_guard(filter_data.lock);
             auto snapshot = duckdb_compat::DynamicSnapshot(filter_data);
             if (!snapshot) {
                 ERPL_TRACE_DEBUG("PREDICATE_PUSHDOWN",

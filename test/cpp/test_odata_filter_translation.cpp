@@ -9,16 +9,28 @@
 #include "duckdb/planner/filter/dynamic_filter.hpp"
 #include "duckdb/planner/filter/in_filter.hpp"
 #include "duckdb/planner/filter/struct_filter.hpp"
-// DuckDB 1.5 added bloom filters; the 1.4 LTS line this extension also builds against has
-// no such header or filter type, so the cases exercising them are compiled conditionally.
-#ifdef ERPL_TEST_BLOOM_FILTER
 #include "duckdb/planner/filter/bloom_filter.hpp"
 namespace duckdb { class BFTableFilter; class LegacyBFTableFilter; }
 namespace {
 using TestBloomFilter = std::conditional_t<duckdb_compat::NEW_TABLE_FILTERS,
                                           duckdb::LegacyBFTableFilter, duckdb::BFTableFilter>;
+// DuckDB 2.0.0 takes the bloom filter as shared_ptr<const BloomFilter>; earlier lines
+// (and the 2.0 pre-release) take a BloomFilter&. Pick whichever constructor exists; the
+// probe names F's constructor directly (make_uniq is unconstrained, so SFINAE would not fire).
+template <class F = TestBloomFilter>
+auto MakeTestBloomFilter(int)
+    -> decltype(F(std::declval<duckdb::shared_ptr<const duckdb::BloomFilter>>(), false, std::string(),
+                  duckdb::LogicalType()),
+                duckdb::unique_ptr<F>()) {
+	return duckdb::make_uniq<F>(duckdb::make_shared_ptr<duckdb::BloomFilter>(), false, "Col",
+	                            duckdb::LogicalType(duckdb::LogicalTypeId::INTEGER));
 }
-#endif
+template <class F = TestBloomFilter>
+duckdb::unique_ptr<F> MakeTestBloomFilter(long) {
+	static duckdb::BloomFilter bloom;
+	return duckdb::make_uniq<F>(bloom, false, "Col", duckdb::LogicalType(duckdb::LogicalTypeId::INTEGER));
+}
+}
 #include "duckdb/planner/filter/optional_filter.hpp"
 #include "duckdb/planner/table_filter.hpp"
 #include "duckdb/planner/filter/null_filter.hpp"
@@ -374,27 +386,21 @@ TEST_CASE("An optional filter wrapping an untranslatable child is skipped, not t
 	REQUIRE(TranslateOne(std::move(optional_filter), ODataVersion::V4) == "");
 }
 
-#ifdef ERPL_TEST_BLOOM_FILTER
 TEST_CASE("An optional filter wrapping a bloom filter is skipped, not thrown", "[odata_filter]") {
 	// DuckDB documents OPTIONAL_FILTER as "executing filter is not required for query
 	// correctness". A hash join pushes an optional filter wrapping a bloom filter, so
 	// translating the child eagerly and letting it reach the default: arm would make an
 	// ordinary join fail outright.
-	duckdb::BloomFilter bloom;
-	auto bf_filter = duckdb::make_uniq<TestBloomFilter>(bloom, false, "Col",
-	                                                          duckdb::LogicalType(duckdb::LogicalTypeId::INTEGER));
+	auto bf_filter = MakeTestBloomFilter(0);
 	auto optional_filter = duckdb::make_uniq<duckdb_compat::OptionalFilter>(std::move(bf_filter));
 
 	REQUIRE(TranslateOne(std::move(optional_filter), ODataVersion::V4) == "");
 }
 
 TEST_CASE("A bare bloom filter is skipped rather than throwing", "[odata_filter]") {
-	duckdb::BloomFilter bloom;
-	auto bf_filter = duckdb::make_uniq<TestBloomFilter>(bloom, false, "Col",
-	                                                          duckdb::LogicalType(duckdb::LogicalTypeId::INTEGER));
+	auto bf_filter = MakeTestBloomFilter(0);
 	REQUIRE(TranslateOne(std::move(bf_filter), ODataVersion::V4) == "");
 }
-#endif  // ERPL_TEST_BLOOM_FILTER
 
 TEST_CASE("A filter kind that is required for correctness still fails loudly", "[odata_filter]") {
 	// The contrast case: unlike an optional filter, a struct-extract filter IS required

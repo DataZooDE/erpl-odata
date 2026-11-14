@@ -30,7 +30,7 @@ DeltaShareProfile DeltaShareProfile::FromFile(ClientContext& context, const stri
         }
 
         // Set file flags - use direct I/O for remote files
-        // Note: Use FileOpenFlags with idx_t constants to avoid duplicate symbol issues with DuckDB 1.4.3
+        // Note: Use FileOpenFlags with idx_t constants (avoided duplicate symbol issues seen with DuckDB 1.4.3)
         FileOpenFlags flags(FileOpenFlags::FILE_FLAGS_READ);
         if (is_remote) {
             flags |= FileOpenFlags(FileOpenFlags::FILE_FLAGS_DIRECT_IO);
