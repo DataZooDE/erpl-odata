@@ -137,6 +137,10 @@ class Runner:
         try:
             env = dict(os.environ)
             env["HOME"] = tmp_dir
+            # DuckDB 2.0's CLI switches to an "agent mode" output format when AI_AGENT is
+            # set and stdout is not a terminal; the parsing here expects plain -list output.
+            # (-no-agent would do the same but is rejected by 1.x CLIs.)
+            env.pop("AI_AGENT", None)
             # Keep snippet runs out of the product telemetry.
             env["DATAZOO_DISABLE_TELEMETRY"] = "1"
             full_sql = self.preamble + "SET erpl_telemetry_enabled = false;\n" + sql_text
@@ -448,21 +452,22 @@ def resolve_binary(explicit):
     return max(builds, key=os.path.getmtime) if builds else None
 
 
-def probe_named_parameters(runner, function_name, max_arity):
-    """Named parameters of a table function, read from DuckDB's own binder error.
+def probe_binder(runner, function_name, max_arity):
+    """Which positional arities the binder accepts, and (DuckDB <= 1.5) the named
+    parameters it lists.
 
-    duckdb_functions() does not tell positional from named parameters, but binding a
-    call with an unknown named parameter fails before the function's bind runs (so no
-    network) with "Invalid named parameter ... Candidates:" followed by the full list.
-    The positional arity is unknown, so each arity is tried until the binder gets that far.
+    Binding a call with an unknown named parameter fails before the function's own bind
+    runs, so no network is involved. "Invalid named parameter" means the arity matched an
+    overload; up to 1.5 the error goes on to list every named parameter ("Candidates:").
     """
-    found = set()
+    arities, candidates = set(), set()
     for arity in range(0, max_arity + 1):
         args = ", ".join(["NULL"] * arity + ["__erpl_probe__ := 1"])
         rc, out, err = runner.run(f"SELECT * FROM {function_name}({args});\n", timeout=60)
         text = err + out
         if "Invalid named parameter" not in text:
             continue
+        arities.add(arity)
         in_candidates = False
         for line in text.splitlines():
             if line.strip().startswith("Candidates:"):
@@ -472,33 +477,53 @@ def probe_named_parameters(runner, function_name, max_arity):
                 m = re.match(r"^\s+([A-Za-z_][A-Za-z0-9_]*)\s+\S", line)
                 if not m:
                     break
-                found.add(m.group(1))
-        return found
-    # Never reached the binder (timeout, crash, unexpected overloads): unknown, so the
-    # caller skips parameter checks for this function rather than flag every parameter.
-    return None
+                candidates.add(m.group(1))
+    return arities, candidates
 
 
 def query_surface(runner):
+    """Registered names, and the named parameters of each erpl table function.
+
+    Up to DuckDB 1.5 the binder error for an unknown named parameter lists every named
+    parameter; 2.0 dropped that list. 2.0 instead puts the real names in
+    duckdb_functions().parameters (1.5 shows erpl's named parameters there as col2,
+    col3, ...), positional first. The probe also tells which positional arities exist,
+    which separates the two.
+    """
     rows = runner.query_lines(
-        "COPY (SELECT function_name, function_type, len(parameters) AS n FROM duckdb_functions() "
+        "COPY (SELECT function_name, function_type, parameters FROM duckdb_functions() "
         "WHERE regexp_matches(function_name, '^" + PREFIX + "$')) TO '/dev/stdout' (FORMAT json);\n"
     )
-    arity = {}
+    overloads = {}
     for line in rows:
         try:
             row = json.loads(line)
         except ValueError:
             continue
         if row["function_type"] == "table":
-            arity[row["function_name"]] = max(arity.get(row["function_name"], 0), int(row["n"] or 0))
+            overloads.setdefault(row["function_name"], []).append(row.get("parameters") or [])
+    arity = {name: max(len(p) for p in plists) for name, plists in overloads.items()}
     with ThreadPoolExecutor(max_workers=min(8, os.cpu_count() or 4)) as pool:
-        futures = {name: pool.submit(probe_named_parameters, runner, name, n) for name, n in arity.items()}
-        params = {name: f.result() for name, f in futures.items()}
-    unknown = sorted(name for name, found in params.items() if found is None)
+        futures = {name: pool.submit(probe_binder, runner, name, arity[name]) for name in overloads}
+        probed = {name: f.result() for name, f in futures.items()}
+    params, unknown = {}, []
+    for name, (arities, candidates) in probed.items():
+        if candidates:
+            params[name] = candidates  # DuckDB <= 1.5: the binder listed them
+            continue
+        # duckdb_functions() lists positional then named parameters per overload; an
+        # overload taking k positional arguments has parameters[k:] as named ones.
+        named = set()
+        for plist in overloads[name]:
+            for k in arities:
+                if k <= len(plist):
+                    named.update(plist[k:])
+        if not arities or any(re.fullmatch(r"col\d+", n) for n in named):
+            unknown.append(name)
+            continue
+        params[name] = named
     if unknown:
-        print("WARNING: named parameters unknown (probe failed) for: " + ", ".join(unknown), file=sys.stderr)
-    params = {name: found for name, found in params.items() if found is not None}
+        print("WARNING: named parameters unknown, not checked for: " + ", ".join(sorted(unknown)), file=sys.stderr)
     names = set(runner.query_lines("SELECT DISTINCT function_name FROM duckdb_functions();\n"))
     names |= set(runner.query_lines("SELECT name FROM duckdb_settings();\n"))
     # Identifiers that are not functions but legitimately appear in docs
