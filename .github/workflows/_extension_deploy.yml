@@ -18,6 +18,14 @@ on:
       duckdb_version:
         required: true
         type: string
+      # extension-ci-tools ref used to generate the deploy arch matrix. Must
+      # match the ci_tools_version the build job used, or the deploy matrix
+      # expects archs the build never produced (artifact-not-found), or silently
+      # skips archs it did produce. Defaults to duckdb_version when empty.
+      ci_tools_version:
+        required: false
+        type: string
+        default: ""
       # ';' separated list of architectures to exclude, for example: 'linux_amd64;osx_arm64'
       exclude_archs:
         required: false
@@ -54,6 +62,7 @@ jobs:
     name: Generate matrix
     timeout-minutes: 15
     runs-on: ubuntu-latest
+    if: ${{ inputs.deploy_latest || inputs.deploy_versioned }}
     outputs:
       deploy_matrix: ${{ steps.parse-matrices.outputs.deploy_matrix }}
     steps:
@@ -66,6 +75,14 @@ jobs:
         run: |
           cd duckdb
           git checkout ${{ inputs.duckdb_version }}
+
+      - name: Checkout extension-ci-tools to version
+        # Same tools ref as the build job, so the arch matrix matches what was built.
+        run: |
+          cd extension-ci-tools
+          REF="${{ inputs.ci_tools_version != '' && inputs.ci_tools_version || inputs.duckdb_version }}"
+          git fetch --depth 1 origin "$REF" || git fetch --depth 1 origin tag "$REF"
+          git checkout FETCH_HEAD
 
       - id: parse-matrices
         run: |

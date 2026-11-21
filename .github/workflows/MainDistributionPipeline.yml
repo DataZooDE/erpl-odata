@@ -99,6 +99,7 @@ jobs:
     with:
       duckdb_version: v2.0.0
       extension_name: erpl_odata
+      ci_tools_version: v2.0-cyanoptera
       exclude_archs: 'windows_amd64_rtools;windows_amd64_mingw;wasm_mvp;wasm_eh;wasm_threads;'
       deploy_latest: ${{ startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' }}
       # Versioned paths only from the tag run; see the v1.5.6 deploy job below for why.
@@ -121,6 +122,7 @@ jobs:
     with:
       duckdb_version: v1.5.6
       extension_name: erpl_odata
+      ci_tools_version: v1.5-variegata
       exclude_archs: 'windows_amd64_rtools;windows_amd64_mingw;wasm_mvp;wasm_eh;wasm_threads;'
       deploy_latest: ${{ startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' }}
       # Versioned paths (<name>/vYYYY.MM.DD/...) come ONLY from the tag run. A main
