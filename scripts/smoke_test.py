@@ -19,6 +19,8 @@ import subprocess
 import sys
 import tempfile
 import time
+import re
+import tarfile
 import urllib.request
 import zipfile
 
@@ -36,6 +38,20 @@ ARCH_TO_CLI_ZIP: dict[str, str] = {
     "osx_arm64": "duckdb_cli-osx-universal.zip",
     "windows_amd64": "duckdb_cli-windows-amd64.zip",
 }
+
+# DuckDB 2.0 renamed the CLI release assets and ships them as tar.gz.
+ARCH_TO_CLI_TARBALL: dict[str, str] = {
+    "linux_amd64": "duckdb-cli-linux-amd64.tar.gz",
+    "linux_arm64": "duckdb-cli-linux-arm64.tar.gz",
+    "osx_amd64": "duckdb-cli-osx-universal.tar.gz",
+    "osx_arm64": "duckdb-cli-osx-universal.tar.gz",
+    "windows_amd64": "duckdb-cli-windows-amd64.tar.gz",
+}
+
+
+def _duckdb_major(version: str) -> int:
+    match = re.match(r"v?(\d+)\.", version)
+    return int(match.group(1)) if match else 0
 
 # The smoke test answers one question: does the freshly-built extension binary
 # load into the official DuckDB CLI and can it issue a real outbound HTTP
@@ -98,29 +114,36 @@ HTTP_RETRY_DELAY_SECONDS = 5
 
 
 def _download_duckdb_cli(version: str, arch: str, dest_dir: str) -> str:
-    zip_name = ARCH_TO_CLI_ZIP.get(arch)
-    if zip_name is None:
+    assets = ARCH_TO_CLI_TARBALL if _duckdb_major(version) >= 2 else ARCH_TO_CLI_ZIP
+    asset_name = assets.get(arch)
+    if asset_name is None:
         raise SystemExit(
-            f"Unsupported arch '{arch}'. Supported: {sorted(ARCH_TO_CLI_ZIP)}"
+            f"Unsupported arch '{arch}'. Supported: {sorted(assets)}"
         )
 
     url = (
-        f"https://github.com/duckdb/duckdb/releases/download/{version}/{zip_name}"
+        f"https://github.com/duckdb/duckdb/releases/download/{version}/{asset_name}"
     )
-    zip_path = os.path.join(dest_dir, "duckdb_cli.zip")
+    archive_path = os.path.join(dest_dir, asset_name)
 
     print(f"Downloading DuckDB {version} CLI ({arch}):\n  {url}")
-    urllib.request.urlretrieve(url, zip_path)
+    urllib.request.urlretrieve(url, archive_path)
 
-    with zipfile.ZipFile(zip_path, "r") as zf:
-        zf.extractall(dest_dir)
+    if asset_name.endswith(".zip"):
+        with zipfile.ZipFile(archive_path, "r") as zf:
+            zf.extractall(dest_dir)
+            contents = zf.namelist()
+    else:
+        with tarfile.open(archive_path, "r:gz") as tf:
+            tf.extractall(dest_dir, filter="data")
+            contents = tf.getnames()
 
     bin_name = "duckdb.exe" if platform.system() == "Windows" else "duckdb"
     binary = os.path.join(dest_dir, bin_name)
     if not os.path.isfile(binary):
         raise SystemExit(
             f"DuckDB binary not found after extraction: {binary}\n"
-            f"Zip contents: {zipfile.ZipFile(zip_path).namelist()}"
+            f"Archive contents: {contents}"
         )
 
     if platform.system() != "Windows":
