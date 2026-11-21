@@ -70,6 +70,9 @@ jobs:
       duckdb_version: v2.0.0
       extension_name: erpl_odata
       ci_tools_version: v2.0-cyanoptera
+      # Smoke test and deploy need every shipped arch, including macOS, which
+      # upstream's reduced PR matrix skips ("Artifact not found ... osx_arm64").
+      reduced_ci_mode: disabled
       vcpkg_commit: 84bab45d415d22042bd0b9081aea57f362da3f35
       exclude_archs: 'windows_amd64_rtools;windows_amd64_mingw;wasm_mvp;wasm_eh;wasm_threads;'
       extra_extension_config: |
