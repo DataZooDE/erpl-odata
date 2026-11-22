@@ -607,9 +607,10 @@ This extension uses **extension-ci-tools** reusable workflows for automated mult
 
 **Primary workflow:** `.github/workflows/MainDistributionPipeline.yml`
 - Calls `duckdb/extension-ci-tools/.github/workflows/_extension_distribution.yml@main`
-- Builds for DuckDB v2.0.0 and v1.5.6. Both lines are built, smoke-tested and deployed to
-  get.erpl.io (`duckdb-v200-*`, `duckdb-v155-*`), configured via the `duckdb_version` parameter.
-  Until the 2.0 release the 2.0 line was build-only, so get.erpl.io had no v2.0.0 binaries.
+- Builds for DuckDB v2.0.1 and v1.5.6. Both lines are built, smoke-tested and deployed to
+  get.erpl.io (`duckdb-v201-*`, `duckdb-v155-*`), configured via the `duckdb_version` parameter.
+  The `duckdb` submodule (local builds) tracks v2.0.1 and `extension-ci-tools` tracks
+  `v2.0-cyanoptera`; v1.5.6 remains covered by CI.
 - **DuckDB 2.0 changed two things scripts depend on.** The CLI release assets were renamed
   from `duckdb_cli-<os>-<arch>.zip` to `duckdb-cli-<os>-<arch>.tar.gz` (arm64 is `arm64`, no
   longer `aarch64`); `scripts/smoke_test.py` picks the scheme by major version. And the 2.0 CLI
