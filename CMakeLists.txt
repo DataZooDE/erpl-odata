@@ -224,7 +224,7 @@ endif()
 # ones. Now that the extension is statically linked (no DONT_LINK), tools such as
 # tools/plan_serializer link both and fail with "multiple definition" (seen on
 # linux_arm64). -fno-gnu-unique makes ours weak COMDAT definitions; GCC only.
-# Same as erpl-idoc; CI also passes it globally via extra_extension_config.
+# Same as erpl-idoc; extension_config.cmake also sets it globally (for DuckDB's tools).
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     target_compile_options(${EXTENSION_NAME} PRIVATE -fno-gnu-unique)
     target_compile_options(${LOADABLE_EXTENSION_NAME} PRIVATE -fno-gnu-unique)

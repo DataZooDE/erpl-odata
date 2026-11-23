@@ -58,10 +58,6 @@ jobs:
       ci_tools_version: v1.5-variegata
       vcpkg_commit: 84bab45d415d22042bd0b9081aea57f362da3f35
       exclude_archs: 'windows_amd64_rtools;windows_amd64_mingw;wasm_mvp;wasm_eh;wasm_threads;'
-      extra_extension_config: |
-        if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-          set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-gnu-unique")
-        endif()
 
   duckdb-v201-build:
     name: Build extension binaries (v2.0.1)
@@ -75,10 +71,6 @@ jobs:
       reduced_ci_mode: disabled
       vcpkg_commit: 84bab45d415d22042bd0b9081aea57f362da3f35
       exclude_archs: 'windows_amd64_rtools;windows_amd64_mingw;wasm_mvp;wasm_eh;wasm_threads;'
-      extra_extension_config: |
-        if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-          set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-gnu-unique")
-        endif()
 
   # The 2.0 line used to stop at the build (it was a pre-release), so get.erpl.io never
   # received 2.0 binaries and INSTALL ... FROM 'http://get.erpl.io' failed on DuckDB 2.0.
