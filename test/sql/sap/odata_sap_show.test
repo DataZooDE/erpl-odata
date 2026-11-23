@@ -36,9 +36,10 @@ SELECT COUNT(*) FROM duckdb_functions() WHERE function_name = 'odata_sap_show';
 1
 
 # Final verification that both functions are properly registered
+# (the service count depends on the SAP system, so only require a non-empty result)
 query I
-SELECT COUNT(*) FROM odata_sap_show('${ERPL_SAP_BASE_URL}', secret='odata_show_secret');
+SELECT COUNT(*) > 0 FROM odata_sap_show('${ERPL_SAP_BASE_URL}', secret='odata_show_secret');
 ----
-1003
+true
 
 
