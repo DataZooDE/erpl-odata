@@ -14,13 +14,20 @@ This document guides AI agents in developing the erpl-odata extension using quic
 
 | Component | Responsibility | Key Files |
 |-----------|---------------|-----------|
-| **HTTP Layer** | GET/POST/PUT/DELETE with auth, headers, timeouts | `http_client.*`, `web_functions.*` |
-| **OData v2/v4** | Universal reader with version detection, pushdown | `odata_client.*`, `odata_read_functions.*` |
-| **SAP Datasphere** | Space/asset discovery, data reading | `datasphere_client.*`, `datasphere_catalog.*` |
-| **SAP Analytics Cloud** | Model discovery, planning data | `sac_client.*`, `sac_catalog.*` |
-| **ODP Integration** | Operational Data Provisioning | `odp_client_integration.*`, `odp_subscription_*` |
-| **OAuth2 Auth** | Token flows, secret management | `oauth2_flow_v2.*`, `secret_functions.*` |
-| **Delta Sharing** | Databricks/SAP Delta Share protocol | `delta_share_client.*`, `delta_share_catalog.*` |
+| **HTTP Layer** | GET/POST/PUT/PATCH/DELETE with auth, headers, timeouts | `datazoo-oauth2/src/http_client.*` (submodule), `src/web_functions.*` |
+| **OData v2/v4** | Universal reader with version detection, pushdown, ATTACH | `odata_client.*`, `odata_read_functions.*`, `odata_storage.*`, `odata_catalog.*` |
+| **SAP Gateway / ODP** | Service discovery (`odata_sap_show`), ODP full + delta reads, subscriptions | `odata_odp_functions.*`, `odp_odata_read_*`, `odp_subscription_*`, `odp_pragma_functions.*` |
+| **SAP Datasphere** | Space/asset discovery, relational and analytical reads | `datasphere_client.*`, `datasphere_catalog.*`, `datasphere_read.*` |
+| **SAP Analytics Cloud** | Planning/analytic model reads (discovery and ATTACH not implemented) | `sac_client.*`, `sac_catalog.*`, `sac_read_functions.*` |
+| **Microsoft Graph** | Excel, SharePoint lists, Planner, Outlook, Teams, Entra ID; ATTACH and COPY TO for Excel and lists | `graph_*_client.*`, `graph_*_functions.*`, `graph_excel_storage.*`, `graph_sharepoint_storage.*`, `graph_*_copy.*` |
+| **Dynamics 365** | Business Central (incl. ATTACH) and Dataverse readers | `business_central_*`, `dataverse_*` |
+| **Delta Sharing** | Databricks/SAP Delta Share protocol | `delta_share_client.*`, `delta_share_catalog.*`, `delta_share_scan.*` |
+| **OAuth2 Auth** | Token flows, callback server, secret management | `datazoo-oauth2/src/oauth2_*` (submodule), `*_secret.cpp`, `secret_functions.*` |
+| **Claude Code plugin** | User-facing skills, one per usage scenario | `plugins/erpl-odata/skills/*/SKILL.md`, `.claude-plugin/marketplace.json` |
+
+When you change the SQL surface (a function, named parameter, secret type, setting or
+output column), update the affected skill under `plugins/erpl-odata/skills/` and the README
+in the same change, and run `make check_docs`. CI fails on any unknown name.
 
 ### Architecture Pattern
 

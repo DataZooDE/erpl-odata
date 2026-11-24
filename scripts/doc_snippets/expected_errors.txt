@@ -1,0 +1,3 @@
+plugins/erpl-odata/skills/erpl-odata-setup/SKILL.md	SET erpl_ca_cert_file = '/etc/erpl/corporate-ca.pem';
+plugins/erpl-odata/skills/erpl-odata-sap-odp-replication/SKILL.md	PRAGMA odp_odata_remove_subscription('<subscription_id>');
+README.md	SET erpl_ca_cert_file = '/etc/erpl/my-corporate-ca.pem';

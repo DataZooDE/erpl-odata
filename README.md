@@ -3,6 +3,7 @@
 [![License: BSL 1.1](https://img.shields.io/badge/License-BSL%201.1-blue.svg)](LICENSE)
 [![DuckDB](https://img.shields.io/badge/DuckDB-1.5.6+-green.svg)](https://duckdb.org)
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
+[![Claude Code plugin](https://img.shields.io/badge/Claude%20Code-skills%20plugin-D97757.svg)](#-claude-code-skills-ai-pair-programming)
 
 > **Formerly `erpl_web`.** This extension was renamed to `erpl_odata`; all functions, secrets and settings are unchanged. On the community repository the old `erpl_web` name is an alias that installs and loads `erpl_odata`, so existing scripts keep working; from `http://get.erpl.io`, `LOAD erpl_web` fails with a message pointing here. Update your scripts to `INSTALL erpl_odata FROM community; LOAD erpl_odata;`.
 
@@ -50,6 +51,52 @@ or build from source (developers):
 ```bash
 make debug
 ```
+
+> 🤖 **Using Claude Code?** Install the erpl-odata skills plugin and Claude writes correct
+> erpl_odata SQL for SAP, OData, Microsoft 365 and more:
+> `/plugin marketplace add DataZooDE/erpl-odata` then `/plugin install erpl-odata@erpl-odata`.
+> See [Claude Code Skills](#-claude-code-skills-ai-pair-programming).
+
+---
+
+## 🤖 Claude Code Skills (AI pair-programming)
+
+**Getting data out of SAP and Microsoft 365 is easier when your AI assistant knows the
+extension.** erpl-odata ships an installable [Claude Code](https://claude.com/claude-code)
+plugin with eight skills, cut along the jobs people actually do: connect, explore, replicate,
+serve and operate. They carry the signatures, named parameters, secret types and the
+gotchas that cost time, such as ODP delta streams needing a merge or `odata_read`
+authenticating only by URL scope. Every function and parameter name in them is checked in
+CI against the built extension.
+
+Install in any Claude Code session:
+
+```
+/plugin marketplace add DataZooDE/erpl-odata
+/plugin install erpl-odata@erpl-odata
+```
+
+On Claude Code 2.1.275 or later this is one step:
+`/plugin install erpl-odata --marketplace DataZooDE/erpl-odata`.
+
+| Skill | Use it to |
+|-------|-----------|
+| `erpl-odata-setup` | Install, pick the right function family, create secrets for every system, trust a private CA |
+| `erpl-odata-odata-and-rest` | Explore and extract any OData v2/v4 service or REST API; pushdown, `$expand`, paging |
+| `erpl-odata-sap-gateway` | Find and read SAP S/4HANA and ECC Gateway services; activation, SAP quirks, A4H sandbox |
+| `erpl-odata-sap-odp-replication` | Full and delta loads from SAP extractors and CDS views via ODP, with a correct merge |
+| `erpl-odata-sap-datasphere-sac` | Read SAP Datasphere spaces and SAP Analytics Cloud models |
+| `erpl-odata-microsoft-365` | Read and write Excel and SharePoint lists; Planner, Outlook, Teams and Entra ID |
+| `erpl-odata-dynamics-and-delta-sharing` | Business Central, Dataverse and Delta Sharing |
+| `erpl-odata-production` | Schedule and monitor extractions, unattended auth, troubleshooting, hand-off to flapi, anofox-tabular and anofox-forecast |
+
+The skills defer to the plugins of the neighbouring DataZoo extensions instead of
+repeating them: [flapi](https://github.com/DataZooDE/flapi) for serving data as REST or MCP,
+[anofox-tabular](https://github.com/DataZooDE/anofox-tabular) for data quality, diffs and PII,
+and [anofox-forecast](https://github.com/DataZooDE/anofox-forecast) for forecasting.
+
+The skills live in [`plugins/erpl-odata/`](plugins/erpl-odata/). When working on this
+repository, load them directly with `claude --plugin-dir ./plugins/erpl-odata`.
 
 ---
 
@@ -102,8 +149,8 @@ WHERE UserName='angelhuffman';
 Query Delta Sharing repositories with profile files from **local paths, HTTP URLs, or S3 URIs**:
 
 ```sql
--- Local profile file
-SELECT url, size FROM delta_share_scan(
+-- Local profile file: the table's rows, typed from the share's Delta schema
+SELECT * FROM delta_share_scan(
   './profile.json',
   'share_name',
   'schema_name',
@@ -111,7 +158,7 @@ SELECT url, size FROM delta_share_scan(
 ) LIMIT 10;
 
 -- HTTP URL (remote profile) - Example with public Delta Sharing server
-SELECT url, size FROM delta_share_scan(
+SELECT * FROM delta_share_scan(
   'https://databricks-datasets-oregon.s3-us-west-2.amazonaws.com/delta-sharing/share/open-datasets.share',
   'delta_sharing',
   'default',
@@ -119,17 +166,12 @@ SELECT url, size FROM delta_share_scan(
 ) LIMIT 10;
 
 -- S3 URI (requires S3 credentials via CREATE SECRET)
-SELECT url, size FROM delta_share_scan(
+SELECT * FROM delta_share_scan(
   's3://my-bucket/profiles/delta.share',
   'delta_sharing',
   'default',
   'your_table_name'
 ) LIMIT 10;
-
--- Read data from shared Parquet files (using parquet_scan):
-SELECT * FROM read_parquet(
-  'https://presigned-url-from-delta-share.s3.amazonaws.com/...'
-);
 ```
 
 **Profile Format (JSON):**
@@ -162,11 +204,11 @@ SELECT share_name, share_id
 FROM delta_share_show_shares('./profile.json');
 
 -- List schemas in a specific share
-SELECT schema_name, schema_id
+SELECT schema_name, share
 FROM delta_share_show_schemas('./profile.json', 'delta_sharing');
 
 -- List tables in a schema
-SELECT name, share_name, schema_name
+SELECT table_name, schema, share, table_id, description
 FROM delta_share_show_tables('./profile.json', 'delta_sharing', 'default');
 ```
 
@@ -433,7 +475,7 @@ Attach usage:
 
 ```sql
 ATTACH 'https://services.odata.org/TripPinRESTierService' AS trippin (TYPE odata);
-SELECT TOP 5 UserName, FirstName FROM trippin.People;
+SELECT UserName, FirstName FROM trippin.People LIMIT 5;
 ```
 
 ---
@@ -791,14 +833,14 @@ Functions: `graph_planner_plans(group_id, [secret])`, `graph_planner_buckets(pla
 
 Required permissions: `Tasks.ReadWrite.All` (Application).
 
-`graph_planner_create_task` is a table function that calls the Graph API once per invocation and returns `(task_id, task_url)`. Use it with a **lateral join** to bulk-create tasks from any query result.
+`graph_planner_create_task(plan_id, title, ...)` is a table function that calls the Graph API once per invocation and returns `(task_id, task_url)`. `plan_id` and `title` are **positional**; the other arguments are named. Like every table function, its arguments must be constants, so it cannot be fed from a `LATERAL` join; to create one task per row, generate one statement per row (see the `erpl-odata-microsoft-365` skill).
 
 ```sql
 -- Create a single task
 SELECT task_id, task_url
 FROM graph_planner_create_task(
-    plan_id          := 'your-plan-id',
-    title            := 'Review Q2 budget',
+    'your-plan-id',
+    'Review Q2 budget',
     bucket_id        := 'Backlog',          -- name or GUID
     due_date         := '2024-07-31',
     assigned_to      := 'user-object-id',
@@ -807,17 +849,6 @@ FROM graph_planner_create_task(
     percent_complete := 0,
     secret           := 'ms_graph'
 );
-
--- Bulk-create tasks from a DuckDB table using a lateral join
-SELECT t.title, p.task_id, p.task_url
-FROM todos t,
-     LATERAL graph_planner_create_task(
-         plan_id   := 'your-plan-id',
-         title     := t.title,
-         bucket_id := t.bucket,
-         due_date  := t.due_date,
-         secret    := 'ms_graph'
-     ) p;
 ```
 
 `bucket_id` accepts either a bucket GUID or a human-readable bucket name (resolved automatically). `due_date` / `start_date` accept `'YYYY-MM-DD'` or full ISO 8601 datetimes.
@@ -849,7 +880,7 @@ FROM graph_show_lists(site := 'Finance', secret := 'ms_graph');
 SELECT name, column_type, required
 FROM graph_describe_list('Finance', 'Budget');
 
--- Items in a list — filter pushdown reduces server-side payload
+-- Items in a list (the whole list is fetched; WHERE is applied locally)
 SELECT * FROM graph_sharepoint_list_read('Finance', 'Budget', secret := 'ms_graph')
 WHERE status = 'Active';
 
@@ -867,7 +898,7 @@ Functions: `graph_show_sites([secret])`, `graph_show_drives([site_id], [secret, 
 
 Required permissions: `Sites.ReadWrite.All` (Application).
 
-`graph_sharepoint_create_item` is a **table function** returning the new `item_id`; use it in `SELECT` or with a `LATERAL` join. `graph_sharepoint_update_item` and `graph_sharepoint_delete_item` are **scalar functions** returning `BOOLEAN` (true on success) — note their `secret` is the **last positional argument**, not a named parameter.
+`graph_sharepoint_create_item` is a **table function** returning the new `item_id`. Its arguments must be constants, so for bulk inserts use `INSERT INTO` on an attached list (see SharePoint Attach) or `COPY ... TO (FORMAT graph_sharepoint_list, list '...')`. `graph_sharepoint_update_item` and `graph_sharepoint_delete_item` are **scalar functions** returning `BOOLEAN` (true on success) — note their `secret` is the **last positional argument**, not a named parameter.
 
 ```sql
 -- Create a new item (fields as JSON object) — returns the new item_id
@@ -888,15 +919,6 @@ SELECT graph_sharepoint_update_item(
 
 -- Delete an item by ID — scalar, returns true on success (secret is positional)
 SELECT graph_sharepoint_delete_item('Finance', 'Budget', 'item-id-here', 'ms_graph') AS deleted;
-
--- Bulk-create items from a query result
-SELECT src.title, p.item_id
-FROM staging_items src,
-     LATERAL graph_sharepoint_create_item(
-         'Finance', 'Budget',
-         json_object('Title', src.title, 'Amount', src.amount::VARCHAR),
-         secret := 'ms_graph'
-     ) p;
 ```
 
 Functions: `graph_sharepoint_create_item(site, list, fields_json, [secret])`, `graph_sharepoint_update_item(site, list, item_id, fields_json, [secret])`, `graph_sharepoint_delete_item(site, list, item_id, [secret])`
@@ -1104,24 +1126,25 @@ Required permissions: Azure App Registration with `API.ReadWrite.All` and a corr
 
 ```sql
 -- Companies in the environment
-SELECT id, display_name, business_profile_id
+SELECT id, name, displayName, businessProfileId
 FROM bc_show_companies();
 
 -- Available OData entity sets
-SELECT entity_name, entity_url, description
+SELECT name, url, kind
 FROM bc_show_entities();
 
 -- Schema of an entity
-SELECT property_name, property_type, is_key, nullable
+SELECT property_name, property_type, nullable, is_key
 FROM bc_describe('customers');
 
--- Query data with pushdown
-SELECT number, display_name, email, balance_due
-FROM bc_read('customers')
-WHERE balance_due > 1000;
+-- Query data with pushdown. company is required (name or GUID); columns keep
+-- the API's camelCase names
+SELECT number, displayName, email, balanceDue
+FROM bc_read('customers', company := 'CRONUS DE')
+WHERE balanceDue > 1000;
 ```
 
-Functions: `bc_show_companies([secret])`, `bc_show_entities([secret])`, `bc_describe(entity, [secret])`, `bc_read(entity, [secret, company, expand])`
+Functions: `bc_show_companies([secret])`, `bc_show_entities([secret])`, `bc_describe(entity, [secret])`, `bc_read(entity, company := ..., [secret, expand])` (`company` is required)
 
 ---
 
@@ -1130,12 +1153,12 @@ Functions: `bc_show_companies([secret])`, `bc_show_entities([secret])`, `bc_desc
 Required permissions: `Dynamics CRM — user_impersonation` (Delegated) or service principal with Dataverse system user.
 
 ```sql
--- Available entities
-SELECT logical_name, display_name, object_type_code
+-- Available entities (raw EntityDefinitions metadata)
+SELECT LogicalName, EntitySetName
 FROM crm_show_entities();
 
 -- Schema of an entity
-SELECT attribute_name, attribute_type, is_primary_key
+SELECT attribute_name, attribute_type, nullable, is_primary
 FROM crm_describe('accounts');
 
 -- Query CRM records
