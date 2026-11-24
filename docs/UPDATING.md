@@ -1,7 +1,7 @@
 # Updating to a new DuckDB release
 
 erpl-odata builds **one source tree** against several DuckDB lines at once: currently
-v2.0.0 (cyanoptera) and v1.5.6 (variegata); 1.4.x LTS support was dropped in #274. API
+v2.0.1 (cyanoptera) and v1.5.6 (variegata); 1.4.x LTS support was dropped in #274. API
 differences between the lines are absorbed by the header-only shims in the
 `duckdb-compat` submodule (`duckdb_compat::...`), not by version checks at call sites.
 

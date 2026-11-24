@@ -19,7 +19,7 @@ user-invocable: false
 
 # ERPL-OData — SAP ODP Full and Delta Replication
 
-**Extension:** `erpl_odata` v2026.10.24 | **DuckDB:** v2.0.0 / v1.5.6
+**Extension:** `erpl_odata` v2026.11.25 | **DuckDB:** v2.0.1 / v1.5.6
 
 ODP exposes SAP extractors, BW providers and CDS extraction views as OData entity sets
 named `FactsOf<ODP>`, `AttrOf<ODP>` or `EntityOf<ODP>`. The first `odp_odata_read` does

@@ -22,7 +22,7 @@ user-invocable: false
 
 # ERPL-OData — Microsoft 365 (Microsoft Graph)
 
-**Extension:** `erpl_odata` v2026.10.24 | **DuckDB:** v2.0.0 / v1.5.6
+**Extension:** `erpl_odata` v2026.11.25 | **DuckDB:** v2.0.1 / v1.5.6
 
 All functions here call Microsoft Graph with a `microsoft_graph` secret (see
 `erpl-odata-setup`). Every function accepts `secret := 'name'`; without it the first

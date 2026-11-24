@@ -22,6 +22,8 @@ redacted.
 | *"No Microsoft Graph secret found"* | No `microsoft_graph` secret in the session | `CREATE SECRET ... (TYPE microsoft_graph, ...)` or pass `secret :=` |
 | 403 from Graph | Missing application permission or admin consent | Add the permission listed in `erpl-odata-microsoft-365` and grant consent |
 | 401/403 from Business Central | No *Microsoft Entra Applications* record in BC, or no permission set | Create it in BC and assign permission sets |
+| *"Business Central environment '<name>' does not exist (HTTP 404, NoEnvironment ...)"* | The `ENVIRONMENT` of the `business_central` secret is not an environment of this tenant | Use the exact environment name from the Business Central admin center (e.g. `production`, `sandbox`) |
+| *"Cannot determine the columns of '<url>': its $metadata could not be read ..."* | `$metadata` failed (the HTTP error follows in the message) and there is no data row to take the columns from | Fix the cause named in the message: URL, credentials or permissions |
 | Job hangs at the first call | Interactive OAuth (`authorization_code`, Datasphere default) waiting for a browser | Use a `client_credentials` secret |
 | *"... points at '<host>'. This service's OAuth token audience is fixed ..."* | Business Central / Datasphere pointed at a non-standard host | Fix the environment / tenant, or for a deliberate proxy `SET erpl_unsafe_allow_custom_service_urls = 'I_UNDERSTAND_THIS_SENDS_TOKENS_ELSEWHERE'` |
 | SAC 401 after some time | SAC access tokens are short-lived | Refresh the token and recreate the secret |

@@ -16,7 +16,7 @@ user-invocable: false
 
 # ERPL-OData — OData v2/v4 and REST APIs
 
-**Extension:** `erpl_odata` v2026.10.24 | **DuckDB:** v2.0.0 / v1.5.6
+**Extension:** `erpl_odata` v2026.11.25 | **DuckDB:** v2.0.1 / v1.5.6
 
 For SAP Gateway specifics (service catalog, `/sap/opu/odata`, ICF activation) see
 `erpl-odata-sap-gateway`. For credentials see `erpl-odata-setup`.

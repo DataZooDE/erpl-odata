@@ -16,7 +16,7 @@ user-invocable: false
 
 # ERPL-OData — Dynamics 365 (Business Central, Dataverse) and Delta Sharing
 
-**Extension:** `erpl_odata` v2026.10.24 | **DuckDB:** v2.0.0 / v1.5.6
+**Extension:** `erpl_odata` v2026.11.25 | **DuckDB:** v2.0.1 / v1.5.6
 
 ## Critical gotchas
 

@@ -17,7 +17,7 @@ user-invocable: false
 
 # ERPL-OData — SAP Gateway OData Services
 
-**Extension:** `erpl_odata` v2026.10.24 | **DuckDB:** v2.0.0 / v1.5.6
+**Extension:** `erpl_odata` v2026.11.25 | **DuckDB:** v2.0.1 / v1.5.6
 
 Gateway services are ordinary OData v2/v4 services, so everything in
 `erpl-odata-odata-and-rest` applies. This skill adds the SAP-specific discovery, URLs,

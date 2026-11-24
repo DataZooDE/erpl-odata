@@ -19,7 +19,7 @@ user-invocable: false
 
 # ERPL-OData — SAP Datasphere and SAP Analytics Cloud
 
-**Extension:** `erpl_odata` v2026.10.24 | **DuckDB:** v2.0.0 / v1.5.6
+**Extension:** `erpl_odata` v2026.11.25 | **DuckDB:** v2.0.1 / v1.5.6
 
 ## Critical gotchas
 
